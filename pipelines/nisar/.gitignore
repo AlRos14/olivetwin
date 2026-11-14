@@ -1,0 +1,5 @@
+# Salidas locales del conversor SME2 (maestros GeoTIFF, PNG por fecha, informes)
+sme2_staging/
+*.h5
+__pycache__/
+.pytest_cache/
