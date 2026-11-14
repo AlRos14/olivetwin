@@ -35,6 +35,21 @@ export interface Provenance {
   [extra: string]: unknown
 }
 
+/**
+ * Paso temporal de una capa (contrato v1.2.0, aditivo). Comparte unidad, rango y leyenda con la capa.
+ * La procedencia efectiva de un paso es `{ ...layer.provenance, ...step.provenance }`.
+ */
+export interface TimeStep {
+  /** ISO 8601 (fecha o fecha-hora UTC) de la adquisición. Pasos ordenados de más antiguo a más reciente. */
+  date: string
+  /** Etiqueta corta opcional para el slider; si falta, la UI formatea `date`. */
+  label?: string
+  /** Ruta relativa a public/ bajo data/<modo>/ (mismas reglas que layer.image). */
+  image: string
+  bbox: BBox
+  provenance?: Partial<Provenance>
+}
+
 export interface StudyLayer {
   id: LayerId
   title: string
@@ -51,6 +66,11 @@ export interface StudyLayer {
   status: LayerStatus
   provenance: Provenance
   qualityNote: string
+  /**
+   * v1.2.0: serie temporal opcional. Si existe, `image`/`bbox` de la capa deben coincidir con el ÚLTIMO
+   * paso (paso por defecto), para que un consumidor v1.1 siga mostrando la fecha más reciente.
+   */
+  timeSteps?: TimeStep[]
 }
 
 export interface StudyZone {
@@ -79,6 +99,8 @@ export interface OliveTwinViewModel {
   /** 0…1 (el slider muestra 0…100 %). */
   overlayOpacity: number
   errorMessage: string | null
+  /** v1.2.0: índice del paso temporal activo de la capa seleccionada; null si la capa no tiene timeSteps. */
+  selectedTimeIndex: number | null
 }
 
 /** Overlay listo para pintar: URL ya resuelta con import.meta.env.BASE_URL. */
@@ -90,6 +112,9 @@ export interface ActiveOverlay {
   opacity: number
   visible: boolean
   status: LayerStatus
+  /** v1.2.0: índice del paso activo y el paso en sí (null si la capa no tiene timeSteps). */
+  timeIndex?: number | null
+  timeStep?: TimeStep | null
 }
 
 /** Acciones de useOliveTwinData(). Nombres y semántica congelados en C0. */
@@ -105,4 +130,6 @@ export interface OliveTwinActions {
   setOverlayVisible(visible: boolean): void
   /** Recarga el manifiesto del modo actual (p. ej. tras un error). */
   reload(): void
+  /** v1.2.0: selecciona el paso temporal (índice en layer.timeSteps). Fuera de rango o sin timeSteps → se ignora. */
+  selectTimeStep(index: number): void
 }

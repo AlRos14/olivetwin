@@ -61,6 +61,8 @@ export function useOliveTwinData(
     overlayVisible: true,
     overlayOpacity: 0.7,
     errorMessage: null,
+    // C1 stub: WP-04 implementa la línea temporal (docs/c0-interfaces.md §6).
+    selectedTimeIndex: null,
   })
 
   let requestCounter = 0
@@ -193,6 +195,9 @@ export function useOliveTwinData(
     state.overlayVisible = visible
   }
 
+  // C1 stub: WP-04 lo sustituye por la implementación real.
+  function selectTimeStep(_index: number): void {}
+
   function reload(): void {
     void load(state.dataMode)
   }
@@ -211,5 +216,6 @@ export function useOliveTwinData(
     setOpacity,
     setOverlayVisible,
     reload,
+    selectTimeStep,
   }
 }
