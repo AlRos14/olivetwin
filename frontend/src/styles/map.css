@@ -1,0 +1,79 @@
+/* Estilos del mapa principal OliveTwin (WP07-01..03). */
+
+.olive-map-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+}
+
+.olive-map {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: #dbeafe;
+  isolation: isolate;
+}
+
+.olive-map .leaflet-container {
+  font: inherit;
+}
+
+/* Atribuciones siempre legibles sobre ortofoto y sobre OSM. */
+.olive-map .leaflet-control-attribution {
+  background: rgb(255 255 255 / 88%);
+  color: #1f2937;
+  font-size: 0.7rem;
+}
+
+.olive-map .leaflet-control-attribution a {
+  color: #075985;
+}
+
+/* Control propio «España» / «Canarias». */
+.olive-map-nav {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+
+.olive-map-nav__button {
+  appearance: none;
+  border: 0;
+  border-bottom: 1px solid #d1d5db;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+  font: 600 0.75rem/1.1 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  padding: 0.45rem 0.65rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.olive-map-nav__button:last-child {
+  border-bottom: 0;
+}
+
+.olive-map-nav__button:hover {
+  background: #f1f5f9;
+}
+
+.olive-map-nav__button:focus-visible {
+  outline: 2px solid #0369a1;
+  outline-offset: -2px;
+}
+
+/*
+ * Overlay científico: PNG preparado fuera del navegador. `pixelated` evita el
+ * suavizado al ampliar y deja ver la huella real de los píxeles de la capa.
+ * Puede sobrescribirse desde la hoja de integración si se prefiere suavizado.
+ */
+.olive-scientific-overlay {
+  image-rendering: pixelated;
+}
+
+/* Contenedores auxiliares de los componentes hijos (no pintan nada). */
+.olive-map-child {
+  display: none;
+}
