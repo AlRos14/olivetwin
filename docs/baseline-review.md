@@ -82,3 +82,9 @@ Excepciones aprobadas expresamente:
 2. **Protección de `main`:** el repositorio es privado en cuenta gratuita; si GitHub no permite la protección, rige por convención (PR + check `ci` verde + revisión). No se declara protegida.
 3. **Colaboradores:** solo `AlRos14` es colaborador verificado; el acceso del resto del equipo se gestiona aparte.
 4. **Ubicación del validador** (`frontend/scripts/validate-data.mjs` frente a `scripts/` del plan WP-04/07 §4.1): se mantiene en `frontend/scripts/`; WP-04 lo amplía allí.
+
+## Actualización 2026-11-14 (post-GA)
+
+El repositorio pasó a **público** (requisito de la competición) y se añadieron los colaboradores. Ya es posible
+proteger `main`: PR obligatoria + check `ci` requerido, sin force-push ni borrado, 0 aprobaciones requeridas.
+La excepción 2 de la decisión GA queda resuelta.

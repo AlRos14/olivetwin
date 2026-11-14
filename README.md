@@ -8,7 +8,7 @@ delimitadas. El objetivo del proyecto es investigar por qué dos olivares
 cercanos y aparentemente similares pueden producir cantidades distintas,
 combinando observaciones radar, vegetación, humedad y registros de cosecha.
 
-Repositorio: <https://github.com/AlRos14/olivetwin> (privado).
+Repositorio: <https://github.com/AlRos14/olivetwin> (público).
 
 ## Estado actual: demo con datos reales NISAR SME2
 
@@ -292,10 +292,8 @@ sin aprobación humana.
   repositorio ([instrucciones](frontend/tests/e2e/README.md)).
 - **La demo no cubre producción ni riego.** Solo muestra humedad superficial
   georreferenciada; no calcula kg/ha ni dosis de riego.
-- El repositorio es **privado en una cuenta gratuita**. La protección de rama y
-  los rulesets de GitHub pueden no estar disponibles; hasta que el plan lo
-  permita, las reglas se aplican por convención y no se declarará `main` como
-  protegida si no lo está.
-- Solo `AlRos14` está verificado como colaborador; el resto de identidades y
-  los owners de WP están pendientes de asignación. No se crea `CODEOWNERS`
+- `main` está **protegida** (desde el 2026-11-14, al hacerse público el repositorio): toda
+  entrada pasa por PR con el check `ci` en verde; sin force-push ni borrado. No se exige
+  aprobación mínima en GitHub (hackatón de 48 h), pero la revisión independiente sigue siendo norma.
+- La asignación de personas a cada work packet se coordina fuera del repositorio. No se crea `CODEOWNERS`
   con usuarios no verificados.

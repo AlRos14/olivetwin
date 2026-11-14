@@ -2,7 +2,7 @@
 
 **Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02; corregido en A02-fix).
 **Estado:** congelado para el arranque de Fase B; alineado con el ejemplo §4.3 del plan v2.
-**Repositorio:** <https://github.com/AlRos14/olivetwin> (privado, owner `AlRos14`).
+**Repositorio:** <https://github.com/AlRos14/olivetwin> (público, owner `AlRos14`).
 **Alcance:** manifiestos de datos, convenciones espaciales y tipos de referencia compartidos por
 WP-04 (datos y contratos) y WP-07 (Vue + Leaflet).
 
