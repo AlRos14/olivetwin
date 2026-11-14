@@ -5,6 +5,11 @@ repositorio: el JSON Schema, el validador de datos, el cargador de manifiestos y
 el composable de estado. No sustituye a los documentos de congelación, pero
 evita tener que leer el código para saber qué se puede publicar y qué se rechaza.
 
+> **Decisión de producto (2026-11-14):** la demo publica **solo datos reales**
+> NISAR L3 SME2 de Jaén y Toledo. El contrato sigue admitiendo `datasetMode:
+> "sample"` para pruebas y fixtures, pero la aplicación no carga ni ofrece datos
+> de muestra; ver [`docs/c0-interfaces.md`](c0-interfaces.md) §7.
+
 | Documento | Papel |
 |---|---|
 | [`contracts/manifest.schema.json`](../contracts/manifest.schema.json) | Fuente de verdad estructural (JSON Schema draft 2020-12). |
@@ -23,22 +28,21 @@ válido y se muestra con su `layer.image`/`layer.bbox`.
 
 ```text
 frontend/public/data/
-├── sample/
-│   ├── manifest.json                    # datasetMode: "sample"
-│   └── zones/<zona>/
-│       ├── ndvi.png
-│       └── moisture.png
 └── real/
-    ├── manifest.json                    # datasetMode: "real"; hoy zones: []
-    └── zones/<zona>/<capa>.png          # se añade cuando haya datos aprobados
+    ├── manifest.json                    # datasetMode: "real" (obligatorio)
+    └── zones/<zona>/<capa>/<fecha>.png  # PNG aprobados y sus timeSteps
+
+# Opcional y NO usado por la demo: material sintético para pruebas locales
+# frontend/public/data/sample/manifest.json
 ```
 
 - Todos los assets publicados son **PNG optimizados y JSON**. No se versionan
   HDF5, GeoTIFF, NetCDF ni otros binarios científicos (ver `.gitignore`).
-- El manifiesto de cada modo es independiente y se carga en tiempo de ejecución.
-  Cambiar de modo no recompila la aplicación.
-- `frontend/public/data/sample/` solo contiene material sintético.
-  `frontend/public/data/real/` solo contiene datos con aprobación científica.
+- El manifiesto real es el único que carga la aplicación. El contrato conserva
+  `sample` para fixtures y pruebas, pero `frontend/public/data/sample/` no se
+  publica en esta rama y `validate:data` lo trata como opcional.
+- `frontend/public/data/real/` solo contiene datos con aprobación científica:
+  Jaén y Toledo (3 fechas cada una) publicados desde el pipeline NISAR SME2.
 - Las rutas `image` son **relativas a `frontend/public/`**, nunca al sistema de
   archivos ni al directorio de trabajo.
 
@@ -372,9 +376,11 @@ sintético en real. Un agente no puede aprobar su propio trabajo científico.
 
 ### 4.3 `zones: []` es un estado válido
 
-- `real/manifest.json` con `zones: []` es **vacío**, no un error.
-- El modo `real` no recurre a `sample` si no hay datos, si el manifiesto da 404
-  o si el JSON es inválido. Tampoco se reutilizan PNG del modo anterior.
+- `real/manifest.json` con `zones: []` es **vacío**, no un error. Hoy el
+  manifiesto publicado declara Jaén y Toledo, pero el estado vacío se sigue
+  soportando (por ejemplo, si se retiran las zonas).
+- La aplicación no recurre a `sample` si no hay datos, si el manifiesto da 404
+  o si el JSON es inválido. Tampoco se reutilizan PNG de una carga anterior.
 
 ### 4.4 Estados de carga en runtime
 
@@ -475,9 +481,10 @@ npm run validate:data --prefix frontend
 El comando:
 
 1. compila el esquema con Ajv (draft 2020-12);
-2. valida `public/data/sample/manifest.json` y `public/data/real/manifest.json`
-   contra esquema + semántica + assets, exigiendo que el modo coincida con la
-   carpeta;
+2. valida `public/data/real/manifest.json` contra esquema + semántica + assets,
+   exigiendo que el modo coincida con la carpeta. `sample/manifest.json` es
+   **opcional**: si existe se valida igual y, si no existe, se informa como
+   omitido sin fallar;
 3. exige que todos los fixtures de `fixtures/valid/` pasen;
 4. exige que todos los fixtures de `fixtures/invalid/` fallen.
 
@@ -493,36 +500,75 @@ ejecutan en `validate:data` antes de publicar. Por eso **la validación local es
 obligatoria**: un manifiesto editado a mano que evite la CLI puede apuntar a un
 asset del otro modo aunque el navegador lo acepte.
 
-## 6. Regenerar y validar los datos de muestra
+## 6. Validar y actualizar los datos publicados
 
-Los cuatro PNG sintéticos y `sample/manifest.json` son reproducibles byte a
-byte. El generador está en
-[`scripts/generate-sample-data.mjs`](../scripts/generate-sample-data.mjs).
+La demo no incluye generador de datos de muestra. Los PNG y el manifiesto real
+se producen con el pipeline NISAR SME2 y se validan antes de publicar:
 
 ```bash
 npm ci --prefix frontend
-npm run generate:sample --prefix frontend
-```
-
-- Genera Jaén (`jaen-demo`) y Toledo (`toledo-demo`), cada una con `ndvi.png` y
-  `moisture.png` (RGBA, 384 px de ancho, cuadrícula equiespaciada en Mercator,
-  norte arriba, con máscaras de no-data).
-- Reescribe `sample/manifest.json` de forma determinista.
-- **No sobrescribe** `real/manifest.json` si ya existe; solo crea el manifiesto
-  real vacío cuando falta.
-- No descarga datos ni usa red. No declara fechas de adquisición ni escenas.
-- Los PNG resultantes pesan unos cientos de KB cada uno.
-
-Después, las comprobaciones completas:
-
-```bash
 npm run validate:data --prefix frontend
 npm test --prefix frontend
 npm run build --prefix frontend
 ```
 
-`npm test` ejecuta la suite de Vitest (contrato, servicios, composable y
-componentes). `npm run build` ejecuta `vue-tsc -b` y genera `frontend/dist/`.
+`validate:data` comprueba el manifiesto real, todos los PNG de la serie
+(`timeSteps[].image`), los fixtures contractuales y los assets. `npm test`
+ejecuta Vitest (contrato, servicios, composable y componentes) y `npm run
+build` ejecuta `vue-tsc -b` y genera `frontend/dist/`.
+
+### 6.1 Añadir fechas a una zona existente
+
+El pipeline abre los HDF5 de NISAR SME2 en un *staging* y solo escribe en
+`frontend/public/data/real/` con `--publish`:
+
+```bash
+# 1) Staging: no toca la aplicación. Revisa report.json y los PNG.
+python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
+  --aoi WEST SOUTH EAST NORTH \
+  --zone-id jaen --zone-name "Jaén" \
+  --staging pipelines/nisar/sme2_staging
+
+# 2) Publicación de toda la serie (una o varias fechas) tras la revisión
+python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
+  --aoi WEST SOUTH EAST NORTH \
+  --zone-id jaen --zone-name "Jaén" \
+  --publish --approved-by "Nombre del revisor"
+```
+
+Sin `--date`, `--publish` escribe **todas** las escenas utilizables como
+`timeSteps` ordenados y fija `layer.image`/`layer.bbox` al último paso. Con
+`--date YYYY-MM-DD` publica una sola fecha sin serie temporal. La escala
+(`--auto-scale` o `--vmin/--vmax`) se comparte entre fechas para que el slider
+sea comparable.
+
+Para re-renderizar sin volver a abrir los HDF5 (por ejemplo, con otra escala):
+
+```bash
+python pipelines/nisar/sme2_to_overlay.py \
+  --from-staging pipelines/nisar/sme2_staging/jaen \
+  --zone-id jaen --zone-name "Jaén" \
+  --auto-scale --publish --approved-by "Nombre del revisor"
+```
+
+`--from-staging` reconstruye la serie desde `layer.staging.json` y el GeoTIFF
+maestro del staging, y aplica el mismo warp, color, verificación y publicación.
+Después de publicar, ejecuta `npm run validate:data --prefix frontend` y revisa
+la alineación en el navegador antes de desplegar el sitio estático.
+
+### 6.2 Añadir una zona nueva
+
+1. Ejecuta el pipeline con un `--zone-id` nuevo y el `bbox` de la zona. Con
+   `--publish --approved-by` crea `zones/<id>/soil-moisture/<fecha>.png` y
+   añade la zona al manifiesto real sin duplicar capas.
+2. Comprueba que el manifiesto sube a `schemaVersion: "1.2.0"` si escribe
+   `timeSteps`, y que la procedencia de cada paso incluye `acquisitionDate`,
+   `sceneId` y `referenceUrl`.
+3. Ejecuta `npm run validate:data --prefix frontend`, revisa el encuadre y la
+   transparencia en el navegador y publica la build estática.
+
+No se versionan HDF5, GeoTIFF ni NetCDF: el staging queda fuera de Git y solo se
+publican los PNG y el JSON optimizados.
 
 ## 7. Política de cambios del contrato
 
@@ -558,21 +604,23 @@ Reglas concretas:
 | `layer.timeSteps exige schemaVersion "1.2.0"` | Series temporales declaradas como `1.1.0`. | Cambiar `schemaVersion` a `"1.2.0"`. |
 | `el PNG ... no tiene canal alfa` | El PNG se exportó RGB opaco. | Reexportar RGBA con alpha 0 en no-data. |
 | `must NOT have fewer than 2 items` en `legend` | Leyenda con una sola parada. | Añadir al menos dos clases ordenadas. |
-| `datasetMode="sample" exige status="synthetic"` | Capa real dentro del manifiesto de muestra. | Separar los manifiestos; no mezclar modos. |
-| La app muestra «Todavía no hay zonas…» | `real/manifest.json` tiene `zones: []`. | Es el estado esperado mientras no haya datos aprobados. |
-| La app muestra error y no vuelve a muestra | JSON inválido, 404 o incoherencia de modo. | Corregir el manifiesto; no se hace fallback por diseño. |
+| `datasetMode="sample" exige status="synthetic"` | Capa real dentro de un manifiesto de fixture `sample`. | Separar los manifiestos; no mezclar modos. Solo afecta a fixtures, no a la demo. |
+| La app muestra «Todavía no hay zonas…» | `real/manifest.json` tiene `zones: []`. | Es el estado válido si se retiran las zonas publicadas. |
+| La app muestra error y no recurre a otro modo | JSON inválido, 404 o incoherencia de modo. | Corregir el manifiesto; no se hace fallback por diseño. |
+| No aparece el selector «Datos de muestra / Datos reales» | Es la decisión de producto: la demo solo usa datos reales. | Esperado; ver [`docs/c0-interfaces.md`](c0-interfaces.md) §7. |
 
 ## 9. Verificación de esta referencia
 
-Los comandos de §6 se ejecutaron en la rama de documentación el 2026-11-14:
+Los comandos de §6 se reejecutaron en la rama `b/intreal` el 2026-11-14, tras
+retirar los datos de muestra y publicar Jaén/Toledo:
 
 | Comando | Resultado |
 |---|---|
 | `npm ci --prefix frontend` | Instalación correcta (con avisos `EBADENGINE` de dependencias, sin error). |
-| `npm run generate:sample --prefix frontend` | 4 PNG y `sample/manifest.json` regenerados; `real/manifest.json` sin cambios. |
-| `npm run validate:data --prefix frontend` | `OK — 35 comprobaciones superadas (0 fallos)` (incluye los fixtures de `timeSteps`). |
-| `npm test --prefix frontend` | 18 archivos y 244 tests superados. |
+| `npm run validate:data --prefix frontend` | `OK — 35 comprobaciones superadas (0 fallos)`; `sample/manifest.json` omitido por ser opcional y `real/manifest.json` validado con sus 6 PNG. |
+| `npm test --prefix frontend` | 18 archivos y 259 tests superados. |
 | `npm run build --prefix frontend` | `vue-tsc -b` + `vite build` correctos; `dist/` generado. |
+| `npm run build --prefix frontend -- --base /olivetwin/` | Build bajo subruta correcta; AT-17 la sirve con `vite preview` y pide manifiesto/PNG bajo `/olivetwin/`. |
 
 La guía para publicar datos reales está en
 [`docs/handoff-science.md`](handoff-science.md).

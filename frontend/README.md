@@ -4,15 +4,15 @@ Aplicación estática del proyecto OliveTwin (NASA Space Apps Challenge 2026,
 *Dancing with the SARs*), construida con **Vue 3 + Vite + TypeScript** y
 **Leaflet**.
 
-Incluye la demo integrada de Fase B: mapa de España con PNOA/OSM, zonas de
-muestra Jaén y Toledo, capas sintéticas de NDVI y humedad, opacidad, leyenda,
-procedencia y selector **Datos de muestra / Datos reales**. El modo real está
-vacío y se comunica como tal. No hay backend, router ni gestor de estado
-externo: el estado vive en composables y props/emits.
+Incluye la demo integrada de Fase B: mapa de España con PNOA/OSM, **humedad
+superficial NISAR L3 SME2** de Jaén y Toledo con **tres fechas**, línea temporal,
+opacidad, leyenda, procedencia y aviso de producto PROVISIONAL. La demo publica
+**solo datos reales**; no hay selector de datos de muestra. No hay backend,
+router ni gestor de estado externo: el estado vive en composables y props/emits.
 
-Las **capas científicas de muestra son sintéticas** y se marcan con
-«DATOS SIMULADOS». El mapa base es cartografía real y no forma parte de los
-datos científicos ni de NISAR.
+El mapa base es cartografía real (PNOA/IGN y OpenStreetMap) y no forma parte de
+los datos científicos ni de NISAR. La humedad superficial (~5 cm) no equivale a
+necesidad de riego.
 
 ## Arranque local
 
@@ -36,8 +36,7 @@ npm run preview  # sirve localmente el contenido de dist/
 | `preview` | Sirve el build de producción. |
 | `test` | Vitest en modo `run` (`--passWithNoTests`); incluye `src/**`, `tests/**` y `scripts/**` con patrón `*.test.ts` / `*.test.mjs`. |
 | `typecheck` | Solo comprobación de tipos con `vue-tsc -b`. |
-| `validate:data` | Valida `public/data/{sample,real}/manifest.json`, sus assets y los fixtures contractuales. |
-| `generate:sample` | Regenera los cuatro PNG sintéticos y el manifiesto de muestra con el generador de la raíz. |
+| `validate:data` | Valida `public/data/real/manifest.json`, sus assets (todos los `timeSteps`) y los fixtures contractuales. `sample/` es opcional. |
 
 Build bajo subruta:
 
@@ -56,8 +55,7 @@ frontend/
 ├── index.html
 ├── public/
 │   └── data/
-│       ├── sample/                # manifiesto + zones/<id>/{ndvi,moisture}.png
-│       └── real/                  # manifiesto válido con zones: [] (sin assets)
+│       └── real/                  # manifiesto + zones/<id>/soil-moisture/<fecha>.png
 ├── src/
 │   ├── App.vue                    # composición de la vista (INT01)
 │   ├── main.ts                    # monta la aplicación
@@ -66,21 +64,22 @@ frontend/
 │   │   ├── OliveMap.vue           # mapa Leaflet, PNOA/OSM y encuadres
 │   │   ├── StudyZoneMarkers.vue   # contornos y selección de zonas
 │   │   ├── ScientificOverlay.vue  # ImageOverlay por bbox y opacidad
-│   │   ├── DataModeSwitch.vue     # Datos de muestra / Datos reales
+│   │   ├── TimeSlider.vue         # línea temporal (slider, anterior/siguiente, reproducir)
+│   │   ├── DataModeSwitch.vue     # selector de modo; conservado sin uso en la demo
 │   │   ├── ZoneSelector.vue       # selector de zona
 │   │   ├── LayerPanel.vue         # capa, opacidad, visibilidad y mapa base
 │   │   ├── LayerLegend.vue        # leyenda de la capa activa
-│   │   ├── DataProvenance.vue     # fuente, fecha, unidad y notas
-│   │   ├── StatusBanner.vue       # avisos, errores y «DATOS SIMULADOS»
+│   │   ├── DataProvenance.vue     # fuente, fecha del paso, unidad y notas
+│   │   ├── StatusBanner.vue       # avisos y errores de carga
 │   │   └── map/                   # helpers de Leaflet (basemaps, geo, teselas)
 │   ├── composables/
-│   │   └── useOliveTwinData.ts    # estado sample/real, selección y overlay
+│   │   └── useOliveTwinData.ts    # estado, selección, paso temporal y overlay
 │   ├── services/
 │   │   ├── manifestService.ts     # carga y valida manifiestos en runtime
 │   │   ├── manifestSemantics.ts   # reglas semánticas del contrato
 │   │   └── assetUrl.ts            # resuelve rutas con BASE_URL
 │   ├── types/
-│   │   └── manifest.ts            # tipos del contrato v1.1.0
+│   │   └── manifest.ts            # tipos del contrato v1.2.0
 │   └── styles/
 │       ├── map.css                # estilos del mapa y controles
 │       └── ui.css                 # estilos del panel
@@ -104,16 +103,17 @@ manifiestos y validación; WP-07 posee componentes y estilos; INT01 solo compone
 
 ## Datos y contrato
 
-- `public/data/sample/manifest.json` declara `datasetMode: "sample"` y solo
-  admite capas `synthetic`.
-- `public/data/real/manifest.json` declara `datasetMode: "real"` y hoy tiene
-  `zones: []`. Es un estado válido, no un error.
+- `public/data/real/manifest.json` declara `datasetMode: "real"`, Jaén y Toledo,
+  y tres `timeSteps` de humedad superficial NISAR L3 SME2 por zona.
+- El manifiesto real es obligatorio para `validate:data`; el de muestra es
+  opcional y no lo carga la aplicación.
 - Las rutas `image` son relativas a `public/` y se resuelven con
   `import.meta.env.BASE_URL`.
-- El contrato completo está en
+- El contrato completo (v1.2.0) está en
   [`docs/data-contract.md`](../docs/data-contract.md) y
   [`contracts/manifest.schema.json`](../contracts/manifest.schema.json).
-- Para publicar datos reales, sigue
+- Para añadir fechas o zonas reales, usa el pipeline NISAR
+  (`--publish` y `--from-staging`) y sigue
   [`docs/handoff-science.md`](../docs/handoff-science.md); no se editan
   componentes Vue.
 

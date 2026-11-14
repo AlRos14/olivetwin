@@ -4,18 +4,16 @@ Esta guía explica cómo el equipo científico incorpora una zona con datos
 **reales** a OliveTwin. El objetivo es que añadir un PNG y metadatos sea
 suficiente: **no se modifican componentes Vue, tipos, servicios ni el cargador**.
 
-La aplicación ya distingue dos modos:
+La aplicación publica **solo datos reales** (decisión de producto del
+2026-11-14): `frontend/public/data/real/manifest.json` declara Jaén y Toledo con
+tres fechas cada una, y no existe selector de modo ni datos de muestra en la
+demo. El contrato conserva `datasetMode: "sample"` para fixtures y pruebas, pero
+la aplicación no lo carga.
 
-- **Datos de muestra**: material sintético, marcado como tal, para probar la
-  interfaz.
-- **Datos reales**: solo capas con `status: "processed_real"`. Hoy
-  `frontend/public/data/real/manifest.json` tiene `zones: []`, y ese es un
-  estado válido.
-
-Una capa real aparece en el modo «Datos reales» únicamente si cumple el
-contrato v1.2.0 y ha pasado la validación y la revisión científica. Los
-manifiestos v1.1.0 sin serie temporal siguen siendo válidos; para publicar
-varias fechas se usa `timeSteps` y `schemaVersion: "1.2.0"` (§3.1).
+Una capa real aparece en la demo únicamente si cumple el contrato v1.2.0 y ha
+pasado la validación y la revisión científica. Los manifiestos v1.1.0 sin serie
+temporal siguen siendo válidos; para publicar varias fechas se usa `timeSteps` y
+`schemaVersion: "1.2.0"` (§3.1).
 
 ## 0. Límites científicos que no se pueden cruzar
 
@@ -265,13 +263,18 @@ frontend/public/data/real/
 ├── manifest.json
 └── zones/
     └── nombre-de-la-zona/
-        └── soil-moisture.png
+        └── soil-moisture/
+            ├── 20260620T052326.png
+            ├── 20260702T052325.png
+            └── 20260714T052325.png
 ```
 
-- Añade el PNG en `frontend/public/data/real/zones/<id>/`.
-- Edita **solo** `frontend/public/data/real/manifest.json` para declarar la zona
-  y la capa. Si la zona ya existe, añade la capa a su array `layers`.
-- No copies nada a `sample/` ni reutilices un manifiesto de muestra.
+- Añade los PNG en `frontend/public/data/real/zones/<id>/soil-moisture/`.
+- Edita **solo** `frontend/public/data/real/manifest.json` para declarar la zona,
+  la capa y sus `timeSteps`. Si la zona ya existe, sustituye o amplía su capa
+  `soil-moisture` sin duplicarla.
+- No copies nada a `sample/` ni reutilices un manifiesto de muestra: la demo no
+  los carga.
 - No versiones HDF5, GeoTIFF, NetCDF, recortes intermedios ni `.h5`. El
   `.gitignore` ya los excluye.
 - No hace falta tocar `App.vue`, `main.ts`, componentes, tipos, servicios ni
@@ -321,18 +324,19 @@ npm run dev --prefix frontend
 
 Abre la URL que imprime Vite (por defecto `http://localhost:5173/`) y:
 
-1. Cambia a **Datos reales**.
-2. Selecciona la zona nueva.
-3. Activa la capa y súbela al 100 % de opacidad.
-4. Compara con el mapa base PNOA y con OpenStreetMap: los bordes del PNG deben
+1. Selecciona la zona nueva en el selector (la primera zona se autoselecciona al
+   cargar).
+2. Activa la capa y súbela al 100 % de opacidad.
+3. Compara con el mapa base PNOA y con OpenStreetMap: los bordes del PNG deben
    caer sobre la misma área en ambos.
-5. Comprueba que las zonas sin dato son transparentes (se ve el mapa base) y
+4. Comprueba que las zonas sin dato son transparentes (se ve el mapa base) y
    que no hay un rectángulo opaco de relleno.
-6. Verifica que la leyenda, la unidad, la fecha y la procedencia mostradas
+5. Verifica que la leyenda, la unidad, la fecha y la procedencia mostradas
    coinciden con el manifiesto.
-7. Vuelve a **Datos de muestra** y confirma que las capas reales desaparecen y
-   que las de muestra siguen intactas.
-8. Navega fuera de la zona: no debe aparecer color científico fuera de
+6. Recorre la línea temporal: cada fecha debe cambiar solo la imagen (sin
+   recrear el mapa ni parpadear) y la procedencia debe mostrar la escena del paso
+   activo.
+7. Navega fuera de la zona: no debe aparecer color científico fuera de
    `layer.bbox`.
 
 Para revisar la build de producción:
@@ -342,11 +346,8 @@ npm run build --prefix frontend
 npm run preview --prefix frontend
 ```
 
-**Nota de integración:** en la rama de documentación, `frontend/src/App.vue`
-todavía es el esqueleto de Fase A; los componentes existen, pero el cableado
-final corresponde a INT01. Si tu copia aún no tiene el mapa y el selector
-«Datos de muestra | Datos reales», haz la revisión visual sobre la build
-integrada (INT01) o espera a que se integre. No declares una capa revisada solo
+**Nota de integración:** `frontend/src/App.vue` ya compone el mapa, la línea
+temporal y el panel con el manifiesto real. No declares una capa revisada solo
 con tests unitarios: la alineación geográfica se comprueba en el navegador.
 
 ## 7. Paso 6 — aprobación científica y publicación
@@ -361,8 +362,8 @@ con tests unitarios: la alineación geográfica se comprueba en el navegador.
 4. El check `ci` debe estar en verde. No se fusiona sin revisión.
 5. Tras el merge se **recompila y publica el sitio estático**. El PNG y el JSON
    deben formar parte del despliegue; no basta con tenerlos en el repositorio.
-6. En la web publicada, la zona aparece en «Datos reales» sin cambiar ningún
-   componente Vue. El modo «Datos de muestra» no se altera.
+6. En la web publicada, la zona aparece directamente en la demo (solo datos
+   reales) sin cambiar ningún componente Vue.
 
 No se publica una capa real «para probar» con datos ficticios. Para probar la
 carga existe el fixture contractual y los tests; la demo pública no expone
@@ -417,7 +418,7 @@ Salidas en `pipelines/nisar/sme2_staging/<zone-id>/`:
 | `png/soil-moisture_<fecha>_<órbita>.png` | Overlay por fecha. |
 | `layer.staging.json` | Entrada de capa preparada; no se copia a mano. |
 | `report.json` | Cobertura, estadísticas, avisos, escenas descartadas y comprobación de georreferencia. |
-| `timeseries.json` | Borrador de todas las fechas. El contrato v1.2.0 ya admite `timeSteps`, pero el `--publish` actual del conversor todavía no los escribe: añadirlos manualmente al manifiesto (o adaptar el conversor en el nodo de pipeline de C1 §6.4) antes de publicar la serie. |
+| `timeseries.json` | Borrador de todas las fechas. `--publish` sin `--date` escribe la serie completa como `timeSteps` (ver §8.4). |
 | `geotiff/` | Maestro científico intermedio; **no se versiona**. |
 
 ### 8.3 Revisión antes de publicar
@@ -453,11 +454,24 @@ python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
 npm run validate:data --prefix frontend
 ```
 
-`--publish` exige `--approved-by`; sin él, el script termina con error. Escribe
-el PNG en `frontend/public/data/real/zones/<zone-id>/soil-moisture.png` y
-actualiza el manifiesto real de forma atómica. Si la zona ya existe, sustituye
-su capa `soil-moisture` sin duplicarla; si el `bbox` de la zona no contiene el
-de la capa, lo amplía con un aviso. También añade `approvedBy` a la procedencia.
+`--publish` exige `--approved-by`; sin él, el script termina con error. Sin
+`--date`, escribe **todas** las fechas como
+`frontend/public/data/real/zones/<zone-id>/soil-moisture/<fecha>.png` y
+actualiza el manifiesto real de forma atómica:
+
+- añade `layer.timeSteps` ordenados, con la procedencia de cada escena;
+- fija `layer.image`/`layer.bbox` al último paso;
+- sube `schemaVersion` a `"1.2.0"` si era `1.1.0`;
+- si la zona ya existe, sustituye su capa `soil-moisture` sin duplicarla;
+- si el `bbox` de la zona no contiene el de la capa, lo amplía con un aviso;
+- añade `approvedBy` a la procedencia.
+
+Con `--date YYYY-MM-DD` publica una sola imagen y no escribe `timeSteps`.
+Para re-renderizar sin volver a abrir los HDF5, usa
+`--from-staging pipelines/nisar/sme2_staging/<zone-id>` con los mismos
+`--zone-id`/`--zone-name` y `--publish --approved-by`; el resultado mantiene el
+`bbox` y la serie del staging. La guía completa del conversor está en
+[`pipelines/nisar/README.md`](../pipelines/nisar/README.md).
 
 Códigos de salida:
 
@@ -504,8 +518,7 @@ de referencia del equipo.
 - [ ] `qualityNote` explica madurez y limitaciones; no promete riego ni kg/ha.
 - [ ] `npm run validate:data --prefix frontend` pasa.
 - [ ] `npm test --prefix frontend` y `npm run build --prefix frontend` pasan.
-- [ ] Revisión visual de alineación con PNOA y OSM en «Datos reales».
-- [ ] El modo «Datos de muestra» sigue intacto y separado.
+- [ ] Revisión visual de alineación con PNOA y OSM y de la línea temporal.
 - [ ] No se han modificado componentes Vue ni se han versionado binarios
       científicos grandes.
 - [ ] Aprobación registrada en la PR; check `ci` en verde; sin auto-merge.
@@ -522,17 +535,18 @@ de referencia del equipo.
 - Entregar HDF5/GeoTIFF versionados en Git.
 - Hacer consultas por píxel: v1.2.0 solo pinta imágenes georreferenciadas (una por fecha como máximo).
 
-## 11. Advertencia sobre la demo sintética y el concurso
+## 11. Advertencia sobre los datos publicados y el concurso
 
-La demo actual con Jaén y Toledo usa **datos sintéticos claramente señalizados**.
-Es legítima como demostración técnica y no se presenta como observación de NASA.
-Sin embargo, **no satisface por sí sola** los requisitos del NASA Space Apps
-Challenge ni de posibles premios globales que exijan una fuente NASA real. Ese
-requisito depende de que el equipo científico integre una adquisición real
-aprobada y de lo que establezca el reglamento vigente del concurso.
+La demo publica **humedad superficial NISAR L3 SME2** de Jaén y Toledo
+(producto **PROVISIONAL**, no totalmente calibrado). No son datos sintéticos ni
+una conclusión agronómica: son observaciones georreferenciadas del producto, con
+su procedencia y sus limitaciones visibles.
 
-Publicar una capa real tampoco demuestra por sí mismo una conclusión agronómica:
-solo añade una observación georreferenciada al visor.
+El aviso de la interfaz recuerda que la humedad superficial **no equivale a una
+necesidad de riego**. Publicar una capa tampoco demuestra por sí mismo una
+conclusión sobre producción o kg/ha. Los requisitos del NASA Space Apps
+Challenge o de posibles premios globales dependen de lo que establezca el
+reglamento vigente y de la revisión científica del producto.
 
 ## 12. Referencias
 

@@ -4,9 +4,11 @@
  *
  * Comprueba cuatro capas:
  *   1. El esquema `contracts/manifest.schema.json` compila con Ajv (draft 2020-12).
- *   2. Los dos manifiestos publicados en `frontend/public/data/{sample,real}/`
- *      validan contra el esquema + reglas semánticas + existencia/alfa de PNG, y
- *      su `datasetMode` coincide con la carpeta en la que viven.
+ *   2. El manifiesto publicado en `frontend/public/data/real/` valida contra el
+ *      esquema + reglas semánticas + existencia/alfa de PNG, y su `datasetMode`
+ *      coincide con la carpeta en la que vive. El manifiesto `sample/` es
+ *      OPCIONAL: la demo solo publica datos reales y no falla si no existe.
+ *      Si existe, se valida con las mismas reglas.
  *   3. Todos los fixtures de `frontend/scripts/fixtures/valid/` validan
  *      (esquema + semántica; sin comprobar ficheros, porque son contractuales).
  *   4. Todos los fixtures de `frontend/scripts/fixtures/invalid/` NO validan
@@ -35,9 +37,11 @@ const dataDir = path.join(publicDir, 'data')
 const fixturesDir = path.join(scriptDir, 'fixtures')
 
 // Cada manifiesto publicado tiene un modo obligatorio: el de su carpeta.
+// La demo solo publica datos reales (decisión de producto 2026-11-14), así que
+// `sample/` es opcional y `real/` es obligatorio.
 const MANIFESTS = [
-  { mode: 'sample', file: path.join(dataDir, 'sample', 'manifest.json') },
-  { mode: 'real', file: path.join(dataDir, 'real', 'manifest.json') },
+  { mode: 'sample', file: path.join(dataDir, 'sample', 'manifest.json'), required: false },
+  { mode: 'real', file: path.join(dataDir, 'real', 'manifest.json'), required: true },
 ]
 
 let failures = 0
@@ -73,7 +77,11 @@ async function readJsonFile(file) {
     const raw = await readFile(file, 'utf8')
     return { ok: true, data: JSON.parse(raw) }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    return {
+      ok: false,
+      code: error && typeof error === 'object' && 'code' in error ? error.code : undefined,
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 }
 
@@ -121,9 +129,13 @@ async function main() {
 
   // --- 2. Manifiestos publicados --------------------------------------
   console.log('\n[2/3] Manifiestos publicados')
-  for (const { mode, file } of MANIFESTS) {
+  for (const { mode, file, required } of MANIFESTS) {
     const loaded = await readJsonFile(file)
     if (!loaded.ok) {
+      if (!required && loaded.code === 'ENOENT') {
+        pass(`${relative(file)} no existe: manifiesto opcional omitido`)
+        continue
+      }
       fail(`No se pudo leer ${relative(file)}`, [loaded.error])
       continue
     }

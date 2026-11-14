@@ -31,3 +31,54 @@ body,
 body {
   overflow: hidden;
 }
+
+/*
+ * Aviso científico persistente de cabecera (INT01).
+ *
+ * Se mantiene visible junto al título: el producto NISAR SME2 es PROVISIONAL y
+ * la humedad superficial no equivale a una necesidad de riego. No es un aviso
+ * descartable ni depende de la zona seleccionada.
+ */
+.ot-panel__notice {
+  margin: 0.4rem 0 0;
+  padding: 0.4rem 0.5rem;
+  color: var(--ot-warning-text, #3f2f00);
+  background: var(--ot-warning-bg, #fff8dc);
+  border-left: 3px solid var(--ot-warning-border, #b07d00);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/*
+ * Línea temporal flotante sobre el mapa en escritorio (INT01).
+ *
+ * El control se ancla abajo y centrado en el área del mapa; en móvil no se
+ * monta aquí (App.vue lo coloca dentro del panel). `pointer-events` permite
+ * usar el slider sin bloquear el arrastre del mapa alrededor de la tarjeta.
+ */
+.ot-time-slider-dock {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 650;
+  width: min(34rem, calc(100% - 2rem));
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.ot-time-slider-dock > * {
+  pointer-events: auto;
+}
+
+/* En móvil la línea temporal se integra en el panel, no flota sobre el mapa. */
+.ot-time-slider-inline {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .ot-time-slider-dock {
+    display: none;
+  }
+}

@@ -1,10 +1,10 @@
 {
-  "fecha": "2026-11-14T15:52:46.248Z",
+  "fecha": "2026-11-14T17:55:55.644Z",
   "url": "http://localhost:4173",
   "erroresPagina": [],
   "consolaErroresOavisos": [],
-  "peticionesFallidas": 69,
-  "peticionesFallidasDeTeselas": 69,
+  "peticionesFallidas": 20,
+  "peticionesFallidasDeTeselas": 20,
   "peticionesFallidasDeLaApp": [],
   "respuestasHttp4xx5xx": [],
   "respuestasHttp4xx5xxDeLaApp": []

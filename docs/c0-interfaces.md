@@ -146,3 +146,24 @@ un **slider temporal**. Cambio aditivo: manifiestos v1.1.0 siguen siendo válido
   conectado a `data.selectTimeStep`; pasa `activeTimeStep` a `DataProvenance`.
 - `pipelines/nisar/sme2_to_overlay.py --publish` escribe **todas** las fechas como `timeSteps`
   (`data/real/zones/<zona>/soil-moisture/<fecha>.png`), con escala fija común.
+
+## 7. Decisión de producto: la demo usa solo datos reales (2026-11-14)
+
+El responsable de proyecto decidió que la demo **no incluye datos de muestra**.
+Solo se publican y muestran datos reales NISAR L3 SME2 de Jaén y Toledo, con la
+línea temporal de §6. Consecuencias de integración (sin cambiar las interfaces
+congeladas de §1–§3):
+
+- `App.vue` instancia `useOliveTwinData({ initialMode: 'real' })`, no renderiza
+  `DataModeSwitch` y no ofrece cambiar a `sample`. El componente permanece en el
+  repositorio sin uso.
+- `StatusBanner` recibe siempre `dataMode: 'real'`; nunca muestra «DATOS
+  SIMULADOS». El aviso persistente de cabecera indica que el producto es
+  PROVISIONAL y que la humedad superficial no equivale a riego.
+- Se elimina `frontend/public/data/sample/` y el script `generate:sample`.
+  `validate:data` trata el manifiesto `sample/` como **opcional** y el `real/`
+  como **obligatorio**.
+- El contrato y los fixtures siguen admitiendo `datasetMode: "sample"`; no es un
+  cambio de esquema.
+- La demo autoselecciona la primera zona al cargar para mostrar datos de
+  inmediato; ambas zonas siguen visibles y seleccionables.

@@ -4,6 +4,12 @@ Estas pruebas abren la aplicación real en **Chromium headless** con Playwright,
 navegan como una persona y guardan capturas en `docs/qa/`. No se ejecutan con
 Vitest: su patrón es `*.spec.ts` y Vitest solo incluye `*.test.ts` / `*.test.mjs`.
 
+Desde 2026-11-14 la demo publica **solo datos reales** NISAR L3 SME2 de Jaén y
+Toledo con tres fechas. Los escenarios de datos de muestra se retiraron; los
+specs verifican la autoselección de Jaén, el slider temporal, el cambio de zona,
+los mapas base, el error de manifiesto, la alineación del overlay real y la
+subruta `/olivetwin/`.
+
 ## Requisitos
 
 - Node.js 22 o superior (probado con 24.12.0).
@@ -52,10 +58,11 @@ idempotente (`npm run setup` en el harness).
 
 ## Configuración
 
-`qa-harness/playwright.config.ts` apunta a `../wt/int02/frontend/tests/e2e` y
-define `QA_DOCS_DIR` para que las capturas caigan en `docs/qa/` del repo. La URL
-por defecto es `http://localhost:4173` (`vite preview`); se puede cambiar con
-`OLIVE_BASE_URL`.
+`qa-harness/playwright.config.ts` apunta al `frontend/tests/e2e` del worktree de
+trabajo y define `QA_DOCS_DIR` para que las capturas caigan en `docs/qa/` del
+repo. La URL por defecto es `http://localhost:4173` (`vite preview`); se puede
+cambiar con `OLIVE_BASE_URL`. Si cambias de worktree, actualiza `repoDir` en la
+configuración del harness.
 
 ## Ejecutar
 
@@ -91,12 +98,13 @@ por defecto es `http://localhost:4173` (`vite preview`); se puede cambiar con
 
 ## Notas
 
-- Las teselas PNOA/OSM son servicios externos: sin Internet, AT-04 falla por
-  red, no por la aplicación. Las peticiones canceladas (`ERR_ABORTED`) al
-  cambiar de vista se cuentan y se ignoran.
+- Las teselas PNOA/OSM son servicios externos. `waitForTiles` es *best-effort*:
+  si el proveedor limita peticiones, el escenario no falla; el plan exige que un
+  fallo de teselas no bloquee la aplicación. Las peticiones canceladas
+  (`ERR_ABORTED`) al cambiar de vista se cuentan y se ignoran.
 - Los specs no modifican código de la aplicación. Para AT-19 el harness
   envuelve `L.Map.prototype.initialize` y expone la instancia real en
-  `window.__oliveMap`; así se compara el `<img>` del overlay con
+  `window.__oliveMap`; así se compara el `<img>` del overlay real con
   `map.latLngToContainerPoint(layer.bbox)`.
 - Un fallo E2E se documenta en `docs/qa-results.md` con pasos de reproducción y
   severidad. No se corrige desde este nodo (INT02 solo posee pruebas y QA).

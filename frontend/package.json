@@ -12,8 +12,7 @@
     "preview": "vite preview",
     "validate:data": "node scripts/validate-data.mjs",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "vue-tsc -b",
-    "generate:sample": "node ../scripts/generate-sample-data.mjs"
+    "typecheck": "vue-tsc -b"
   },
   "dependencies": {
     "leaflet": "1.9.4",

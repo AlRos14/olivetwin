@@ -1,5 +1,5 @@
 /**
- * Utilidades compartidas por las pruebas E2E de OliveTwin (INT02).
+ * Utilidades compartidas por las pruebas E2E de OliveTwin (INT02/INT-R).
  *
  * Estas pruebas NO forman parte de Vitest: su patrón es `*.spec.ts` y se
  * ejecutan con un harness de Playwright externo al repositorio. Ver
@@ -68,19 +68,40 @@ export async function installMapProbe(page: Page): Promise<void> {
   })
 }
 
-/** Espera a que el mapa base haya pintado al menos una tesela. */
-export async function waitForTiles(page: Page): Promise<void> {
-  await expect
-    .poll(() => page.locator('img.leaflet-tile-loaded').count(), { timeout: 45_000 })
-    .toBeGreaterThan(0)
+/**
+ * Espera a que el mapa base haya pintado al menos una tesela.
+ *
+ * PNOA y OSM son servicios externos y pueden limitar peticiones: la espera es
+ * best-effort (devuelve `false` en vez de hacer fallar el escenario). El plan
+ * exige que un fallo de teselas no bloquee la aplicación.
+ */
+export async function waitForTiles(page: Page, timeout = 20_000): Promise<boolean> {
+  try {
+    await expect
+      .poll(() => page.locator('img.leaflet-tile-loaded').count(), { timeout })
+      .toBeGreaterThan(0)
+    return true
+  } catch {
+    return false
+  }
 }
 
-/** Abre la aplicación, espera el manifiesto de muestra y el primer tile. */
-export async function openApp(page: Page, options: { waitTiles?: boolean } = {}): Promise<void> {
+/**
+ * Abre la aplicación. Con `waitData` (por defecto) espera el manifiesto real,
+ * la autoselección de Jaén y el overlay con imagen cargada. Para probar un
+ * manifiesto roto se usa `waitData: false`.
+ */
+export async function openApp(
+  page: Page,
+  options: { waitTiles?: boolean; waitData?: boolean } = {},
+): Promise<void> {
   await installMapProbe(page)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('.ot-status')).not.toContainText('Cargando datos…')
-  await expect(page.locator('.ot-zone-selector select')).toBeEnabled()
+  if (options.waitData !== false) {
+    await expect(page.locator('.ot-status')).not.toContainText('Cargando datos…')
+    await expect(page.locator('.ot-zone-selector select')).toBeEnabled()
+    await waitForOverlay(page)
+  }
   await expect
     .poll(
       () =>
@@ -192,6 +213,17 @@ export async function setOpacity(page: Page, percent: number): Promise<void> {
   await expect(page.locator('.ot-range + output')).toHaveText(`${percent} %`)
 }
 
+/** Cambia el paso temporal como lo haría el usuario con el slider. */
+export async function setTimeStep(page: Page, index: number): Promise<void> {
+  const slider = page.locator('.ot-time-slider input[type="range"]')
+  await slider.evaluate((element, value) => {
+    const input = element as HTMLInputElement
+    input.value = String(value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }, index)
+  await expect(slider).toHaveValue(String(index))
+}
+
 /** Captura de pantalla en `docs/qa/`; JPEG calidad 70 para mantener < 500 KB. */
 export async function capture(
   page: Page,
@@ -224,16 +256,27 @@ export async function captureElement(page: Page, selector: string, name: string)
   return target
 }
 
-/** Manifiesto y bbox del contrato, leídos del repositorio para las aserciones. */
-export function readSampleManifest(): {
+export interface RealManifest {
+  schemaVersion: string
+  datasetMode: 'real'
   zones: Array<{
     id: string
     name: string
     bbox: number[]
-    layers: Array<{ id: string; image: string; bbox: number[]; unit: string; title: string }>
+    layers: Array<{
+      id: string
+      image: string
+      bbox: number[]
+      unit: string
+      title: string
+      timeSteps?: Array<{ date: string; image: string; bbox: number[] }>
+    }>
   }>
-} {
+}
+
+/** Manifiesto real publicado, leído del repositorio para las aserciones. */
+export function readRealManifest(): RealManifest {
   return JSON.parse(
-    fs.readFileSync(path.join(repoDir(), 'frontend/public/data/sample/manifest.json'), 'utf8'),
+    fs.readFileSync(path.join(repoDir(), 'frontend/public/data/real/manifest.json'), 'utf8'),
   )
 }
