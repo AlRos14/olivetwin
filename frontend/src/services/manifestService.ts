@@ -3,10 +3,11 @@
  *
  * Contrato v1.1.0 y docs/c0-interfaces.md §2:
  *   - `loadManifest` descarga `${BASE_URL}data/<mode>/manifest.json`;
+ *   - comprueba la coherencia de modo (`datasetMode` solicitado) y de `status`
+ *     ANTES de Ajv, para devolver un error específico y legible en lugar del
+ *     genérico del `if/then` del esquema;
  *   - valida con Ajv (draft 2020-12) contra `contracts/manifest.schema.json`;
- *   - comprueba la coherencia mínima que el esquema no puede expresar:
- *     `datasetMode` solicitado, `status` coherente con el modo y rutas `image`
- *     seguras;
+ *   - comprueba después las rutas `image` seguras;
  *   - devuelve `{ manifest, status: 'ready' | 'empty' }` sin recurrir nunca al
  *     otro modo (un modo real vacío es `empty`, no un error).
  *
@@ -92,10 +93,68 @@ function expectedStatusFor(mode: DataMode): 'synthetic' | 'processed_real' {
   return mode === 'sample' ? 'synthetic' : 'processed_real'
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Comprobaciones de coherencia de modo sobre el JSON todavía sin validar.
+ *
+ * Se ejecutan ANTES de Ajv para que un manifiesto con capas cruzadas reciba el
+ * error específico `mode-mismatch`/`status-mismatch` (legible para la UI) en
+ * lugar del genérico `schema` del `if/then`. No sustituyen al esquema: solo
+ * inspeccionan valores que ya tienen la forma esperada y dejan al validador
+ * cualquier estructura ausente o un enum desconocido.
+ */
+function assertModeAndStatusCoherence(raw: unknown, mode: DataMode): void {
+  if (!isRecord(raw)) {
+    return
+  }
+
+  const datasetMode = raw.datasetMode
+  if (
+    (datasetMode === 'sample' || datasetMode === 'real') &&
+    datasetMode !== mode
+  ) {
+    throw new ManifestLoadError(
+      'mode-mismatch',
+      `El manifiesto de datos «${mode}» declara el modo «${datasetMode}»; se esperaba «${mode}».`,
+    )
+  }
+
+  if (!Array.isArray(raw.zones)) {
+    return
+  }
+
+  const expectedStatus = expectedStatusFor(mode)
+  for (const zone of raw.zones) {
+    if (!isRecord(zone) || !Array.isArray(zone.layers)) {
+      continue
+    }
+    for (const layer of zone.layers) {
+      if (!isRecord(layer)) {
+        continue
+      }
+      const status = layer.status
+      // Un estado fuera del enum lo reporta Ajv como error de esquema.
+      if (status !== 'synthetic' && status !== 'processed_real') {
+        continue
+      }
+      if (status === expectedStatus) {
+        continue
+      }
+      throw new ManifestLoadError(
+        'status-mismatch',
+        `El manifiesto «${mode}» contiene la capa «${String(layer.id)}» de la zona «${String(zone.id)}» con estado «${status}»; en modo ${mode === 'sample' ? 'muestra' : 'real'} todas las capas deben ser «${expectedStatus}».`,
+      )
+    }
+  }
+}
+
 /**
  * Comprobaciones semánticas mínimas que el JSON Schema no cubre. Se ejecutan
- * antes de exponer el manifiesto a la UI para impedir mezclar datos sample y
- * real aunque el id de zona o de capa coincida.
+ * una vez validada la estructura para impedir mezclar datos sample y real
+ * aunque el id de zona o de capa coincida, y para descartar rutas inseguras.
  */
 function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): void {
   if (manifest.datasetMode !== mode) {
@@ -175,6 +234,11 @@ export async function loadManifest(
       { cause: error },
     )
   }
+
+  // Antes de Ajv: un modo o estado incoherente merece un error específico.
+  // La estructura restante (campos obligatorios, tipos, patrones) sigue
+  // delegada en el esquema.
+  assertModeAndStatusCoherence(raw, mode)
 
   if (!validateManifest(raw)) {
     throw new ManifestLoadError(
