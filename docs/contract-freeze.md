@@ -105,12 +105,11 @@ archivo, evitando un segundo módulo competidor. WP-07 importa esos tipos, no lo
 |---|---|
 | `contracts/`, `frontend/src/types`, servicios, composables, manifiestos y scripts de datos | **WP-04** |
 | `frontend/src/components`, estilos y mapa Leaflet | **WP-07** |
-| Owner humano de WP-04 y WP-07 | **pendiente de asignar** |
+| Owner humano de WP-04 y WP-07 | coordinado fuera del repositorio (decisión GA) |
 
-El owner humano de ambos work packets **no se inventa en este documento**. A la fecha del
-acuerdo solo consta verificado `AlRos14` como colaborador del repositorio; los otros cinco
-miembros del equipo aún no están identificados. La asignación debe registrarse aquí cuando se
-conozca, junto con la persona revisora independiente.
+La asignación de personas a ambos work packets se coordina **fuera del repositorio** (decisión GA, hackatón de 48 h): no se registra ni se verifica en GitHub. Solo consta `AlRos14` como
+colaborador del repositorio. Lo que sí rige dentro del repo son los scopes de archivos y la
+revisión independiente de cada PR.
 
 ## 6. Verificación de la congelación
 

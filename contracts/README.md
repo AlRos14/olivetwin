@@ -184,7 +184,7 @@ aditivas de `provenance`).
 |---|---|
 | `contracts/`, `frontend/src/types`, servicios, composables, manifiestos y scripts de datos | WP-04 |
 | `frontend/src/components`, estilos y mapa Leaflet | WP-07 |
-| Owner humano de WP-04 y WP-07 | **pendiente de asignar** |
+| Owner humano de WP-04 y WP-07 | coordinado fuera del repositorio (decisión GA) |
 
 Toda ampliación del contrato requiere revisión de integración y actualización de
 `docs/contract-freeze.md`. WP-07 no edita este directorio ni los manifiestos.

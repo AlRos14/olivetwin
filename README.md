@@ -129,7 +129,7 @@ Documentación relacionada:
 `frontend/src/App.vue` se limita a la integración entre ambos. El reparto
 detallado y las reglas de convivencia están en [`AGENTS.md`](AGENTS.md). La
 carpeta `docs/work-packets/` queda reservada para la documentación de cada
-paquete en Fase B; sus owners humanos están **pendientes de asignar**.
+paquete en Fase B; la asignación de personas se coordina fuera del repositorio.
 
 ## Colaboración
 

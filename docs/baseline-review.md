@@ -71,3 +71,14 @@ Ninguno.
 4. `image` del schema prohíbe cualquier `..` incluso dentro de un nombre de fichero (`a..b.png`) o `:`; es más estricto que el plan pero seguro. Sin impacto previsible.
 5. `frontend/package.json` solo tiene `engines` `^20.19.0 || >=22.12.0` y `.nvmrc` = `22`; coherente. Sin lockfile de Node exacto (aceptable).
 6. El fallo de CI ante contrato inválido se demostró localmente; no se empujó una rama rota a GitHub (la revisión no hace push).
+
+## Decisión GA (responsable de proyecto, 2026-11-14)
+
+**GA: PASS con excepciones aprobadas.** Se fusiona la PR #1 a `main` (squash) y se autoriza la Fase B (WP-04 ∥ WP-07).
+
+Excepciones aprobadas expresamente:
+
+1. **Owners de WP-04/WP-07:** por tratarse de un hackatón de 48 h, la asignación de personas se coordina fuera del repositorio y no se registra ni se verifica en GitHub. Los scopes de archivos y la revisión independiente siguen siendo obligatorios.
+2. **Protección de `main`:** el repositorio es privado en cuenta gratuita; si GitHub no permite la protección, rige por convención (PR + check `ci` verde + revisión). No se declara protegida.
+3. **Colaboradores:** solo `AlRos14` es colaborador verificado; el acceso del resto del equipo se gestiona aparte.
+4. **Ubicación del validador** (`frontend/scripts/validate-data.mjs` frente a `scripts/` del plan WP-04/07 §4.1): se mantiene en `frontend/scripts/`; WP-04 lo amplía allí.

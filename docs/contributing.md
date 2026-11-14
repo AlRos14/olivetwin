@@ -25,9 +25,9 @@ owner del repositorio y colaborador verificado.
 
 ## ¿Qué puedo editar?
 
-Cada área tiene un owner humano. Los owners de **WP-04** y **WP-07** están
-**pendientes de asignar**; hasta que se asignen, pregunta en la Issue
-correspondiente antes de tocar un área compartida.
+La asignación de personas a **WP-04** y **WP-07** se coordina **fuera del repositorio** (decisión GA, hackatón de 48 h): no se registra ni se verifica en GitHub.
+Los scopes de archivos sí son obligatorios: si necesitas tocar un área
+compartida, avisa en la Issue correspondiente antes de hacerlo.
 
 | Área | Uso | Quién edita |
 |---|---|---|
