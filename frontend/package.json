@@ -10,19 +10,29 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "validate:data": "node scripts/validate-data.mjs"
+    "validate:data": "node scripts/validate-data.mjs",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "vue-tsc -b",
+    "generate:sample": "node ../scripts/generate-sample-data.mjs"
   },
   "dependencies": {
+    "leaflet": "1.9.4",
     "vue": "^3.5.44"
   },
   "devDependencies": {
+    "@types/leaflet": "1.9.22",
     "@types/node": "^24.19.2",
+    "@types/pngjs": "6.0.5",
     "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "2.5.1",
     "@vue/tsconfig": "^0.9.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "jsdom": "29.1.1",
+    "pngjs": "7.0.0",
     "typescript": "~6.0.3",
     "vite": "^8.3.6",
+    "vitest": "5.1.0",
     "vue-tsc": "^3.3.14"
   }
 }
