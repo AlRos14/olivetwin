@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.1.0",
+  "datasetMode": "sample",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "jaen-demo",
+      "name": "Jaén — demostración",
+      "bbox": [-3.86, 37.69, -3.61, 37.9],
+      "layers": [
+        {
+          "id": "ndvi",
+          "title": "Vegetación (NDVI)",
+          "kind": "image-overlay",
+          "image": "data/sample/zones/jaen-demo/ndvi.png",
+          "bbox": [-3.86, 37.69, -3.61, 37.9],
+          "imageCrs": "EPSG:3857",
+          "unit": "index",
+          "legend": {
+            "low": "#8c510a",
+            "high": "#01665e"
+          },
+          "status": "synthetic",
+          "provenance": {
+            "provider": "Generador sintético",
+            "product": "NDVI ilustrativo — no satelital",
+            "processingVersion": "sample-v1"
+          },
+          "qualityNote": "NO apto para decisiones agronómicas"
+        }
+      ]
+    }
+  ]
+}
