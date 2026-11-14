@@ -1,0 +1,43 @@
+# Dependencias
+node_modules/
+
+# Artefactos de build
+dist/
+dist-ssr/
+
+# Variables de entorno: nunca versionar secretos.
+# Se permite únicamente el fichero de ejemplo explícito.
+.env*
+!.env.example
+
+# Artefactos científicos grandes (HDF5, GeoTIFF, NetCDF, etc.).
+# No se versionan directamente en Git: se publican solo assets optimizados
+# en frontend/public/data/ (PNG + metadatos JSON).
+*.h5
+*.hdf5
+*.tif
+*.tiff
+*.nc
+
+# Caché y temporales
+.cache/
+*.log
+logs
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+
+# ---------------------------------------------------------------------------
+# Excepciones futuras:
+# Si en algún momento hiciera falta versionar una muestra científica pequeña
+# (p. ej. una prueba mínima para tests), NO elimines las reglas globales de
+# arriba. Añade aquí una excepción explícita y justificada (patrón `!ruta`),
+# indicando tamaño, procedencia y quién la aprueba, por ejemplo:
+#
+#   # Muestra sintética mínima para tests del loader (WP-04, < 200 KB):
+#   !frontend/tests/fixtures/sample_small.tif
+#
+# Toda excepción debe quedar documentada en docs/ y revisarse en la PR.
+# ---------------------------------------------------------------------------
