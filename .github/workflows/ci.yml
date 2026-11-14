@@ -33,5 +33,8 @@ jobs:
       - name: Validar manifiestos de datos
         run: npm run validate:data --prefix frontend
 
+      - name: Tests unitarios
+        run: npm test --prefix frontend
+
       - name: Compilar
         run: npm run build --prefix frontend
