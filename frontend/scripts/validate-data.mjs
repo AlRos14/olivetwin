@@ -1,35 +1,37 @@
 #!/usr/bin/env node
 /**
- * OliveTwin — validador del contrato mínimo de manifiestos (A04).
+ * OliveTwin — validador del contrato de manifiestos v1.1.0 (A04 + WP04-01).
  *
- * Comprueba tres cosas:
- *   1. Los dos manifiestos publicados en `frontend/public/data/{sample,real}/`
- *      validan contra `contracts/manifest.schema.json` y su `datasetMode`
- *      coincide con la carpeta en la que viven.
- *   2. Todos los fixtures de `frontend/scripts/fixtures/valid/` validan.
- *   3. Todos los fixtures de `frontend/scripts/fixtures/invalid/` NO validan
- *      (es decir, el esquema detecta el error que el fixture representa).
+ * Comprueba cuatro capas:
+ *   1. El esquema `contracts/manifest.schema.json` compila con Ajv (draft 2020-12).
+ *   2. Los dos manifiestos publicados en `frontend/public/data/{sample,real}/`
+ *      validan contra el esquema + reglas semánticas + existencia/alfa de PNG, y
+ *      su `datasetMode` coincide con la carpeta en la que viven.
+ *   3. Todos los fixtures de `frontend/scripts/fixtures/valid/` validan
+ *      (esquema + semántica; sin comprobar ficheros, porque son contractuales).
+ *   4. Todos los fixtures de `frontend/scripts/fixtures/invalid/` NO validan
+ *      (el esquema o la semántica detectan el error que el fixture representa).
  *
  * Las rutas se resuelven desde la ubicación de este archivo (`import.meta.url`),
  * nunca desde el directorio de trabajo, para que funcione igual con
  * `npm run validate:data --prefix frontend` o al invocarlo desde la raíz.
  *
- * Solo usa dependencias ya declaradas (ajv 8 con soporte draft 2020-12 y
+ * Solo usa dependencias ya declaradas (ajv 8 con soporte draft 2020-12,
  * ajv-formats). Sale con código 1 si cualquier comprobación falla.
  */
 import { readFile, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-import Ajv2020 from 'ajv/dist/2020.js'
-import addFormats from 'ajv-formats'
+import { createManifestValidator } from './validate-lib.mjs'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const frontendDir = path.resolve(scriptDir, '..')
 const repoRoot = path.resolve(frontendDir, '..')
 
 const schemaPath = path.join(repoRoot, 'contracts', 'manifest.schema.json')
-const dataDir = path.join(frontendDir, 'public', 'data')
+const publicDir = path.join(frontendDir, 'public')
+const dataDir = path.join(publicDir, 'data')
 const fixturesDir = path.join(scriptDir, 'fixtures')
 
 // Cada manifiesto publicado tiene un modo obligatorio: el de su carpeta.
@@ -62,12 +64,8 @@ function relative(file) {
   return path.relative(repoRoot, file).split(path.sep).join('/')
 }
 
-/** Formatea los errores de Ajv en líneas cortas y legibles en español. */
-function formatAjvErrors(errors) {
-  return (errors ?? []).map((error) => {
-    const location = error.instancePath === '' ? '(raíz)' : error.instancePath
-    return `${location}: ${error.message}${error.keyword ? ` [${error.keyword}]` : ''}`
-  })
+function formatErrors(errors) {
+  return errors.map((error) => `${error.path}: ${error.message}`)
 }
 
 async function readJsonFile(file) {
@@ -94,11 +92,6 @@ async function listJsonFiles(dir) {
   }
 }
 
-/** Valida un manifiesto con el schema y devuelve `true` si es válido. */
-function schemaAccepts(validate, data) {
-  return validate(data) === true
-}
-
 async function main() {
   console.log('OliveTwin — validación del contrato de manifiestos v1.1.0')
   console.log(`  Esquema: ${relative(schemaPath)}`)
@@ -111,12 +104,13 @@ async function main() {
     return
   }
 
-  const ajv = new Ajv2020({ allErrors: true, strict: true })
-  addFormats(ajv)
-
   let validate
   try {
-    validate = ajv.compile(loadedSchema.data)
+    validate = createManifestValidator({
+      schema: loadedSchema.data,
+      publicDir,
+      checkAssets: true,
+    })
     pass(`El esquema compila (${relative(schemaPath)})`)
   } catch (error) {
     fail('El esquema no compila con Ajv (draft 2020-12)', [
@@ -134,20 +128,12 @@ async function main() {
       continue
     }
 
-    const errors = []
-    if (!schemaAccepts(validate, loaded.data)) {
-      errors.push(...formatAjvErrors(validate.errors))
-    }
-    if (loaded.data?.datasetMode !== mode) {
-      errors.push(
-        `datasetMode es ${JSON.stringify(loaded.data?.datasetMode)} pero la carpeta exige "${mode}"`,
-      )
-    }
+    const result = await validate(loaded.data, { expectedMode: mode })
 
-    if (errors.length === 0) {
-      pass(`${relative(file)} válido (datasetMode="${mode}")`)
+    if (result.valid) {
+      pass(`${relative(file)} válido (datasetMode="${mode}", semántica y assets)`)
     } else {
-      fail(`${relative(file)} no cumple el contrato`, errors)
+      fail(`${relative(file)} no cumple el contrato`, formatErrors(result.errors))
     }
   }
 
@@ -169,12 +155,15 @@ async function main() {
       fail(`${relative(file)}: JSON mal formado (un fixture válido debe parsear)`, [loaded.error])
       continue
     }
-    if (schemaAccepts(validate, loaded.data)) {
+    // Los fixtures son contractuales y no se sirven desde public/: no se exige
+    // que sus PNG existan. La semántica de rutas sí se comprueba.
+    const result = await validate(loaded.data, { checkAssets: false })
+    if (result.valid) {
       pass(`${relative(file)} aceptado, como se esperaba`)
     } else {
       fail(
-        `${relative(file)} debería ser válido y el esquema lo rechaza`,
-        formatAjvErrors(validate.errors),
+        `${relative(file)} debería ser válido y el validador lo rechaza`,
+        formatErrors(result.errors),
       )
     }
   }
@@ -183,14 +172,15 @@ async function main() {
     const loaded = await readJsonFile(file)
     if (!loaded.ok) {
       // Un JSON roto también "fallaría", pero por el motivo equivocado:
-      // el fixture debe ejercitar el esquema, no el parser.
-      fail(`${relative(file)}: JSON mal formado; el fixture debe probar el esquema`, [loaded.error])
+      // el fixture debe ejercitar el validador, no el parser.
+      fail(`${relative(file)}: JSON mal formado; el fixture debe probar el validador`, [loaded.error])
       continue
     }
-    if (!schemaAccepts(validate, loaded.data)) {
-      pass(`${relative(file)} rechazado, como se esperaba`, formatAjvErrors(validate.errors)[0])
+    const result = await validate(loaded.data, { checkAssets: false })
+    if (!result.valid) {
+      pass(`${relative(file)} rechazado, como se esperaba`, formatErrors(result.errors)[0])
     } else {
-      fail(`${relative(file)} debería ser rechazado y el esquema lo acepta`)
+      fail(`${relative(file)} debería ser rechazado y el validador lo acepta`)
     }
   }
 

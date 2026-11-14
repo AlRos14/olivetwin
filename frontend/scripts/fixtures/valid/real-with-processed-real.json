@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.1.0",
+  "datasetMode": "real",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "parcela-real-fixture",
+      "name": "Parcela real — fixture contractual",
+      "description": "Fixture de prueba para validar processed_real. No es una observación real ni debe publicarse en frontend/public/data/.",
+      "bbox": [-4.0, 37.5, -3.9, 37.6],
+      "layers": [
+        {
+          "id": "ndvi",
+          "title": "Vegetación (NDVI) — fixture",
+          "kind": "image-overlay",
+          "variable": "NDVI",
+          "image": "data/real/zones/parcela-real-fixture/ndvi.png",
+          "bbox": [-4.0, 37.5, -3.9, 37.6],
+          "imageCrs": "EPSG:3857",
+          "unit": "index",
+          "range": [0, 1],
+          "legend": [
+            { "value": 0, "color": "#dfc27d", "label": "Bajo" },
+            { "value": 1, "color": "#01665e", "label": "Alto" }
+          ],
+          "status": "processed_real",
+          "provenance": {
+            "provider": "Fixture contractual OliveTwin",
+            "product": "Capa de prueba para validar processed_real; no es un producto satelital",
+            "acquisitionDate": "2026-01-15",
+            "sceneId": "FIXTURE-SCENE-0001",
+            "processingVersion": "fixture-v1",
+            "referenceUrl": "https://example.org/olivetwin/fixture-contract",
+            "note": "URL y escena reservadas para documentación (RFC 2606). Este fixture no es una observación real."
+          },
+          "qualityNote": "Fixture contractual: no usar en la demo ni en decisiones agronómicas"
+        }
+      ]
+    }
+  ]
+}
