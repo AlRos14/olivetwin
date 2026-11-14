@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DataProvenance from './DataProvenance.vue'
-import type { Provenance, StudyLayer } from '../types/manifest'
+import type { Provenance, StudyLayer, TimeStep } from '../types/manifest'
 
 const baseProvenance: Provenance = {
   provider: 'Generador sintético',
@@ -34,8 +34,17 @@ function makeLayer(provenance: Partial<Provenance> = {}): StudyLayer {
   }
 }
 
-function mountProvenance(layer: StudyLayer | null) {
-  return mount(DataProvenance, { props: { layer, dataMode: 'sample' } })
+function mountProvenance(layer: StudyLayer | null, timeStep: TimeStep | null = null) {
+  return mount(DataProvenance, { props: { layer, dataMode: 'sample', timeStep } })
+}
+
+function makeStep(overrides: Partial<TimeStep> = {}): TimeStep {
+  return {
+    date: '2026-03-10',
+    image: 'data/sample/zones/jaen-demo/ndvi-2026-03-10.png',
+    bbox: [-3.86, 37.69, -3.61, 37.9],
+    ...overrides,
+  }
 }
 
 describe('DataProvenance', () => {
@@ -121,6 +130,94 @@ describe('DataProvenance', () => {
     expect(text).toContain('validated')
     expect(text).toContain('Aprobado por')
     expect(text).toContain('Equipo científico')
+  })
+
+  it('con timeStep muestra la procedencia efectiva del paso', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ provider: 'Proveedor de la capa', processingVersion: 'layer-v1' }),
+      makeStep({
+        provenance: {
+          provider: 'Proveedor del paso',
+          product: 'NDVI del paso',
+          acquisitionDate: '2026-03-10',
+          sceneId: 'STEP-SCENE-002',
+          processingVersion: 'step-v2',
+          referenceUrl: 'https://example.org/paso',
+          note: 'Nota del paso',
+        },
+      }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('Proveedor del paso')
+    expect(text).toContain('NDVI del paso')
+    expect(text).toContain('STEP-SCENE-002')
+    expect(text).toContain('step-v2')
+    expect(text).toContain('Nota del paso')
+    expect(text).not.toContain('Proveedor de la capa')
+    expect(text).not.toContain('layer-v1')
+
+    const link = wrapper.get('a')
+    expect(link.attributes('href')).toBe('https://example.org/paso')
+  })
+
+  it('usa la fecha del paso cuando la procedencia efectiva no tiene acquisitionDate', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ acquisitionDate: null }),
+      makeStep({ date: '2026-04-05' }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('5 de abril de 2026')
+    expect(text).not.toContain('Fecha no disponible')
+  })
+
+  it('prioriza acquisitionDate efectiva sobre timeStep.date', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ acquisitionDate: null }),
+      makeStep({
+        date: '2026-01-01',
+        provenance: { acquisitionDate: '2026-02-20' },
+      }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('20 de febrero de 2026')
+    expect(text).not.toContain('1 de enero de 2026')
+  })
+
+  it('con acquisitionDate null en el paso recurre a timeStep.date', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ acquisitionDate: '2026-01-01' }),
+      makeStep({ date: '2026-05-12', provenance: { acquisitionDate: null } }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('12 de mayo de 2026')
+    expect(text).not.toContain('1 de enero de 2026')
+  })
+
+  it('formatea la fecha del paso con hora en UTC e indica la zona', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ acquisitionDate: null }),
+      makeStep({ date: '2026-01-15T23:30:00-05:00' }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('16')
+    expect(text).toContain('enero')
+    expect(text).toContain('UTC')
+    expect(text).not.toContain('15 de enero')
+  })
+
+  it('sin timeStep mantiene la procedencia y fecha de la capa', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ provider: 'Proveedor de la capa', acquisitionDate: '2026-01-15' }),
+    )
+    const text = wrapper.text()
+
+    expect(text).toContain('Proveedor de la capa')
+    expect(text).toContain('15 de enero de 2026')
   })
 
   it('sin capa ofrece un mensaje en lugar de metadatos vacíos', () => {
