@@ -14,6 +14,7 @@ import type {
   Provenance,
   StudyLayer,
   StudyZone,
+  TimeStep,
 } from '../../types/manifest'
 
 export const TEST_BBOX: BBox = [-3.86, 37.69, -3.61, 37.9]
@@ -94,16 +95,34 @@ export function makeZone(
   }
 }
 
+/** Paso temporal de prueba (v1.2.0). La ruta respeta el prefijo de `status`. */
+export function makeTimeStep(
+  date: string,
+  overrides: Partial<TimeStep> = {},
+): TimeStep {
+  const image =
+    overrides.image ?? `data/sample/zones/jaen-demo/ndvi-${date.slice(0, 10)}.png`
+  return {
+    date,
+    label: date.slice(0, 10),
+    image,
+    bbox: TEST_BBOX,
+    ...overrides,
+  }
+}
+
 /** Manifiesto válido estructuralmente. */
 export function makeManifest(
   datasetMode: DataMode,
   zones: StudyZone[] = [],
+  overrides: Partial<OliveTwinManifest> = {},
 ): OliveTwinManifest {
   return {
     schemaVersion: '1.1.0',
     datasetMode,
     appTitle: 'OliveTwin',
     zones,
+    ...overrides,
   }
 }
 

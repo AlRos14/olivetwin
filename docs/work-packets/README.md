@@ -38,7 +38,7 @@ Fase A y por el documento C0; no se repitieron.
 | Nodo | Contenido | Estado | Evidencia |
 |---|---|---|---|
 | WP04-01 | JSON Schema v1.1.0, tipos TypeScript y fixtures | Integrado | `contracts/manifest.schema.json`, `frontend/src/types/manifest.ts`. |
-| WP04-02 | Generador y datos de muestra (Jaén y Toledo), manifiesto real vacío | Integrado | `scripts/generate-sample-data.mjs`, `frontend/public/data/`. |
+| WP04-02 | Generador y datos de muestra (Jaén y Toledo), manifiesto real vacío | Integrado y **retirado** en la demo final (solo datos reales, ver `docs/c0-interfaces.md` §7) | `frontend/public/data/real/`. |
 | WP04-03 | Loader de manifiestos con `BASE_URL`, validación y errores | Integrado | `frontend/src/services/`. |
 | WP04-04 | Composable de estado `sample`/`real`, selección y cancelación | Integrado | `frontend/src/composables/useOliveTwinData.ts`. |
 | WP04-05 | Handoff científico y referencia del contrato | Integrado | [`docs/handoff-science.md`](../handoff-science.md), [`docs/data-contract.md`](../data-contract.md). |

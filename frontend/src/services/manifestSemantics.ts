@@ -11,10 +11,11 @@
  *      por error no pinte zonas imposibles en el navegador.
  *
  * Se replica deliberadamente el subconjunto mínimo acordado en la revisión
- * (orden de `bbox`, contención con tolerancia y unicidad de ids de zona) en vez
- * de importar `validate-lib.mjs`: ese módulo arrastra `node:fs`/`node:path` y
- * no debe entrar en el bundle del navegador. Si se cambia una regla semántica,
- * hay que actualizar los dos sitios y sus tests.
+ * (orden de `bbox`, contención con tolerancia, unicidad de ids de zona y, desde
+ * v1.2.0, orden/bbox/último paso de `timeSteps`) en vez de importar
+ * `validate-lib.mjs`: ese módulo arrastra `node:fs`/`node:path` y no debe entrar
+ * en el bundle del navegador. Si se cambia una regla semántica, hay que
+ * actualizar los dos sitios y sus tests.
  */
 import type { BBox, OliveTwinManifest } from '../types/manifest'
 
@@ -31,6 +32,26 @@ function isBBox(value: unknown): value is BBox {
     value.length === 4 &&
     value.every((component) => isFiniteNumber(component))
   )
+}
+
+function sameBBox(left: BBox, right: BBox): boolean {
+  return left.every((component, index) => component === right[index])
+}
+
+const ISO_DATE_TIME_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-](\d{2}):(\d{2})))?$/
+
+/**
+ * Fecha ISO 8601 real (fecha sola o fecha-hora con zona), misma regla que
+ * `isValidAcquisitionDate` de validate-lib.mjs. El esquema ya aplica
+ * `format: date`/`date-time`; aquí se repite para no comparar fechas inválidas
+ * al comprobar el orden de los pasos.
+ */
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !ISO_DATE_TIME_PATTERN.test(value)) {
+    return false
+  }
+  return !Number.isNaN(Date.parse(value.replace(' ', 'T')))
 }
 
 /**
@@ -107,6 +128,86 @@ export function manifestSemanticErrors(manifest: OliveTwinManifest): string[] {
         errors.push(
           `${layerLabel} tiene un bbox fuera de la zona: north (${north}) > ${zoneNorth} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
         )
+      }
+
+      if (Array.isArray(layer.timeSteps)) {
+        let previousTimestamp: number | undefined
+        let previousDate: string | undefined
+
+        layer.timeSteps.forEach((step, stepIndex) => {
+          const stepLabel = `el paso temporal ${stepIndex} (${String(step.date)}) de ${layerLabel}`
+
+          if (!isValidIsoDate(step.date)) {
+            errors.push(
+              `${stepLabel} no declara una fecha ISO 8601 real (fecha o fecha-hora con zona)`,
+            )
+          } else {
+            const timestamp = Date.parse(step.date.replace(' ', 'T'))
+            if (previousTimestamp !== undefined) {
+              if (timestamp === previousTimestamp) {
+                errors.push(
+                  `${stepLabel} repite la fecha de un paso anterior (${String(previousDate)})`,
+                )
+              } else if (!(timestamp > previousTimestamp)) {
+                errors.push(
+                  `${stepLabel} rompe el orden estrictamente creciente: es anterior a ${String(previousDate)}`,
+                )
+              }
+            }
+            previousTimestamp = timestamp
+            previousDate = step.date
+          }
+
+          const stepBbox = step.bbox
+          if (!isBBox(stepBbox)) {
+            errors.push(`${stepLabel} no declara un bbox de cuatro números`)
+            return
+          }
+          if (!(stepBbox[0] < stepBbox[2])) {
+            errors.push(
+              `${stepLabel} tiene un bbox inválido: west (${stepBbox[0]}) debe ser menor que east (${stepBbox[2]})`,
+            )
+          }
+          if (!(stepBbox[1] < stepBbox[3])) {
+            errors.push(
+              `${stepLabel} tiene un bbox inválido: south (${stepBbox[1]}) debe ser menor que north (${stepBbox[3]})`,
+            )
+          }
+
+          const [stepWest, stepSouth, stepEast, stepNorth] = stepBbox
+          if (stepWest < zoneWest - RUNTIME_BBOX_TOLERANCE_DEG) {
+            errors.push(
+              `${stepLabel} tiene un bbox fuera de la zona: west (${stepWest}) < ${zoneWest} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
+            )
+          }
+          if (stepSouth < zoneSouth - RUNTIME_BBOX_TOLERANCE_DEG) {
+            errors.push(
+              `${stepLabel} tiene un bbox fuera de la zona: south (${stepSouth}) < ${zoneSouth} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
+            )
+          }
+          if (stepEast > zoneEast + RUNTIME_BBOX_TOLERANCE_DEG) {
+            errors.push(
+              `${stepLabel} tiene un bbox fuera de la zona: east (${stepEast}) > ${zoneEast} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
+            )
+          }
+          if (stepNorth > zoneNorth + RUNTIME_BBOX_TOLERANCE_DEG) {
+            errors.push(
+              `${stepLabel} tiene un bbox fuera de la zona: north (${stepNorth}) > ${zoneNorth} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
+            )
+          }
+        })
+
+        const lastStep = layer.timeSteps[layer.timeSteps.length - 1]
+        if (lastStep && lastStep.image !== layer.image) {
+          errors.push(
+            `${layerLabel} tiene un layer.image distinto del último paso temporal (${String(lastStep.image)})`,
+          )
+        }
+        if (lastStep && isBBox(lastStep.bbox) && !sameBBox(lastStep.bbox, layerBbox)) {
+          errors.push(
+            `${layerLabel} tiene un layer.bbox distinto del último paso temporal`,
+          )
+        }
       }
     })
   })

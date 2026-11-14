@@ -14,6 +14,11 @@ reales: se valida con un fixture contractual servido solo en pruebas.
 > informe demuestra que el radar mida producción, que el NDVI sea NISAR o que la
 > humedad superficial equivalga a riego.
 
+> **Actualización 2026-11-14 (INT-R):** las secciones 1–7 documentan la
+> ejecución histórica de INT02 con el modo muestra. La demo vigente **solo usa
+> datos reales NISAR SME2** de Jaén y Toledo; los escenarios de muestra se
+> retiraron y la re-ejecución completa está en la **sección 8**.
+
 ## 1. Entorno
 
 | Elemento | Valor |
@@ -171,3 +176,50 @@ No se corrigió ninguno: INT02 no es owner del código ni de los README.
 - `docs/qa/consola-red.json`: consola y red.
 - Specs: `frontend/tests/e2e/app.spec.ts`, `subpath.spec.ts`, `support.ts`.
 - Instrucciones: `frontend/tests/e2e/README.md`.
+
+## 8. Re-ejecución 2026-11-14 — demo solo con datos reales (INT-R)
+
+**Nodo:** INT-R (rol R1, integración) · **Rama/worktree:** `b/intreal`
+**Alcance:** retirada de los datos de muestra, autoselección de Jaén, línea
+temporal de 3 fechas y aviso PROVISIONAL. Los E2E se adaptaron a la capa real.
+
+### 8.1 Comandos y resultados
+
+| Comando | Resultado |
+|---|---|
+| `npm ci --prefix frontend` | OK (140 paquetes; avisos `EBADENGINE` de dependencias, sin error). |
+| `npm run validate:data --prefix frontend` | **OK — 35 comprobaciones, 0 fallos**: `sample/manifest.json` omitido por opcional y `real/manifest.json` válido con sus 6 PNG. |
+| `npm test --prefix frontend` | **OK — 18 archivos, 259 tests**. |
+| `npm run build --prefix frontend` | OK; `vue-tsc -b` + `vite build` (JS 409,00 kB, CSS 27,78 kB). |
+| `npm run build --prefix frontend -- --base /olivetwin/` | OK; build bajo subruta generada. |
+| `npx playwright test app.spec.ts` | **OK — 8/8** con el harness externo (`scratchpad/qa-harness`, Playwright 1.64.0). |
+| `npx playwright test subpath.spec.ts` | **OK — 1/1** con `OLIVE_SUB_URL=http://localhost:4174/olivetwin/`. |
+| Restauración `npm run build --prefix frontend` | OK; `dist/` vuelve a la base normal. |
+
+### 8.2 Escenarios E2E vigentes
+
+| Escenario | Resultado | Evidencia |
+|---|---|---|
+| Abrir → Jaén autoseleccionada, overlay y slider de 3 fechas; sin «DATOS SIMULADOS» | **PASS** | `docs/qa/real-01-jaen.jpg` |
+| Mover el slider cambia `src` sin recrear el `<img>` (mismo elemento); reproducir avanza | **PASS** | `docs/qa/real-02-slider-primer-paso.jpg`, `real-03-reproduccion.jpg` |
+| Cambiar a Toledo reinicia al último paso y mantiene un solo overlay | **PASS** | `docs/qa/real-04-toledo.jpg` |
+| PNOA ↔ OSM conserva overlay, opacidad y la misma imagen | **PASS** | `docs/qa/real-05-osm-overlay.jpg` |
+| Manifiesto real roto ⇒ error visible, sin zonas ni overlay | **PASS** | `docs/qa/real-06-json-roto.jpg` |
+| AT-19 · overlay alineado con el `bbox` real y PNG con transparencia | **PASS** | `docs/qa/real-07-overlay-bbox.jpg` |
+| Móvil 390×844: la línea temporal vive dentro del panel y no hay desbordamiento | **PASS** | `docs/qa/real-08-movil.jpg` |
+| AT-17 · build bajo `/olivetwin/`: manifiesto, PNG, overlay y slider bajo la subruta | **PASS** | `docs/qa/real-09-subruta.jpg` |
+| Consola y red: sin errores JS ni respuestas 4xx/5xx de la aplicación | **PASS** | `docs/qa/consola-red.json` |
+
+Las capturas están en JPEG calidad 70 y pesan menos de 500 KB. Las teselas PNOA
+y OSM son externas: la espera de teselas es *best-effort* y un fallo de red no
+convierte en fallo de la aplicación. El informe de consola registra solo
+peticiones de teselas canceladas, no errores de la app.
+
+### 8.3 Limitaciones de esta reejecución
+
+- El producto mostrado es NISAR L3 SME2 **PROVISIONAL**; no se valida su
+  calibración científica en QA, solo la integración y la georreferenciación.
+- Jaén se observa en pasada ascendente (~05:23 UTC) y Toledo en descendente
+  (~19:09 UTC); la comparación entre zonas incluye la hora del día.
+- Los E2E siguen fuera de CI y requieren el harness externo de Playwright.
+- La captura móvil es emulación de viewport, no un dispositivo físico.

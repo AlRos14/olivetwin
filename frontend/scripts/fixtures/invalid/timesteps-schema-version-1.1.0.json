@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.1.0",
+  "datasetMode": "sample",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "jaen-demo",
+      "name": "Jaén — versión incorrecta para timeSteps",
+      "bbox": [-3.86, 37.69, -3.61, 37.9],
+      "layers": [
+        {
+          "id": "ndvi",
+          "title": "Vegetación (NDVI)",
+          "kind": "image-overlay",
+          "image": "data/sample/zones/jaen-demo/ndvi-2026-10-01.png",
+          "bbox": [-3.86, 37.69, -3.61, 37.9],
+          "imageCrs": "EPSG:3857",
+          "unit": "index",
+          "legend": [
+            { "value": 0, "color": "#dfc27d", "label": "Bajo" },
+            { "value": 1, "color": "#01665e", "label": "Alto" }
+          ],
+          "status": "synthetic",
+          "provenance": {
+            "provider": "Generador sintético",
+            "product": "NDVI ilustrativo — no satelital",
+            "processingVersion": "sample-v1"
+          },
+          "qualityNote": "NO apto para decisiones agronómicas",
+          "timeSteps": [
+            {
+              "date": "2026-09-01",
+              "image": "data/sample/zones/jaen-demo/ndvi-2026-09-01.png",
+              "bbox": [-3.86, 37.69, -3.61, 37.9]
+            },
+            {
+              "date": "2026-10-01",
+              "image": "data/sample/zones/jaen-demo/ndvi-2026-10-01.png",
+              "bbox": [-3.86, 37.69, -3.61, 37.9]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

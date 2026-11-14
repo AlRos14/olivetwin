@@ -1,29 +1,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { DataMode, StudyLayer } from '../types/manifest'
+import type { DataMode, Provenance, StudyLayer, TimeStep } from '../types/manifest'
 import '../styles/ui.css'
 
 /**
  * Procedencia y calidad de la capa activa. Una fecha desconocida se declara
  * como «Fecha no disponible»; nunca se inventa ni se deduce del proveedor.
+ *
+ * Contrato v1.2.0: si hay `timeStep`, se muestra la procedencia efectiva
+ * `{ ...layer.provenance, ...timeStep.provenance }` y la fecha del paso.
  */
 const props = defineProps<{
   layer: StudyLayer | null
   dataMode: DataMode
+  timeStep?: TimeStep | null
 }>()
 
 const modeLabel = computed(() =>
   props.dataMode === 'sample' ? 'Datos de muestra' : 'Datos reales',
 )
 
+const effectiveProvenance = computed<Provenance | null>(() => {
+  if (!props.layer) return null
+  if (!props.timeStep?.provenance) return props.layer.provenance
+  return { ...props.layer.provenance, ...props.timeStep.provenance }
+})
+
 const acquisitionLabel = computed(() => {
-  const value = props.layer?.provenance.acquisitionDate
-  if (!value) return 'Fecha no disponible'
-  return formatAcquisitionDate(value)
+  const value = effectiveProvenance.value?.acquisitionDate
+  if (value) return formatAcquisitionDate(value)
+  // Sin fecha de adquisición en la procedencia efectiva se usa la del paso.
+  if (props.timeStep?.date) return formatAcquisitionDate(props.timeStep.date)
+  return 'Fecha no disponible'
 })
 
 const extraRows = computed<Array<{ label: string; value: string }>>(() => {
-  const provenance = props.layer?.provenance
+  const provenance = effectiveProvenance.value
   if (!provenance) return []
   const definitions: ReadonlyArray<[key: string, label: string]> = [
     ['maturity', 'Madurez'],
@@ -91,28 +103,28 @@ function displayValue(value: unknown): string {
     <template v-if="layer">
       <dl class="ot-provenance__list">
         <dt>Proveedor</dt>
-        <dd>{{ layer.provenance.provider }}</dd>
+        <dd>{{ effectiveProvenance?.provider }}</dd>
 
         <dt>Producto</dt>
-        <dd>{{ layer.provenance.product }}</dd>
+        <dd>{{ effectiveProvenance?.product }}</dd>
 
         <dt>Fecha</dt>
         <dd>{{ acquisitionLabel }}</dd>
 
-        <template v-if="layer.provenance.sceneId">
+        <template v-if="effectiveProvenance?.sceneId">
           <dt>Escena</dt>
-          <dd>{{ layer.provenance.sceneId }}</dd>
+          <dd>{{ effectiveProvenance.sceneId }}</dd>
         </template>
 
         <dt>Procesamiento</dt>
-        <dd>{{ layer.provenance.processingVersion }}</dd>
+        <dd>{{ effectiveProvenance?.processingVersion }}</dd>
 
-        <template v-if="layer.provenance.referenceUrl">
+        <template v-if="effectiveProvenance?.referenceUrl">
           <dt>Referencia</dt>
           <dd>
             <a
               class="ot-provenance__link"
-              :href="layer.provenance.referenceUrl"
+              :href="effectiveProvenance.referenceUrl"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -121,9 +133,9 @@ function displayValue(value: unknown): string {
           </dd>
         </template>
 
-        <template v-if="layer.provenance.note">
+        <template v-if="effectiveProvenance?.note">
           <dt>Nota</dt>
-          <dd>{{ layer.provenance.note }}</dd>
+          <dd>{{ effectiveProvenance.note }}</dd>
         </template>
 
         <template v-for="row in extraRows" :key="row.label">

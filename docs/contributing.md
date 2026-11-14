@@ -1,7 +1,7 @@
 # Guía de contribución
 
 OliveTwin se desarrolla en un único repositorio:
-<https://github.com/AlRos14/olivetwin> (privado). Esta guía explica dónde
+<https://github.com/AlRos14/olivetwin> (público). Esta guía explica dónde
 plantear trabajo, qué puede editar cada persona y qué necesita una pull request
 para integrarse.
 
@@ -33,7 +33,7 @@ compartida, avisa en la Issue correspondiente antes de hacerlo.
 |---|---|---|
 | `frontend/src/components/`, estilos, Leaflet | Mapa, paneles, leyenda, controles y avisos. | WP-07 |
 | `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Contrato, carga de manifiestos y estado. | WP-04 |
-| `frontend/public/data/` | Manifiestos y assets optimizados `sample`/`real`. | WP-04 |
+| `frontend/public/data/` | Manifiesto y assets optimizados `real` (la demo no incluye datos de muestra). | WP-04 |
 | `contracts/` | JSON Schema y documentación del contrato. | Owner del contrato (WP-04) con revisión de integración |
 | `scripts/` de datos | Generación y validación de datos. | WP-04 |
 | `frontend/src/App.vue` | Composición de la vista. | Integración, coordinada entre WP-04 y WP-07 |
@@ -129,17 +129,15 @@ aprobarse como cambio de interfaz con su versión. No cambies sin acuerdo:
 Consulta [`docs/contract-freeze.md`](contract-freeze.md) y
 [`contracts/README.md`](../contracts/README.md).
 
-## Protección de `main`: limitación conocida
+## Protección de `main`
 
-El repositorio es **privado en una cuenta gratuita**. La protección de rama y
-los rulesets de GitHub pueden no estar disponibles en ese plan. Mientras no se
-disponga de un plan que lo permita:
+Configurada el 2026-11-14, al hacerse público el repositorio:
 
-- las reglas se aplican **por convención**: nadie hace push directo a `main`,
-  toda entrada pasa por PR, check `ci` y revisión independiente;
-- no se declarará `main` como protegida si la configuración real no lo está;
-- cuando la protección esté disponible, se configurará PR obligatoria, check
-  `ci` requerido y aprobación humana cuando el plan lo permita.
+- PR obligatoria para entrar en `main`; check requerido `ci`;
+- sin force-push ni borrado de `main`;
+- 0 aprobaciones requeridas en GitHub (hackatón de 48 h): la revisión
+  independiente se mantiene como norma del equipo, no como bloqueo técnico;
+- el administrador puede saltarse la protección solo en una emergencia.
 
 No se crea un archivo `CODEOWNERS` con usuarios ficticios. Se completará cuando
 las identidades reales estén verificadas.

@@ -1,6 +1,269 @@
 {
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "datasetMode": "real",
   "appTitle": "OliveTwin",
-  "zones": []
+  "zones": [
+    {
+      "id": "jaen",
+      "name": "Jaén",
+      "bbox": [
+        -3.9771788,
+        37.6280039,
+        -3.5855359,
+        37.8918894
+      ],
+      "layers": [
+        {
+          "id": "soil-moisture",
+          "title": "Humedad superficial (NISAR SME2)",
+          "kind": "image-overlay",
+          "variable": "soil_moisture",
+          "image": "data/real/zones/jaen/soil-moisture/20260714T052325.png",
+          "bbox": [
+            -3.9771788,
+            37.6280039,
+            -3.5855359,
+            37.8918894
+          ],
+          "imageCrs": "EPSG:3857",
+          "unit": "m³/m³",
+          "range": [
+            0.05,
+            0.4
+          ],
+          "legend": [
+            {
+              "value": 0.05,
+              "color": "#a6611a",
+              "label": "Más seco"
+            },
+            {
+              "value": 0.12,
+              "color": "#e9c46a",
+              "label": "0,12 m³/m³"
+            },
+            {
+              "value": 0.19,
+              "color": "#d9f0a3",
+              "label": "0,19 m³/m³"
+            },
+            {
+              "value": 0.26,
+              "color": "#41b6c4",
+              "label": "0,26 m³/m³"
+            },
+            {
+              "value": 0.33,
+              "color": "#2c7fb8",
+              "label": "0,33 m³/m³"
+            },
+            {
+              "value": 0.4,
+              "color": "#253494",
+              "label": "Más húmedo"
+            }
+          ],
+          "status": "processed_real",
+          "provenance": {
+            "provider": "NASA/JPL–ISRO NISAR, distribuido por ASF DAAC",
+            "product": "NISAR L3 SME2 — soilMoisture",
+            "acquisitionDate": "2026-07-14T05:23:25Z",
+            "sceneId": "NISAR_L3_PR_SME2_025_087_A_021_2005_DHDH_A_20260714T052325_20260714T052400_P05023_F_F_J_001",
+            "processingVersion": "P05023",
+            "referenceUrl": "https://nisar-docs.asf.alaska.edu/sme2",
+            "note": "Track 87 ascending, frame 21, ciclo 25. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+            "maturity": "PROVISIONAL",
+            "crid": "P05023",
+            "approvedBy": "AlRos14"
+          },
+          "qualityNote": "Producto PROVISIONAL: no totalmente calibrado; usar cambios relativos con cautela. Sin estimación en zonas urbanas, agua o vegetación densa (VWC > 5 kg/m²). Humedad superficial (~5 cm), no equivale a necesidad de riego. Jaén se observa en pasada ascendente (~05:23 UTC) y Toledo en descendente (~19:09 UTC): la comparación entre zonas incluye el efecto de la hora del día.",
+          "timeSteps": [
+            {
+              "date": "2026-06-20T05:23:26Z",
+              "image": "data/real/zones/jaen/soil-moisture/20260620T052326.png",
+              "bbox": [
+                -3.9771788,
+                37.6280039,
+                -3.5855359,
+                37.8918894
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-06-20T05:23:26Z",
+                "sceneId": "NISAR_L3_PR_SME2_023_087_A_021_2005_DHDH_A_20260620T052326_20260620T052401_P05023_N_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 87 ascending, frame 21, ciclo 23. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+                "crid": "P05023"
+              }
+            },
+            {
+              "date": "2026-07-02T05:23:25Z",
+              "image": "data/real/zones/jaen/soil-moisture/20260702T052325.png",
+              "bbox": [
+                -3.9771788,
+                37.6280039,
+                -3.5855359,
+                37.8918894
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-07-02T05:23:25Z",
+                "sceneId": "NISAR_L3_PR_SME2_024_087_A_021_2005_DHDH_A_20260702T052325_20260702T052400_P05023_N_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 87 ascending, frame 21, ciclo 24. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+                "crid": "P05023"
+              }
+            },
+            {
+              "date": "2026-07-14T05:23:25Z",
+              "image": "data/real/zones/jaen/soil-moisture/20260714T052325.png",
+              "bbox": [
+                -3.9771788,
+                37.6280039,
+                -3.5855359,
+                37.8918894
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-07-14T05:23:25Z",
+                "sceneId": "NISAR_L3_PR_SME2_025_087_A_021_2005_DHDH_A_20260714T052325_20260714T052400_P05023_F_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 87 ascending, frame 21, ciclo 25. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³. Escena con marca de producción distinta (…_F_F_J_001 frente a …_N_F_J_001): la bajada de humedad respecto a fechas previas puede deberse en parte al procesado.",
+                "crid": "P05023"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Zona de estudio olivarera en Jaén: humedad superficial NISAR L3 SME2 (pasadas ascendentes, ~05:23 UTC)."
+    },
+    {
+      "id": "toledo",
+      "name": "Toledo",
+      "bbox": [
+        -4.3547721,
+        39.5528176,
+        -3.67637,
+        39.9870152
+      ],
+      "layers": [
+        {
+          "id": "soil-moisture",
+          "title": "Humedad superficial (NISAR SME2)",
+          "kind": "image-overlay",
+          "variable": "soil_moisture",
+          "image": "data/real/zones/toledo/soil-moisture/20260714T190925.png",
+          "bbox": [
+            -4.3547721,
+            39.5528176,
+            -3.6768813,
+            39.9870152
+          ],
+          "imageCrs": "EPSG:3857",
+          "unit": "m³/m³",
+          "range": [
+            0.05,
+            0.4
+          ],
+          "legend": [
+            {
+              "value": 0.05,
+              "color": "#a6611a",
+              "label": "Más seco"
+            },
+            {
+              "value": 0.12,
+              "color": "#e9c46a",
+              "label": "0,12 m³/m³"
+            },
+            {
+              "value": 0.19,
+              "color": "#d9f0a3",
+              "label": "0,19 m³/m³"
+            },
+            {
+              "value": 0.26,
+              "color": "#41b6c4",
+              "label": "0,26 m³/m³"
+            },
+            {
+              "value": 0.33,
+              "color": "#2c7fb8",
+              "label": "0,33 m³/m³"
+            },
+            {
+              "value": 0.4,
+              "color": "#253494",
+              "label": "Más húmedo"
+            }
+          ],
+          "status": "processed_real",
+          "provenance": {
+            "provider": "NASA/JPL–ISRO NISAR, distribuido por ASF DAAC",
+            "product": "NISAR L3 SME2 — soilMoisture",
+            "acquisitionDate": "2026-07-14T19:09:25Z",
+            "sceneId": "NISAR_L3_PR_SME2_025_095_D_068_2005_DHDH_A_20260714T190925_20260714T191004_P05023_F_F_J_001",
+            "processingVersion": "P05023",
+            "referenceUrl": "https://nisar-docs.asf.alaska.edu/sme2",
+            "note": "Track 95 descending, frame 68, ciclo 25. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+            "maturity": "PROVISIONAL",
+            "crid": "P05023",
+            "approvedBy": "AlRos14"
+          },
+          "qualityNote": "Producto PROVISIONAL: no totalmente calibrado; usar cambios relativos con cautela. Sin estimación en zonas urbanas, agua o vegetación densa (VWC > 5 kg/m²). Humedad superficial (~5 cm), no equivale a necesidad de riego. Jaén se observa en pasada ascendente (~05:23 UTC) y Toledo en descendente (~19:09 UTC): la comparación entre zonas incluye el efecto de la hora del día.",
+          "timeSteps": [
+            {
+              "date": "2026-06-20T19:09:26Z",
+              "image": "data/real/zones/toledo/soil-moisture/20260620T190926.png",
+              "bbox": [
+                -4.3547721,
+                39.5528176,
+                -3.6768813,
+                39.9870152
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-06-20T19:09:26Z",
+                "sceneId": "NISAR_L3_PR_SME2_023_095_D_068_2005_DHDH_A_20260620T190926_20260620T191005_P05023_N_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 95 descending, frame 68, ciclo 23. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+                "crid": "P05023"
+              }
+            },
+            {
+              "date": "2026-07-02T19:09:26Z",
+              "image": "data/real/zones/toledo/soil-moisture/20260702T190926.png",
+              "bbox": [
+                -4.3547721,
+                39.5528176,
+                -3.6768813,
+                39.9870152
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-07-02T19:09:26Z",
+                "sceneId": "NISAR_L3_PR_SME2_024_095_D_068_2005_DHDH_A_20260702T190926_20260702T191004_P05023_N_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 95 descending, frame 68, ciclo 24. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³.",
+                "crid": "P05023"
+              }
+            },
+            {
+              "date": "2026-07-14T19:09:25Z",
+              "image": "data/real/zones/toledo/soil-moisture/20260714T190925.png",
+              "bbox": [
+                -4.3547721,
+                39.5528176,
+                -3.6768813,
+                39.9870152
+              ],
+              "provenance": {
+                "acquisitionDate": "2026-07-14T19:09:25Z",
+                "sceneId": "NISAR_L3_PR_SME2_025_095_D_068_2005_DHDH_A_20260714T190925_20260714T191004_P05023_F_F_J_001",
+                "processingVersion": "P05023",
+                "note": "Track 95 descending, frame 68, ciclo 25. Recorte AOI, reproyección EPSG:6933→3857 por vecino más próximo, escala fija 0.05–0.4 m³/m³. Escena con marca de producción distinta (…_F_F_J_001 frente a …_N_F_J_001): la bajada de humedad respecto a fechas previas puede deberse en parte al procesado.",
+                "crid": "P05023"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Zona de estudio en Toledo: humedad superficial NISAR L3 SME2 (pasadas descendentes, ~19:09 UTC)."
+    }
+  ]
 }

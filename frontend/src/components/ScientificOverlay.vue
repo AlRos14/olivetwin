@@ -13,8 +13,12 @@ import { bboxToLatLngBounds, isUsableBBox } from './map/geo'
  * - La opacidad se actualiza con `setOpacity`; no se recrea la imagen.
  * - `visible: false` quita la capa del mapa sin destruir su estado: al volver a
  *   `true` se reutiliza la misma instancia.
- * - Cambiar url/bbox/zoneId/layerId reemplaza la imagen anterior; `null` la elimina.
- * - Un error de carga de la imagen emite `image-error(url)` una sola vez.
+ * - Cambiar solo `url` (p. ej. de paso temporal, misma zona/capa/bbox) usa
+ *   `setUrl`: no se recrea la capa y se conservan opacidad y visibilidad, así
+ *   que la animación no parpadea. Cambiar bbox/zoneId/layerId sí la recrea.
+ * - `null` elimina la imagen.
+ * - Un error de carga de la imagen emite `image-error(url)` una sola vez por
+ *   visualización y por URL; cambiar de URL vuelve a habilitar el aviso.
  */
 const props = defineProps<{
   map: L.Map
@@ -51,9 +55,12 @@ function reportOverlayError(current: OverlayState): void {
   emit('image-error', current.url)
 }
 
-/** Identidad de la capa: si cambia cualquiera de estos campos, se recrea. */
+/**
+ * Identidad geométrica de la capa: si cambia zona, capa o bbox, se recrea.
+ * La URL queda fuera: un cambio de paso temporal solo actualiza la imagen.
+ */
 function overlayKey(overlay: ActiveOverlay): string {
-  return [overlay.zoneId, overlay.layerId, overlay.url, ...overlay.bbox].join('|')
+  return JSON.stringify([overlay.zoneId, overlay.layerId, ...overlay.bbox])
 }
 
 function attachElement(current: OverlayState): void {
@@ -134,6 +141,16 @@ function applyOverlay(next: ActiveOverlay | null): void {
     removeCurrent()
     createOverlay(next)
     return
+  }
+
+  // Misma zona/capa/bbox: un cambio de paso temporal solo cambia la URL.
+  // `setUrl` conserva la instancia (y su opacidad/visibilidad) sin parpadeo.
+  if (state.url !== next.url) {
+    state.url = next.url
+    // Cada URL tiene su propio estado de aviso: un fallo de la imagen nueva
+    // debe poder informarse aunque la anterior ya hubiera fallado.
+    state.reported = false
+    state.layer.setUrl(next.url)
   }
 
   // Misma imagen: opacidad y visibilidad se actualizan sin recrear la capa.

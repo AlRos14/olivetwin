@@ -50,6 +50,8 @@ export interface AssetOptions {
 }
 
 export declare const SCHEMA_MAJOR: number
+export declare const SUPPORTED_SCHEMA_VERSIONS: readonly string[]
+export declare const TIMESTEPS_SCHEMA_VERSION: string
 export declare const SUPPORTED_IMAGE_CRS: readonly string[]
 export declare const BBOX_TOLERANCE_DEG: number
 export declare const IMAGE_PATH_ROOT: string

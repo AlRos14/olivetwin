@@ -13,6 +13,8 @@ import validRealProcessed from '../../scripts/fixtures/valid/real-with-processed
 import validRealEmpty from '../../scripts/fixtures/valid/real-empty.json'
 import validSampleEmpty from '../../scripts/fixtures/valid/sample-empty.json'
 import validSamplePlan from '../../scripts/fixtures/valid/sample-plan-4.3.json'
+import validSampleWithTimeSteps from '../../scripts/fixtures/valid/sample-with-timesteps.json'
+import validRealWithTimeSteps from '../../scripts/fixtures/valid/real-with-timesteps.json'
 
 import invalidAcquisitionDate from '../../scripts/fixtures/invalid/acquisition-date-impossible.json'
 import invalidBboxInverted from '../../scripts/fixtures/invalid/bbox-inverted.json'
@@ -30,6 +32,12 @@ import invalidLegendUnordered from '../../scripts/fixtures/invalid/legend-unorde
 import invalidMissingSchemaVersion from '../../scripts/fixtures/invalid/missing-schema-version.json'
 import invalidRangeInverted from '../../scripts/fixtures/invalid/range-inverted.json'
 import invalidStatusProcessedInSample from '../../scripts/fixtures/invalid/status-processed-real-in-sample.json'
+import invalidTimeStepsDuplicate from '../../scripts/fixtures/invalid/timesteps-duplicate-date.json'
+import invalidTimeStepsLastMismatch from '../../scripts/fixtures/invalid/timesteps-last-step-mismatch.json'
+import invalidTimeStepOutside from '../../scripts/fixtures/invalid/timestep-outside-zone.json'
+import invalidTimeStepsProcessedMissingScene from '../../scripts/fixtures/invalid/timesteps-processed-real-step-missing-scene.json'
+import invalidTimeStepsVersion from '../../scripts/fixtures/invalid/timesteps-schema-version-1.1.0.json'
+import invalidTimeStepsUnordered from '../../scripts/fixtures/invalid/timesteps-unordered.json'
 import invalidStatusSyntheticInReal from '../../scripts/fixtures/invalid/status-synthetic-in-real.json'
 import invalidUnknownMode from '../../scripts/fixtures/invalid/unknown-dataset-mode.json'
 import invalidZoneId from '../../scripts/fixtures/invalid/zone-id-not-kebab.json'
@@ -48,6 +56,8 @@ const validFixtures: { name: string; manifest: unknown }[] = [
   { name: 'real-empty', manifest: validRealEmpty },
   { name: 'sample-plan-4.3', manifest: validSamplePlan },
   { name: 'real-with-processed-real', manifest: validRealProcessed },
+  { name: 'sample-with-timesteps', manifest: validSampleWithTimeSteps },
+  { name: 'real-with-timesteps', manifest: validRealWithTimeSteps },
 ]
 
 const invalidFixtures: { name: string; manifest: unknown }[] = [
@@ -68,6 +78,15 @@ const invalidFixtures: { name: string; manifest: unknown }[] = [
   { name: 'range-inverted', manifest: invalidRangeInverted },
   { name: 'status-processed-real-in-sample', manifest: invalidStatusProcessedInSample },
   { name: 'status-synthetic-in-real', manifest: invalidStatusSyntheticInReal },
+  { name: 'timesteps-duplicate-date', manifest: invalidTimeStepsDuplicate },
+  { name: 'timesteps-last-step-mismatch', manifest: invalidTimeStepsLastMismatch },
+  { name: 'timestep-outside-zone', manifest: invalidTimeStepOutside },
+  {
+    name: 'timesteps-processed-real-step-missing-scene',
+    manifest: invalidTimeStepsProcessedMissingScene,
+  },
+  { name: 'timesteps-schema-version-1.1.0', manifest: invalidTimeStepsVersion },
+  { name: 'timesteps-unordered', manifest: invalidTimeStepsUnordered },
   { name: 'unknown-dataset-mode', manifest: invalidUnknownMode },
   { name: 'zone-id-not-kebab', manifest: invalidZoneId },
   { name: 'zones-null', manifest: invalidZonesNull },
@@ -253,6 +272,106 @@ describe('reglas semánticas concretas', () => {
     const result = await validator(manifest)
     expect(result.valid).toBe(false)
     expect(result.errors.some((error) => error.path === '/schemaVersion')).toBe(true)
+  })
+})
+
+describe('línea temporal v1.2.0 (timeSteps)', () => {
+  it('acepta timeSteps en orden, con el último paso igual a layer.image/bbox', async () => {
+    const result = await validator(validSampleWithTimeSteps)
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('acepta processed_real con procedencia efectiva completa en cada paso', async () => {
+    const result = await validator(validRealWithTimeSteps)
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('rechaza pasos desordenados y lo explica', async () => {
+    const result = await validator(invalidTimeStepsUnordered)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some((error) => /orden estrictamente creciente/.test(error.message)),
+    ).toBe(true)
+  })
+
+  it('rechaza una fecha duplicada', async () => {
+    const result = await validator(invalidTimeStepsDuplicate)
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((error) => /duplicada/.test(error.message))).toBe(true)
+  })
+
+  it('exige que layer.image sea el image del último paso', async () => {
+    const result = await validator(invalidTimeStepsLastMismatch)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some(
+        (error) =>
+          error.path.endsWith('/image') &&
+          /último timeStep/.test(error.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('rechaza un paso cuyo bbox sale de la zona aunque el último paso sea válido', async () => {
+    const result = await validator(invalidTimeStepOutside)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some(
+        (error) =>
+          /\/timeSteps\/0\/bbox$/.test(error.path) &&
+          /fuera de zone\.bbox/.test(error.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('exige sceneId en la procedencia efectiva de cada paso processed_real', async () => {
+    const result = await validator(invalidTimeStepsProcessedMissingScene)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some(
+        (error) =>
+          /\/timeSteps\/0\/provenance\/sceneId$/.test(error.path) &&
+          /procedencia efectiva/.test(error.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('exige schemaVersion 1.2.0 cuando hay timeSteps', async () => {
+    const result = await validator(invalidTimeStepsVersion)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some(
+        (error) =>
+          error.path === '/schemaVersion' && /1\.2\.0/.test(error.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('sigue aceptando manifiestos 1.1.0 sin timeSteps', async () => {
+    const result = await validator(validSamplePlan)
+    expect(result.valid).toBe(true)
+  })
+
+  it('la validación de assets lee también los PNG de cada paso', async () => {
+    const readPaths: string[] = []
+    const withAssets = createManifestValidator({
+      schema,
+      checkAssets: true,
+      readAsset: (relativePath) => {
+        readPaths.push(relativePath)
+        return makePng(6)
+      },
+    })
+
+    const result = await withAssets(validSampleWithTimeSteps)
+    expect(result.valid).toBe(true)
+    expect(readPaths.sort()).toEqual([
+      'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+      'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+      'data/sample/zones/jaen-demo/ndvi-2026-11-01.png',
+    ])
   })
 })
 

@@ -1,7 +1,7 @@
 /**
  * Carga y validación en runtime de los manifiestos de datos OliveTwin.
  *
- * Contrato v1.1.0 y docs/c0-interfaces.md §2:
+ * Contrato v1.2.0 y docs/c0-interfaces.md §2:
  *   - `loadManifest` descarga `${BASE_URL}data/<mode>/manifest.json`;
  *   - comprueba la coherencia de modo (`datasetMode` solicitado) y de `status`
  *     ANTES de Ajv, para devolver un error específico y legible en lugar del
@@ -181,6 +181,16 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
           'unsafe-path',
           `El manifiesto «${mode}» contiene una ruta de imagen no permitida en la capa «${layer.id}» de la zona «${zone.id}»: «${layer.image}».`,
         )
+      }
+      if (Array.isArray(layer.timeSteps)) {
+        layer.timeSteps.forEach((step, stepIndex) => {
+          if (!isSafeAssetPath(step.image)) {
+            throw new ManifestLoadError(
+              'unsafe-path',
+              `El manifiesto «${mode}» contiene una ruta de imagen no permitida en el paso temporal ${stepIndex} de la capa «${layer.id}» de la zona «${zone.id}»: «${step.image}».`,
+            )
+          }
+        })
       }
     }
   }

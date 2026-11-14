@@ -511,6 +511,135 @@
 }
 
 /* --------------------------------------------------------------------------
+ * Línea temporal (TimeSlider)
+ *
+ * Tarjeta compacta pensada para flotar sobre el mapa; INT01 decide su posición
+ * (abajo y centrada en escritorio, dentro del panel en móvil).
+ * ------------------------------------------------------------------------ */
+
+.ot-time-slider {
+  width: min(34rem, 100%);
+  padding: 0.6rem 0.75rem 0.55rem;
+  color: var(--ot-text);
+  background: var(--ot-surface);
+  border: 1px solid var(--ot-border);
+  border-radius: var(--ot-radius);
+  box-shadow: var(--ot-shadow);
+  font-family: var(--ot-font);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.ot-time-slider__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.15rem 0.6rem;
+}
+
+.ot-time-slider__label {
+  color: var(--ot-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ot-time-slider__status {
+  margin: 0;
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-align: right;
+}
+
+.ot-time-slider__range {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0.3rem 0 0.1rem;
+  accent-color: var(--ot-accent);
+  cursor: pointer;
+}
+
+.ot-time-slider__marks {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ot-time-slider__mark {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ot-text-muted);
+  font-size: 0.66rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+
+.ot-time-slider__mark:first-child {
+  text-align: left;
+}
+
+.ot-time-slider__mark:last-child {
+  text-align: right;
+}
+
+.ot-time-slider__mark:not(:first-child):not(:last-child) {
+  text-align: center;
+}
+
+.ot-time-slider__mark--active {
+  color: var(--ot-accent-strong);
+  font-weight: 750;
+}
+
+.ot-time-slider__controls {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.ot-time-slider__controls .ot-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.ot-time-slider .ot-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ot-time-slider__play[aria-pressed='true'] {
+  background: var(--ot-accent-strong);
+}
+
+@media (max-width: 767px) {
+  .ot-time-slider {
+    width: 100%;
+    padding: 0.55rem 0.6rem 0.5rem;
+    box-shadow: none;
+  }
+
+  .ot-time-slider__status {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .ot-time-slider__mark {
+    font-size: 0.6rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
  * Avisos de estado
  * ------------------------------------------------------------------------ */
 
@@ -648,7 +777,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ot-option__body {
+  .ot-option__body,
+  .ot-time-slider__mark {
     transition: none;
   }
 }
