@@ -149,6 +149,34 @@ describe('loadManifest', () => {
     expect(error.message).toContain('se esperaba «real»')
   })
 
+  it('deja al esquema un datasetMode fuera del enum en lugar de anticipar mode-mismatch', async () => {
+    const manifest = makeManifest('sample')
+    ;(manifest as { datasetMode: string }).datasetMode = 'otro'
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'schema',
+    )
+
+    expect(error.message).toContain('no cumple el contrato')
+    expect(error.message).toContain('datasetMode')
+  })
+
+  it('trata como esquema un manifiesto sin lista de zonas sin lanzar TypeError', async () => {
+    const manifest = makeManifest('sample') as unknown as Record<string, unknown>
+    manifest.zones = null
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'schema',
+    )
+
+    expect(error.message).toContain('no cumple el contrato')
+    expect(error.message).toContain('zones')
+  })
+
   it('rechaza una capa processed_real dentro de un manifiesto sample', async () => {
     const manifest = makeManifest('sample', [
       makeZone('jaen-demo', [
