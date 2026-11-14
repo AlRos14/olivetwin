@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 ../wt/int02/frontend/tests/e2e/subpath.spec.ts:21:1 › AT-17 · build bajo /olivetwin/: manifiesto, PNG y overlay bajo la subruta (958ms)
+
+  1 passed (1.9s)
