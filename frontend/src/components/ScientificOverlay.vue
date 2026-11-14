@@ -29,6 +29,8 @@ interface OverlayState {
   key: string
   layer: L.ImageOverlay
   url: string
+  /** `true` una vez emitido `image-error` para esta visualización de la capa. */
+  reported: boolean
   reportError: () => void
   layerErrorHandler: () => void
   element: HTMLImageElement | null
@@ -40,6 +42,13 @@ let state: OverlayState | null = null
 function clampOpacity(value: number): number {
   if (!Number.isFinite(value)) return 1
   return Math.min(1, Math.max(0, value))
+}
+
+/** Un fallo por visualización: se reinicia al recrear o re-añadir el overlay. */
+function reportOverlayError(current: OverlayState): void {
+  if (current.reported) return
+  current.reported = true
+  emit('image-error', current.url)
 }
 
 /** Identidad de la capa: si cambia cualquiera de estos campos, se recrea. */
@@ -76,7 +85,12 @@ function removeCurrent(): void {
 function setVisible(current: OverlayState, visible: boolean): void {
   const instance = props.map
   if (visible) {
-    if (!instance.hasLayer(current.layer)) current.layer.addTo(instance)
+    if (!instance.hasLayer(current.layer)) {
+      // Re-añadir la imagen inicia una nueva visualización: un fallo posterior
+      // debe volver a informarse aunque ya se emitiera para la anterior.
+      current.reported = false
+      current.layer.addTo(instance)
+    }
     attachElement(current)
     return
   }
@@ -84,13 +98,6 @@ function setVisible(current: OverlayState, visible: boolean): void {
 }
 
 function createOverlay(overlay: ActiveOverlay): void {
-  let reported = false
-  const reportError = () => {
-    if (reported) return
-    reported = true
-    emit('image-error', overlay.url)
-  }
-
   const layer = L.imageOverlay(overlay.url, bboxToLatLngBounds(overlay.bbox), {
     opacity: clampOpacity(overlay.opacity),
     interactive: false,
@@ -101,20 +108,20 @@ function createOverlay(overlay: ActiveOverlay): void {
 
   // Leaflet reemite como 'error' el fallo del <img>; el listener del elemento
   // cubre además navegadores/entornos donde solo llega el evento nativo.
-  const layerErrorHandler = reportError
-  layer.on('error', layerErrorHandler)
-
-  state = {
+  const current: OverlayState = {
     key: overlayKey(overlay),
     layer,
     url: overlay.url,
-    reportError,
-    layerErrorHandler,
+    reported: false,
+    reportError: () => reportOverlayError(current),
+    layerErrorHandler: () => reportOverlayError(current),
     element: null,
     elementErrorHandler: null,
   }
+  layer.on('error', current.layerErrorHandler)
 
-  setVisible(state, overlay.visible)
+  state = current
+  setVisible(current, overlay.visible)
 }
 
 function applyOverlay(next: ActiveOverlay | null): void {

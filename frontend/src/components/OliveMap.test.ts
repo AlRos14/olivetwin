@@ -128,19 +128,20 @@ describe('OliveMap — vista y mapa base', () => {
     const wrapper = mountOliveMap()
     await nextTick()
     const map = exposedMap(wrapper)
+    const spainCoords = { x: 31, y: 24, z: 6 }
 
     let tiles = tileLayers(map)
     expect(tiles).toHaveLength(1)
     for (let index = 0; index < 5; index += 1) {
-      tiles[0]!.fire('tileerror')
+      tiles[0]!.fire('tileerror', { coords: spainCoords })
     }
     expect(wrapper.emitted('basemap-error')).toBeUndefined()
 
-    tiles[0]!.fire('tileerror')
+    tiles[0]!.fire('tileerror', { coords: spainCoords })
     expect(wrapper.emitted('basemap-error')).toEqual([['pnoa']])
 
-    tiles[0]!.fire('tileerror')
-    tiles[0]!.fire('tileerror')
+    tiles[0]!.fire('tileerror', { coords: spainCoords })
+    tiles[0]!.fire('tileerror', { coords: spainCoords })
     expect(wrapper.emitted('basemap-error')).toHaveLength(1)
 
     await wrapper.setProps({ baseMap: 'osm' })
@@ -148,9 +149,48 @@ describe('OliveMap — vista y mapa base', () => {
     tiles = tileLayers(map)
     expect(tiles).toHaveLength(1)
     for (let index = 0; index < 6; index += 1) {
-      tiles[0]!.fire('tileerror')
+      tiles[0]!.fire('tileerror', { coords: spainCoords })
     }
     expect(wrapper.emitted('basemap-error')).toEqual([['pnoa'], ['osm']])
+  })
+
+  it('ignora errores de teselas PNOA fuera de España para no emitir un aviso falso', async () => {
+    const wrapper = mountOliveMap()
+    await nextTick()
+    const map = exposedMap(wrapper)
+    const tiles = tileLayers(map)
+    expect(tiles).toHaveLength(1)
+
+    // Colorado a zoom 6: PNOA no cubre esa región y fallar ahí es esperable.
+    const usaCoords = { x: 13, y: 24, z: 6 }
+    for (let index = 0; index < 10; index += 1) {
+      tiles[0]!.fire('tileerror', { coords: usaCoords })
+    }
+    expect(wrapper.emitted('basemap-error')).toBeUndefined()
+
+    // Una tesela que sí cubre España cuenta con normalidad.
+    const spainCoords = { x: 31, y: 24, z: 6 }
+    for (let index = 0; index < 5; index += 1) {
+      tiles[0]!.fire('tileerror', { coords: spainCoords })
+    }
+    expect(wrapper.emitted('basemap-error')).toBeUndefined()
+    tiles[0]!.fire('tileerror', { coords: spainCoords })
+    expect(wrapper.emitted('basemap-error')).toEqual([['pnoa']])
+  })
+
+  it('cuenta todos los errores de OSM, esté donde esté la vista', async () => {
+    const wrapper = mountOliveMap()
+    await nextTick()
+    const map = exposedMap(wrapper)
+    await wrapper.setProps({ baseMap: 'osm' })
+    await nextTick()
+
+    const tiles = tileLayers(map)
+    expect(tiles).toHaveLength(1)
+    for (let index = 0; index < 6; index += 1) {
+      tiles[0]!.fire('tileerror', { coords: { x: 13, y: 24, z: 6 } })
+    }
+    expect(wrapper.emitted('basemap-error')).toEqual([['osm']])
   })
 })
 

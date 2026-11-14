@@ -20,7 +20,6 @@ const emit = defineEmits<{
 const uid = useId()
 const selectId = `ot-zone-select-${uid}`
 const hintId = `ot-zone-hint-${uid}`
-const labelId = `ot-zone-label-${uid}`
 
 const isEmpty = computed(() => props.zones.length === 0)
 const isDisabled = computed(() => props.disabled === true || isEmpty.value)
@@ -35,8 +34,8 @@ function onChange(event: Event): void {
 </script>
 
 <template>
-  <section class="ot-card ot-zone-selector" :aria-labelledby="labelId">
-    <label class="ot-label" :id="labelId" :for="selectId">Zona de estudio</label>
+  <section class="ot-card ot-zone-selector">
+    <label class="ot-label" :for="selectId">Zona de estudio</label>
     <select
       :id="selectId"
       class="ot-select"

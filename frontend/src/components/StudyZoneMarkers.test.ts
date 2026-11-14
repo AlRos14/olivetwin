@@ -52,6 +52,14 @@ function rectangleFor(map: L.Map, bbox: BBox): L.Rectangle | undefined {
   return rectangles(map).find((rectangle) => rectangle.getBounds().equals(bboxToLatLngBounds(bbox)))
 }
 
+/** Extrae el texto del tooltip, sea cadena o nodo con contenido de texto. */
+function tooltipText(rectangle: L.Rectangle): string {
+  const content = rectangle.getTooltip()?.getContent()
+  if (typeof content === 'string') return content
+  if (content instanceof HTMLElement) return content.textContent ?? ''
+  return ''
+}
+
 afterEach(() => {
   for (const wrapper of wrappers) wrapper.unmount()
   wrappers.length = 0
@@ -70,8 +78,20 @@ describe('StudyZoneMarkers', () => {
 
     const jaen = rectangleFor(map, JAEN_BBOX)
     expect(jaen).toBeDefined()
-    expect(jaen!.getTooltip()?.getContent()).toBe(JAEN.name)
-    expect(rectangleFor(map, TOLEDO_BBOX)!.getTooltip()?.getContent()).toBe(TOLEDO.name)
+    expect(tooltipText(jaen!)).toBe(JAEN.name)
+    expect(tooltipText(rectangleFor(map, TOLEDO_BBOX)!)).toBe(TOLEDO.name)
+  })
+
+  it('inserta el nombre de la zona como texto y no interpreta HTML', () => {
+    const malicious = '<img src=x onerror="window.__xss = true">'
+    const map = createMap()
+    mountMarkers(map, [zone('xss-demo', malicious, JAEN_BBOX)])
+
+    const rectangle = rectangleFor(map, JAEN_BBOX)!
+    const content = rectangle.getTooltip()!.getContent() as HTMLElement
+    expect(content.textContent).toBe(malicious)
+    expect(content.querySelector('img')).toBeNull()
+    expect(content.children).toHaveLength(0)
   })
 
   it('destaca la zona seleccionada y actualiza el estilo sin recrear rectángulos', async () => {
@@ -133,7 +153,7 @@ describe('StudyZoneMarkers', () => {
     expect(map.hasLayer(previous)).toBe(false)
     const current = rectangleFor(map, JAEN_BBOX)!
     expect(current).not.toBe(previous)
-    expect(current.getTooltip()?.getContent()).toBe('Jaén — otro modo')
+    expect(tooltipText(current)).toBe('Jaén — otro modo')
   })
 
   it('sin zonas no dibuja rectángulos y al desmontar limpia los existentes', async () => {

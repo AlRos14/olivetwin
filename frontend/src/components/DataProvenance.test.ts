@@ -73,6 +73,23 @@ describe('DataProvenance', () => {
     expect(text).toContain('15')
   })
 
+  it('formatea fechas con hora en UTC e indica la zona para no cambiar de día', () => {
+    const wrapper = mountProvenance(
+      makeLayer({ acquisitionDate: '2026-01-15T23:30:00-05:00' }),
+    )
+    const text = wrapper.text()
+    // En UTC ya es 16 de enero; formatear en zona local podría mostrar el 15.
+    expect(text).toContain('16')
+    expect(text).toContain('enero')
+    expect(text).toContain('UTC')
+    expect(text).not.toContain('15 de enero')
+  })
+
+  it('una fecha sin hora no añade el sufijo UTC', () => {
+    const wrapper = mountProvenance(makeLayer({ acquisitionDate: '2026-01-15' }))
+    expect(wrapper.text()).not.toContain('UTC')
+  })
+
   it('no presenta una fecha inválida como si fuera real', () => {
     const wrapper = mountProvenance(makeLayer({ acquisitionDate: '2026-13-40' }))
     expect(wrapper.text()).toContain('Fecha no disponible')
