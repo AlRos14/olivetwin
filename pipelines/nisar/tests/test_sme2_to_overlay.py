@@ -37,7 +37,9 @@ def scenes(tmp_path):
 def public(tmp_path):
     pub = tmp_path / "public"
     (pub / "data/real").mkdir(parents=True)
-    shutil.copy(REPO / "frontend/public/data/real/manifest.json", pub / "data/real/manifest.json")
+    # Manifiesto real vacío propio: el del repo ya contiene datos publicados.
+    (pub / "data/real/manifest.json").write_text(json.dumps(
+        {"schemaVersion": "1.1.0", "datasetMode": "real", "appTitle": "OliveTwin", "zones": []}))
     return pub
 
 
