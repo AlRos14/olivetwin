@@ -91,29 +91,89 @@ describe('ScientificOverlay', () => {
     expect(layer.options.opacity).toBe(0.35)
   })
 
-  it('reemplaza la imagen si cambia la url, el bbox, la zona o la capa', async () => {
+  it('cambia solo la url con setUrl sin recrear la capa ni perder opacidad/visibilidad', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+    const layer = images(map)[0]!
+    const nextUrl = 'data/sample/zones/jaen-demo/ndvi-2026-02.png'
+
+    await wrapper.setProps({ overlay: overlay({ url: nextUrl, timeIndex: 1 }) })
+    await nextTick()
+
+    expect(images(map)).toHaveLength(1)
+    expect(images(map)[0]).toBe(layer)
+    expect(map.hasLayer(layer)).toBe(true)
+    expect(layer.options.opacity).toBe(0.7)
+    expect(layer.getElement()!.getAttribute('src')).toBe(nextUrl)
+  })
+
+  it('mantiene visible=false al cambiar la url y reutiliza la capa al mostrarla', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+    const layer = images(map)[0]!
+    await wrapper.setProps({ overlay: overlay({ visible: false }) })
+    await nextTick()
+    expect(map.hasLayer(layer)).toBe(false)
+
+    const nextUrl = 'data/sample/zones/jaen-demo/ndvi-2026-02.png'
+    await wrapper.setProps({ overlay: overlay({ url: nextUrl, timeIndex: 1, visible: false }) })
+    await nextTick()
+    expect(map.hasLayer(layer)).toBe(false)
+
+    await wrapper.setProps({ overlay: overlay({ url: nextUrl, timeIndex: 1, visible: true }) })
+    await nextTick()
+    expect(images(map)).toHaveLength(1)
+    expect(images(map)[0]).toBe(layer)
+  })
+
+  it('reemplaza la imagen si cambia el bbox, la zona o la capa', async () => {
     const map = createMap()
     const wrapper = mountOverlay(map, overlay())
     const first = images(map)[0]!
 
-    await wrapper.setProps({ overlay: overlay({ url: 'data/sample/zones/jaen-demo/moisture.png' }) })
+    await wrapper.setProps({ overlay: overlay({ bbox: [-4.2, 39.7, -3.9, 39.9] }) })
     await nextTick()
     const second = images(map)[0]!
     expect(second).not.toBe(first)
-    expect(map.hasLayer(first)).toBe(false)
-    expect(map.hasLayer(second)).toBe(true)
+    expect(second.getBounds().getWest()).toBe(-4.2)
 
-    await wrapper.setProps({ overlay: overlay({ bbox: [-4.2, 39.7, -3.9, 39.9] }) })
+    await wrapper.setProps({ overlay: overlay({ zoneId: 'toledo-demo' }) })
     await nextTick()
     const third = images(map)[0]!
     expect(third).not.toBe(second)
-    expect(third.getBounds().getWest()).toBe(-4.2)
 
-    await wrapper.setProps({ overlay: overlay({ zoneId: 'toledo-demo' }) })
+    await wrapper.setProps({ overlay: overlay({ layerId: 'soil-moisture' }) })
     await nextTick()
     const fourth = images(map)[0]!
     expect(fourth).not.toBe(third)
     expect(images(map)).toHaveLength(1)
+  })
+
+  it('reinicia el aviso image-error tras cambiar la url', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+    const nextUrl = 'data/sample/zones/jaen-demo/ndvi-2026-02.png'
+
+    images(map)[0]!.fire('error')
+    expect(wrapper.emitted('image-error')).toEqual([[URL]])
+
+    await wrapper.setProps({ overlay: overlay({ url: nextUrl, timeIndex: 1 }) })
+    await nextTick()
+
+    images(map)[0]!.fire('error')
+    expect(wrapper.emitted('image-error')).toEqual([[URL], [nextUrl]])
+  })
+
+  it('detecta el error nativo del <img> después de setUrl', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+    const nextUrl = 'data/sample/zones/jaen-demo/ndvi-2026-02.png'
+
+    await wrapper.setProps({ overlay: overlay({ url: nextUrl, timeIndex: 1 }) })
+    await nextTick()
+
+    images(map)[0]!.getElement()!.dispatchEvent(new Event('error'))
+    expect(wrapper.emitted('image-error')).toEqual([[nextUrl]])
   })
 
   it('visible=false quita la capa del mapa y visible=true reutiliza la misma instancia', async () => {
