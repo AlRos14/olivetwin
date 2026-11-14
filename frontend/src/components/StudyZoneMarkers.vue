@@ -80,7 +80,11 @@ function syncZones(): void {
       interactive: true,
     })
 
-    rectangle.bindTooltip(zone.name, { sticky: true, direction: 'top' })
+    // El nombre llega del manifiesto: se inserta como texto, nunca como HTML.
+    const label = document.createElement('span')
+    label.className = 'olive-zone-tooltip'
+    label.textContent = zone.name
+    rectangle.bindTooltip(label, { sticky: true, direction: 'top' })
     rectangle.on('click', () => emit('select-zone', zone.id))
     rectangle.addTo(props.map)
     if (selected) rectangle.bringToFront()

@@ -38,30 +38,38 @@ const extraRows = computed<Array<{ label: string; value: string }>>(() => {
   return rows
 })
 
-/** Fecha ISO 8601 en formato es-ES, sin desplazar el día por zona horaria. */
+/** Fecha ISO 8601 en formato es-ES, siempre en UTC para no desplazar el día. */
 function formatAcquisitionDate(value: string): string {
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  let date: Date
   if (dateOnly) {
     const year = Number(dateOnly[1])
     const month = Number(dateOnly[2])
     const day = Number(dateOnly[3])
-    date = new Date(year, month - 1, day)
+    const date = new Date(Date.UTC(year, month - 1, day))
     if (
-      date.getFullYear() !== year ||
-      date.getMonth() !== month - 1 ||
-      date.getDate() !== day
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
     ) {
       return 'Fecha no disponible'
     }
-  } else {
-    date = new Date(value)
+    return formatUtcDate(date, false)
   }
+
+  const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Fecha no disponible'
+  // Con hora y zona, la fecha se presenta en UTC y se indica explícitamente:
+  // formatear en la zona local del navegador podría cambiar el día.
+  return `${formatUtcDate(date, true)} UTC`
+}
+
+function formatUtcDate(date: Date, withTime: boolean): string {
   return new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } : {}),
+    timeZone: 'UTC',
   }).format(date)
 }
 

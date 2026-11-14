@@ -13,7 +13,11 @@ import {
   bboxToLatLngBounds,
   isUsableBBox,
 } from './map/geo'
-import { createTileErrorTracker } from './map/tileErrors'
+import {
+  createTileErrorTracker,
+  tileTouchesPnoaCoverage,
+  type TileCoords,
+} from './map/tileErrors'
 import StudyZoneMarkers from './StudyZoneMarkers.vue'
 import ScientificOverlay from './ScientificOverlay.vue'
 
@@ -47,7 +51,7 @@ const map = shallowRef<L.Map | null>(null)
 
 let baseLayer: L.TileLayer | null = null
 let activeBase: BaseMap | null = null
-let baseErrorHandler: (() => void) | null = null
+let baseErrorHandler: ((event: L.TileErrorEvent) => void) | null = null
 let tileTracker = createTileErrorTracker()
 
 /**
@@ -159,7 +163,14 @@ function setBaseLayer(next: BaseMap): void {
 
   // Nuevo contador por activación: una notificación como máximo por capa.
   tileTracker = createTileErrorTracker()
-  const handleTileError = () => {
+  const handleTileError = (event: L.TileErrorEvent) => {
+    // PNOA solo cubre España: al navegar fuera, sus teselas fallan por diseño.
+    // Solo cuentan los fallos de teselas que intersectan la cobertura real.
+    // Si el evento no trae coordenadas (entornos de prueba), se contabiliza.
+    const coords = (event as Partial<L.TileErrorEvent> | undefined)?.coords as
+      | TileCoords
+      | undefined
+    if (next === 'pnoa' && coords && !tileTouchesPnoaCoverage(coords)) return
     if (tileTracker.register()) emit('basemap-error', next)
   }
   layer.on('tileerror', handleTileError)

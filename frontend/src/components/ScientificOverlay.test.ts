@@ -169,6 +169,39 @@ describe('ScientificOverlay', () => {
     expect(wrapper.emitted('image-error')).toEqual([[URL]])
   })
 
+  it('vuelve a emitir image-error tras ocultar y volver a mostrar la capa', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+    const layer = images(map)[0]!
+
+    layer.fire('error')
+    expect(wrapper.emitted('image-error')).toEqual([[URL]])
+
+    await wrapper.setProps({ overlay: overlay({ visible: false }) })
+    await nextTick()
+    expect(map.hasLayer(layer)).toBe(false)
+
+    await wrapper.setProps({ overlay: overlay({ visible: true }) })
+    await nextTick()
+    expect(map.hasLayer(layer)).toBe(true)
+
+    // Un fallo de la nueva visualización debe volver a informarse.
+    images(map)[0]!.getElement()!.dispatchEvent(new Event('error'))
+    expect(wrapper.emitted('image-error')).toEqual([[URL], [URL]])
+  })
+
+  it('no repite el aviso si la capa sigue visible y solo cambia la opacidad', async () => {
+    const map = createMap()
+    const wrapper = mountOverlay(map, overlay())
+
+    images(map)[0]!.fire('error')
+    await wrapper.setProps({ overlay: overlay({ opacity: 0.5 }) })
+    await nextTick()
+
+    images(map)[0]!.getElement()!.dispatchEvent(new Event('error'))
+    expect(wrapper.emitted('image-error')).toHaveLength(1)
+  })
+
   it('mantiene visible=false inicial sin añadir la capa hasta activarla', async () => {
     const map = createMap()
     const wrapper = mountOverlay(map, overlay({ visible: false }))

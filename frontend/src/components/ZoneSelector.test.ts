@@ -58,6 +58,15 @@ describe('ZoneSelector', () => {
     expect(select.attributes('aria-describedby')).toBeTruthy()
   })
 
+  it('no duplica el etiquetado accesible en la sección', () => {
+    const wrapper = mount(ZoneSelector, {
+      props: { zones, modelValue: null },
+    })
+    expect(wrapper.get('section').attributes('aria-labelledby')).toBeUndefined()
+    // La etiqueta sigue asociada al control mediante `for`/`id`.
+    expect(wrapper.get('label').attributes('for')).toBe(wrapper.get('select').attributes('id'))
+  })
+
   it('respeta el prop disabled aunque existan zonas', () => {
     const wrapper = mount(ZoneSelector, {
       props: { zones, modelValue: null, disabled: true },

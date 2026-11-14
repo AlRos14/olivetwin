@@ -90,7 +90,11 @@ function onSwitchBasemap(): void {
       </template>
     </div>
 
-    <div v-if="basemapError" class="ot-status__block ot-status__block--warning">
+    <div
+      v-if="basemapError"
+      class="ot-status__block ot-status__block--warning"
+      role="alert"
+    >
       <p class="ot-status__title">{{ basemapMessage }}</p>
       <p class="ot-status__text">
         Puedes continuar con el otro mapa base mientras se restablece el servicio.
@@ -102,7 +106,11 @@ function onSwitchBasemap(): void {
       </div>
     </div>
 
-    <div v-if="overlayError" class="ot-status__block ot-status__block--warning">
+    <div
+      v-if="overlayError"
+      class="ot-status__block ot-status__block--warning"
+      role="alert"
+    >
       <p class="ot-status__title">La imagen de la capa no está disponible</p>
       <p class="ot-status__text">
         El mapa sigue funcionando; puedes cambiar de capa o volver a intentarlo.

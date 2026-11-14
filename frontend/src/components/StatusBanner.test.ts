@@ -89,6 +89,20 @@ describe('StatusBanner', () => {
     expect(wrapper.emitted('dismiss-overlay-error')).toHaveLength(1)
   })
 
+  it('anuncia los avisos de mapa base e imagen como alertas accesibles', () => {
+    const wrapper = mountBanner({
+      basemapError: 'pnoa',
+      overlayError: 'data/sample/zones/jaen-demo/ndvi.png',
+    })
+    const alerts = wrapper.findAll('[role="alert"]')
+    expect(alerts).toHaveLength(2)
+    const texts = alerts.map((alert) => alert.text())
+    expect(texts.some((text) => text.includes('La ortofoto PNOA no responde'))).toBe(true)
+    expect(
+      texts.some((text) => text.includes('La imagen de la capa no está disponible')),
+    ).toBe(true)
+  })
+
   it('con fallo de PNOA ofrece cambiar a OpenStreetMap', async () => {
     const wrapper = mountBanner({ basemapError: 'pnoa' })
     expect(wrapper.text()).toContain('La ortofoto PNOA no responde')
