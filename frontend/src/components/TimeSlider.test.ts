@@ -58,7 +58,8 @@ describe('TimeSlider', () => {
 
   it('formatea fechas con hora en UTC e indica la zona', () => {
     const wrapper = mountSlider(2)
-    expect(wrapper.text()).toContain('Paso 3 de 3 · 16 de marzo de 2026, 10:30 UTC')
+    // El conector entre fecha y hora («, » o « a las ») depende de la versión de ICU de Node.
+    expect(wrapper.text()).toMatch(/Paso 3 de 3 · 16 de marzo de 2026(,| a las) 10:30 UTC/)
     expect(wrapper.get('input[type="range"]').attributes('aria-valuetext')).toContain('UTC')
   })
 
