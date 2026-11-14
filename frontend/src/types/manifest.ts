@@ -26,11 +26,11 @@ export interface Provenance {
   provider: string
   product: string
   /** ISO 8601 o null. La UI muestra «Fecha no disponible» si es null; nunca inventa una. */
-  acquisitionDate: string | null
-  sceneId: string | null
+  acquisitionDate?: string | null
+  sceneId?: string | null
   processingVersion: string
-  referenceUrl: string | null
-  note: string | null
+  referenceUrl?: string | null
+  note?: string | null
   /** Extensiones aditivas (p. ej. maturity, crid, approvedBy en datos NISAR). */
   [extra: string]: unknown
 }
@@ -47,6 +47,7 @@ export interface StudyLayer {
   unit: string
   range?: [min: number, max: number]
   legend: LegendStop[]
+  /** Coherencia con datasetMode (sample⇒synthetic, real⇒processed_real): validación de WP-04, no del tipo. */
   status: LayerStatus
   provenance: Provenance
   qualityNote: string
