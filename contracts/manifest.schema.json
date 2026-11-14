@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:olivetwin:contract:manifest:1.1.0",
   "title": "OliveTwin manifest — contrato mínimo v1.1.0",
-  "description": "Contrato mínimo congelado en Fase A (nodo A02) y alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix). Describe únicamente la estructura que WP-04 (datos) y WP-07 (UI) necesitan compartir para avanzar sin romperse. WP-04 completará este esquema de forma aditiva (nuevas propiedades opcionales y $defs), sin alterar los campos ni las convenciones congeladas en docs/contract-freeze.md. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (por ejemplo west < east, coherencia entre bbox de zona y de capa, min <= max en range, o existencia real del PNG) NO forma parte de este esquema y corresponde a WP-04.",
+  "description": "Contrato mínimo congelado en Fase A (nodo A02), alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix) y completado de forma aditiva por WP04-01 dentro de la misma versión 1.1.0. Describe la estructura que WP-04 (datos) y WP-07 (UI) comparten. Las ampliaciones de WP04-01 están registradas en docs/contract-freeze.md §2.3: imageCrs cerrado a EPSG:3857, unit no vacío, leyenda de al menos dos paradas, id de zona en kebab-case y coherencia if/then entre datasetMode y status de capa. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (west < east, coherencia entre bbox de zona y de capa con tolerancia, min < max en range, orden de la leyenda, unicidad de ids, prefijo data/<datasetMode>/, fechas de adquisición reales y existencia/alfa del PNG) NO forma parte de este esquema y corresponde al validador de WP-04 (frontend/scripts/validate-lib.mjs).",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -39,6 +39,84 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "datasetMode": {
+            "const": "sample"
+          }
+        },
+        "required": [
+          "datasetMode"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "description": "En modo sample toda capa debe declararse sintética: nunca se presenta material de ejemplo como observación real.",
+        "properties": {
+          "zones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "layers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "const": "synthetic"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "datasetMode": {
+            "const": "real"
+          }
+        },
+        "required": [
+          "datasetMode"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "description": "En modo real toda capa debe declararse processed_real: no se reutilizan ejemplos sintéticos.",
+        "properties": {
+          "zones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "layers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "const": "processed_real"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "bbox": {
       "type": "array",
@@ -75,7 +153,7 @@
     },
     "range": {
       "type": "array",
-      "description": "Intervalo [min, max] de valores que representa la escala de la leyenda, en las unidades de `unit`. Ambos extremos son números; la comprobación de que min <= max es validación semántica de WP-04.",
+      "description": "Intervalo [min, max] de valores que representa la escala de la leyenda, en las unidades de `unit`. Ambos extremos son números; la comprobación de que min < max (estricto) es validación semántica de WP-04.",
       "prefixItems": [
         {
           "type": "number",
@@ -92,8 +170,8 @@
     },
     "legend": {
       "type": "array",
-      "description": "Leyenda ordenada de la capa: lista no vacía de clases {value, color, label}, tal como la define el plan v2 §4.3. Los colores permiten interpretar el PNG, no recuperar valores científicos exactos.",
-      "minItems": 1,
+      "description": "Leyenda ordenada de la capa: lista de al menos dos clases {value, color, label}, tal como la define el plan v2 §4.3. El orden creciente por `value` es validación semántica de WP-04. Los colores permiten interpretar el PNG, no recuperar valores científicos exactos.",
+      "minItems": 2,
       "items": {
         "type": "object",
         "required": [
@@ -135,7 +213,8 @@
         "id": {
           "type": "string",
           "minLength": 1,
-          "description": "Identificador estable de la zona, único dentro del manifiesto. Se recomienda slug en minúsculas (por ejemplo \"jaen\"). La unicidad es validación semántica de WP-04."
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Identificador estable de la zona, único dentro del manifiesto, en kebab-case (minúsculas, dígitos y guiones, sin guion inicial/final ni guiones consecutivos; por ejemplo \"jaen-demo\"). La unicidad es validación semántica de WP-04."
         },
         "name": {
           "type": "string",
@@ -206,21 +285,24 @@
         "image": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(?!/)(?!.*\\.\\.)(?!.*:)(?!.*\\\\).+$",
-          "description": "Ruta del PNG relativa a frontend/public/, sin \"/\" inicial, sin \"..\", sin \":\" (URLs absolutas o unidades de disco) y sin barras invertidas. Ejemplo: \"data/sample/ndvi/jaen.png\". La UI la resolverá con import.meta.env.BASE_URL."
+          "pattern": "^(?!/)(?!.*%)(?!.*\\.\\.)(?!.*:)(?!.*\\\\).+$",
+          "description": "Ruta del PNG relativa a frontend/public/, sin \"/\" inicial, sin \"%\", sin \"..\", sin \":\" (URLs absolutas o unidades de disco) y sin barras invertidas. Se prohíbe cualquier \"%\" porque el navegador normaliza la codificación porcentual: \"%2e%2e\" equivale a \"..\" y permitiría escapar de public/. Ejemplo: \"data/sample/ndvi/jaen.png\". La UI la resolverá con import.meta.env.BASE_URL."
         },
         "bbox": {
           "$ref": "#/$defs/bbox"
         },
         "imageCrs": {
           "type": "string",
-          "minLength": 1,
-          "description": "CRS de presentación con el que se georreferencia la imagen mediante bbox (por ejemplo un EPSG definido por WP-04). Los valores admitidos se concretarán en WP-04."
+          "enum": [
+            "EPSG:3857"
+          ],
+          "description": "CRS de presentación con el que se georreferencia la imagen mediante bbox. En v1.1.0 solo se admite EPSG:3857 (Web Mercator): el PNG se prepara en ese CRS, norte arriba y con la extensión exacta de layer.bbox."
         },
         "unit": {
           "type": "string",
           "minLength": 1,
-          "description": "Unidad o naturaleza del valor representado (por ejemplo índice adimensional o porcentaje), tal como la defina el pipeline científico."
+          "pattern": "\\S",
+          "description": "Unidad o naturaleza del valor representado (por ejemplo índice adimensional o porcentaje), tal como la defina el pipeline científico. No puede estar vacía ni contener solo espacios."
         },
         "range": {
           "$ref": "#/$defs/range"
@@ -263,8 +345,20 @@
                 "string",
                 "null"
               ],
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2}))?$",
-              "description": "Fecha ISO 8601 de adquisición (fecha sola o fecha-hora con zona), o null si no aplica o no se conoce. Nunca inventar una fecha para una capa sintética."
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fecha ISO 8601 de adquisición real, o null si no aplica o no se conoce: fecha sola (\"2026-10-19\", format date) o fecha-hora con zona (\"2026-10-19T11:19:03Z\", format date-time). Los formatos de ajv-formats comprueban el calendario, de modo que se rechazan fechas imposibles como \"2026-13-45\". Nunca inventar una fecha para una capa sintética."
             },
             "sceneId": {
               "type": [
@@ -302,7 +396,48 @@
           "minLength": 1,
           "description": "Nota breve sobre limitaciones o calidad del dato que la UI pueda mostrar junto a la capa."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "processed_real"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "description": "processed_real exige procedencia verificable: fecha de adquisición, identificador de escena/producto y URL de referencia, todos como cadenas no nulas. No se concede este estado por cambiar un texto o un nombre de archivo.",
+            "properties": {
+              "provenance": {
+                "type": "object",
+                "required": [
+                  "acquisitionDate",
+                  "sceneId",
+                  "referenceUrl"
+                ],
+                "properties": {
+                  "acquisitionDate": {
+                    "type": "string"
+                  },
+                  "sceneId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "referenceUrl": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

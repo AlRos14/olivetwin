@@ -1,0 +1,654 @@
+/*
+ * OliveTwin — hoja de estilos del panel de interfaz (WP07-04).
+ *
+ * Sin dependencias externas. Todos los selectores usan el prefijo `.ot-` para
+ * no filtrarse al mapa ni a la aplicación. Las variables se declaran aquí y
+ * pueden sobrescribirse desde el contenedor que monte INT01.
+ *
+ * Estructura recomendada por INT01 (escritorio):
+ *   <div class="ot-layout">
+ *     <div class="ot-map-area">…mapa…</div>
+ *     <aside class="ot-panel">…componentes WP07-04…</aside>
+ *   </div>
+ * En móvil (<768px) `.ot-panel` pasa a ser una bandeja inferior con scroll.
+ */
+
+:root {
+  --ot-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ot-surface: #ffffff;
+  --ot-surface-muted: #f4f6f2;
+  --ot-text: #1b2a1c;
+  --ot-text-muted: #465547;
+  --ot-border: #c3cec2;
+  --ot-border-strong: #91a290;
+  --ot-accent: #28603a;
+  --ot-accent-strong: #1e4a2c;
+  --ot-accent-soft: #e8f1e9;
+  --ot-focus: #0b5fbf;
+  --ot-radius: 10px;
+  --ot-radius-sm: 6px;
+  --ot-shadow: 0 10px 30px rgba(20, 35, 20, 0.14);
+  --ot-space: 0.75rem;
+  --ot-badge-bg: #ffd400;
+  --ot-badge-text: #2b2100;
+  --ot-warning-bg: #fff8dc;
+  --ot-warning-border: #b07d00;
+  --ot-warning-text: #3f2f00;
+  --ot-error-bg: #fdecea;
+  --ot-error-border: #b3261e;
+  --ot-error-text: #7a1710;
+}
+
+/* --------------------------------------------------------------------------
+ * Contenedores de página (los usa INT01 en App.vue)
+ * ------------------------------------------------------------------------ */
+
+.ot-layout {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.ot-map-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ot-panel {
+  display: flex;
+  flex: 0 0 340px;
+  flex-direction: column;
+  gap: var(--ot-space);
+  width: 340px;
+  max-width: 340px;
+  height: 100%;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--ot-text);
+  background: var(--ot-surface);
+  border-left: 1px solid var(--ot-border);
+  font-family: var(--ot-font);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  scrollbar-gutter: stable;
+}
+
+.ot-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ot-panel__title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.ot-panel__subtitle {
+  margin: 0;
+  color: var(--ot-text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 767px) {
+  .ot-layout {
+    flex-direction: column;
+  }
+
+  .ot-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    max-height: 48dvh;
+    padding: 0.85rem 0.9rem max(0.9rem, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ot-border);
+    border-left: 0;
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -8px 26px rgba(20, 35, 20, 0.2);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Tarjetas y tipografía
+ * ------------------------------------------------------------------------ */
+
+.ot-card {
+  padding: 0.8rem;
+  color: var(--ot-text);
+  background: var(--ot-surface);
+  border: 1px solid var(--ot-border);
+  border-radius: var(--ot-radius);
+}
+
+.ot-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.ot-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  color: var(--ot-text);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.ot-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ot-field + .ot-field {
+  margin-top: 0.85rem;
+}
+
+.ot-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ot-fieldset legend {
+  padding: 0;
+}
+
+.ot-hint {
+  margin: 0.35rem 0 0;
+  color: var(--ot-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.ot-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Foco visible y consistente en todos los controles. */
+.ot-panel :focus-visible,
+.ot-card :focus-visible {
+  outline: 3px solid var(--ot-focus);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+ * Selector segmentado de modo de datos
+ * ------------------------------------------------------------------------ */
+
+.ot-segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--ot-surface-muted);
+  border: 1px solid var(--ot-border);
+  border-radius: var(--ot-radius-sm);
+}
+
+.ot-segmented__option {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+  border-radius: calc(var(--ot-radius-sm) - 2px);
+}
+
+.ot-segmented__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-segmented__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.4rem 0.45rem;
+  color: var(--ot-text-muted);
+  text-align: center;
+  border-radius: inherit;
+}
+
+.ot-segmented__label {
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.ot-segmented__hint {
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+  line-height: 1.2;
+}
+
+.ot-segmented__option:hover .ot-segmented__text {
+  color: var(--ot-text);
+  background: rgba(40, 96, 58, 0.08);
+}
+
+.ot-segmented__option .ot-segmented__input:checked + .ot-segmented__text,
+.ot-segmented__option.is-selected .ot-segmented__text {
+  color: var(--ot-accent-strong);
+  background: var(--ot-surface);
+  box-shadow: inset 0 0 0 2px var(--ot-accent);
+}
+
+.ot-segmented__input:focus-visible + .ot-segmented__text {
+  outline: 3px solid var(--ot-focus);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+ * Select de zona
+ * ------------------------------------------------------------------------ */
+
+.ot-select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  color: var(--ot-text);
+  background: var(--ot-surface);
+  border: 1px solid var(--ot-border-strong);
+  border-radius: var(--ot-radius-sm);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.ot-select:disabled {
+  color: var(--ot-text-muted);
+  background: var(--ot-surface-muted);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+ * Opciones tipo radio en tarjeta (mapa base y variable)
+ * ------------------------------------------------------------------------ */
+
+.ot-options {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ot-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.ot-option__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-option__body {
+  display: block;
+  padding: 0.45rem 0.55rem;
+  background: var(--ot-surface);
+  border: 1px solid var(--ot-border);
+  border-radius: var(--ot-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.ot-option__label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ot-option__hint {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--ot-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.ot-option:hover .ot-option__body {
+  border-color: var(--ot-border-strong);
+  background: var(--ot-surface-muted);
+}
+
+.ot-option .ot-option__input:checked + .ot-option__body {
+  background: var(--ot-accent-soft);
+  border-color: var(--ot-accent);
+  box-shadow: inset 0 0 0 1px var(--ot-accent);
+}
+
+.ot-option__input:focus-visible + .ot-option__body {
+  outline: 3px solid var(--ot-focus);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+ * Visibilidad y opacidad
+ * ------------------------------------------------------------------------ */
+
+.ot-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.ot-check input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--ot-accent);
+  cursor: pointer;
+}
+
+.ot-range-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ot-range {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--ot-accent);
+  cursor: pointer;
+}
+
+.ot-range-row output {
+  flex: 0 0 3.6rem;
+  color: var(--ot-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-align: right;
+}
+
+/* --------------------------------------------------------------------------
+ * Leyenda
+ * ------------------------------------------------------------------------ */
+
+.ot-legend__scale {
+  height: 16px;
+  background: var(--ot-surface-muted);
+  border: 1px solid var(--ot-border-strong);
+  border-radius: 999px;
+}
+
+.ot-legend__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  margin: 0.45rem 0 0;
+  color: var(--ot-text-muted);
+  font-size: 0.78rem;
+}
+
+.ot-legend__meta strong {
+  color: var(--ot-text);
+  font-weight: 650;
+}
+
+.ot-legend__stops {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ot-legend__stop {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.ot-legend__swatch {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1px solid rgba(27, 42, 28, 0.45);
+  border-radius: 3px;
+}
+
+.ot-legend__stop-label {
+  font-weight: 600;
+}
+
+.ot-legend__stop-value {
+  margin-left: auto;
+  color: var(--ot-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ot-legend__note {
+  margin: 0.65rem 0 0;
+  padding: 0.45rem 0.55rem;
+  color: var(--ot-warning-text);
+  background: var(--ot-warning-bg);
+  border-left: 4px solid var(--ot-warning-border);
+  border-radius: 0 var(--ot-radius-sm) var(--ot-radius-sm) 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+ * Procedencia y calidad
+ * ------------------------------------------------------------------------ */
+
+.ot-provenance__list {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: 0.3rem 0.7rem;
+  margin: 0;
+}
+
+.ot-provenance__list dt {
+  color: var(--ot-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ot-provenance__list dd {
+  margin: 0;
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.ot-provenance__link {
+  color: #0b4f9c;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ot-provenance__quality {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.6rem;
+  color: var(--ot-error-text);
+  background: var(--ot-error-bg);
+  border-left: 4px solid var(--ot-error-border);
+  border-radius: 0 var(--ot-radius-sm) var(--ot-radius-sm) 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ot-provenance__quality-label {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ot-provenance__mode {
+  margin: 0.6rem 0 0;
+  color: var(--ot-text-muted);
+  font-size: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+ * Avisos de estado
+ * ------------------------------------------------------------------------ */
+
+.ot-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ot-status__block {
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--ot-border);
+  border-radius: var(--ot-radius);
+  background: var(--ot-surface-muted);
+}
+
+.ot-status__block--sample {
+  color: var(--ot-warning-text);
+  background: var(--ot-warning-bg);
+  border-color: var(--ot-warning-border);
+}
+
+.ot-status__block--loading {
+  color: var(--ot-text);
+  background: var(--ot-surface-muted);
+}
+
+.ot-status__block--empty {
+  color: var(--ot-text);
+  background: var(--ot-surface-muted);
+  border-style: dashed;
+}
+
+.ot-status__block--error {
+  color: var(--ot-error-text);
+  background: var(--ot-error-bg);
+  border-color: var(--ot-error-border);
+}
+
+.ot-status__block--warning {
+  color: var(--ot-warning-text);
+  background: var(--ot-warning-bg);
+  border-color: var(--ot-warning-border);
+}
+
+.ot-badge {
+  display: inline-block;
+  margin: 0 0 0.35rem;
+  padding: 0.18rem 0.5rem;
+  color: var(--ot-badge-text);
+  background: var(--ot-badge-bg);
+  border: 1px solid #8a6d00;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.3;
+}
+
+.ot-status__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ot-status__text {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.ot-status__detail {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ot-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+/* --------------------------------------------------------------------------
+ * Botones
+ * ------------------------------------------------------------------------ */
+
+.ot-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.7rem;
+  color: #ffffff;
+  background: var(--ot-accent);
+  border: 1px solid var(--ot-accent-strong);
+  border-radius: var(--ot-radius-sm);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.ot-button:hover {
+  background: var(--ot-accent-strong);
+}
+
+.ot-button--ghost {
+  color: var(--ot-accent-strong);
+  background: transparent;
+  border-color: currentColor;
+}
+
+.ot-button--ghost:hover {
+  background: rgba(40, 96, 58, 0.1);
+}
+
+.ot-button--quiet {
+  color: var(--ot-text);
+  background: transparent;
+  border-color: var(--ot-border-strong);
+}
+
+.ot-button--quiet:hover {
+  background: rgba(27, 42, 28, 0.08);
+}
+
+.ot-button--small {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.76rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ot-option__body {
+    transition: none;
+  }
+}

@@ -44,15 +44,17 @@ La ausencia de zonas es intencionada: Fase A prepara contratos, no enseña capas
 | `zones` | array | Obligatorio; puede ser `[]`, pero nunca `null`. |
 
 Cada zona (`$defs.zone`) exige `id`, `name`, `bbox` y `layers[]`, y admite
-opcionalmente `description`. Cada capa (`$defs.layer`) exige `id`
+opcionalmente `description`. El `id` de zona es un slug kebab-case
+(`^[a-z0-9]+(?:-[a-z0-9]+)*$`). Cada capa (`$defs.layer`) exige `id`
 (`ndvi` \| `soil-moisture`), `title`, `kind` (`image-overlay`), `image`, `bbox`,
-`imageCrs`, `unit`, `status` (`synthetic` \| `processed_real`), `legend`,
-`provenance` y `qualityNote`; admite opcionalmente `variable` y `range`
-(`[min, max]` de números).
+`imageCrs` (`EPSG:3857`), `unit` no vacío, `status` (`synthetic` \|
+`processed_real`), `legend`, `provenance` y `qualityNote`; admite opcionalmente
+`variable` y `range` (`[min, max]` de números).
 
-`legend` es una **lista no vacía** de clases con la forma
+`legend` es una **lista de al menos dos clases** con la forma
 `{"value": number, "color": "#rrggbb", "label": string}`, tal como aparece en el
-ejemplo §4.3 del plan v2. No es un objeto libre.
+ejemplo §4.3 del plan v2. No es un objeto libre y debe estar ordenada por
+`value` de forma creciente estricta (validación semántica).
 
 `provenance` exige `provider`, `product` y `processingVersion`; admite
 `acquisitionDate`, `sceneId`, `referenceUrl` y `note` como string o `null`.
@@ -60,10 +62,24 @@ Mantiene `additionalProperties: true` de forma deliberada para extensiones
 aditivas del pipeline científico (por ejemplo CRID o madurez de NISAR SME2).
 No existe el campo `source` de versiones anteriores del borrador.
 
-Las validaciones semánticas (por ejemplo `west < east`, `min <= max` en
-`range`, unicidad de `id` o existencia del PNG) **no** forman parte de este
-esquema y pertenecen a WP-04; tampoco se fijan aquí los valores admitidos de
-`imageCrs`.
+`acquisitionDate` es una fecha ISO 8601 **real**, no solo una cadena con la forma
+correcta: el esquema aplica los formatos `date` (`2026-10-19`) y `date-time`
+(`2026-10-19T11:19:03Z`) de ajv-formats, que comprueban el calendario, y el
+validador semántico vuelve a verificar los componentes. Se rechazan fechas
+imposibles como `2026-13-45` o `2026-02-30`.
+
+Las validaciones semánticas (`west < east`, `south < north`, `layer.bbox` dentro
+de `zone.bbox` con tolerancia de 0.01°, `min < max` en `range`, orden de
+`legend`, unicidad de `id` de zona y de capa por zona, prefijo
+`data/<datasetMode>/` en `image`, fechas de adquisición reales, existencia del
+PNG y canal alfa) **no** forman parte de este esquema y pertenecen a WP-04. Se
+implementan en `frontend/scripts/validate-lib.mjs` y se ejecutan con
+`npm run validate:data` (ver §Validación local).
+
+La coherencia entre `datasetMode` y `status` sí se expresa en el esquema mediante
+`if/then`: `sample` solo admite capas `synthetic` y `real` solo `processed_real`.
+Además, `processed_real` exige `provenance.acquisitionDate`, `sceneId` y
+`referenceUrl` como cadenas no nulas.
 
 ## Convenciones congeladas
 
@@ -98,6 +114,10 @@ El campo `image` es una ruta **relativa a `frontend/public/`**:
 
 - sin `/` inicial: `data/sample/ndvi/jaen.png`, no `/data/sample/ndvi/jaen.png`;
 - sin `..`, sin `:` (URLs absolutas o unidades de disco) y sin barras invertidas;
+- **sin ningún `%`**: el navegador normaliza la codificación porcentual y
+  `data/real/%2e%2e/%2e%2e/x.png` se resolvería como `../..`. Por eso el
+  esquema, el validador y la resolución de URLs en runtime rechazan cualquier
+  `%`, aunque la ruta no contenga `..` literal;
 - el esquema rechaza esas formas; la UI **no** construye rutas por su cuenta.
 
 La resolución debe respetar la `base` de Vite (GitHub Pages u otra subruta):
@@ -159,6 +179,19 @@ npx -y ajv-cli@5 validate --spec=draft2020 \
   -d frontend/public/data/real/manifest.json
 ```
 
+Desde WP04-01, la comprobación completa (esquema + semántica + existencia y alfa
+del PNG) se ejecuta con:
+
+```bash
+npm run validate:data --prefix frontend
+```
+
+Los casos negativos de `frontend/scripts/fixtures/invalid/` cubren, entre otros,
+`datasetMode`/`status` incoherentes, `bbox` invertido, capa fuera de zona,
+rutas `image` absolutas, con `..`, con `%` o con URL externa, `imageCrs` no
+admitido, ids de zona duplicados, leyenda desordenada, `range` invertido y
+fechas de adquisición imposibles.
+
 Casos negativos mínimos que el contrato debe rechazar:
 
 1. `datasetMode: "unknown"` → falla el `enum`.
@@ -167,6 +200,9 @@ Casos negativos mínimos que el contrato debe rechazar:
 4. `legend` como objeto en vez de lista → falla `type: array`.
 5. `image: "/abs.png"` → falla el patrón de ruta segura (sin `/` inicial).
 6. `image: "../x.png"` → falla el patrón de ruta segura (sin `..`).
+7. `image: "data/sample/%2e%2e/x.png"` → falla el patrón de ruta segura (sin `%`).
+8. `provenance.acquisitionDate: "2026-13-45"` → falla el formato `date`/`date-time`
+   y la comprobación semántica de calendario.
 
 Un manifiesto con `zones: []` y modo `sample` o `real` debe aceptarse. El
 ejemplo completo §4.3 del plan v2 (zona con `description`, capa con `variable`,

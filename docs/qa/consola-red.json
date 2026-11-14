@@ -1,0 +1,11 @@
+{
+  "fecha": "2026-11-14T15:52:46.248Z",
+  "url": "http://localhost:4173",
+  "erroresPagina": [],
+  "consolaErroresOavisos": [],
+  "peticionesFallidas": 69,
+  "peticionesFallidasDeTeselas": 69,
+  "peticionesFallidasDeLaApp": [],
+  "respuestasHttp4xx5xx": [],
+  "respuestasHttp4xx5xxDeLaApp": []
+}

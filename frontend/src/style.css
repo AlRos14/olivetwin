@@ -1,36 +1,33 @@
+/*
+ * Reset mínimo global de OliveTwin (INT01).
+ *
+ * Los estilos de los componentes viven en `styles/ui.css` (panel WP-07) y
+ * `styles/map.css` (mapa). Aquí solo se garantiza que la aplicación ocupa toda
+ * la ventana y que el documento no aporta márgenes ni scroll propios.
+ */
+
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #1f2a20;
-  background-color: #f7f8f4;
+  font-family: var(--ot-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  color: #1b2a1c;
+  background-color: #f4f6f2;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-}
-
+html,
+body,
 #app {
-  display: flex;
-  justify-content: center;
-  padding: 3rem 1.5rem;
-}
-
-.app {
-  max-width: 40rem;
-}
-
-.app h1 {
-  font-size: 1.75rem;
-  line-height: 1.2;
-  margin: 0 0 1rem;
-}
-
-.app p {
-  line-height: 1.6;
+  height: 100%;
   margin: 0;
+}
+
+body {
+  overflow: hidden;
 }

@@ -33,7 +33,7 @@ siendo responsabilidad de WP-04.
 | Modo | `sample` / `real` en runtime; nunca fallback silencioso | WP-04 estado, WP-07 selector UI |
 | Estado de carga | `loading`, `ready`, `empty`, `error` | WP-04 servicio/composable |
 | Mapa base | `pnoa` / `osm` | WP-07 |
-| Rutas | `image` relativa a `public/`, sin `/` inicial y sin `..`; resolver con `import.meta.env.BASE_URL` | WP-04 carga, WP-07 no crea rutas |
+| Rutas | `image` relativa a `public/`, sin `/` inicial, sin `..` y sin `%`; resolver con `import.meta.env.BASE_URL` | WP-04 carga, WP-07 no crea rutas |
 | Procedencia | `synthetic` vs `processed_real`; no presentar datos inventados como NASA real | Aprobación científica cuando haya real |
 
 Notas de aplicación:
@@ -43,15 +43,18 @@ Notas de aplicación:
   no un error que deba rellenarse con ejemplos.
 - Las rutas `image` se resuelven como `${import.meta.env.BASE_URL}${image}`. WP-04 entrega la
   URL resuelta; WP-07 no compone rutas.
-- `legend` es una **lista no vacía** de clases `{value: number, color: "#rrggbb", label:
-  string}`, coherente con el ejemplo §4.3 del plan v2; no es un objeto libre.
+- `legend` es una **lista de al menos dos clases** `{value: number, color: "#rrggbb", label:
+  string}`, coherente con el ejemplo §4.3 del plan v2; no es un objeto libre y debe estar
+  ordenada por `value` de forma creciente estricta (validación semántica).
 - `provenance` exige `provider`, `product` y `processingVersion`. Admite
   `acquisitionDate` (fecha ISO 8601 o `null`), `sceneId`, `referenceUrl` y `note` (string o
   `null`). Se mantiene `additionalProperties: true` para extensiones aditivas del pipeline
   científico (por ejemplo CRID o madurez de NISAR SME2). El antiguo campo `source` se elimina.
-- La semántica de los valores (rango de `bbox`, `min <= max` en `range`, unicidad de `id`,
-  coherencia zona/capa, existencia del PNG, valores de `imageCrs`) corresponde al validador de
-  WP-04, no al JSON Schema mínimo.
+- La semántica de los valores (rango de `bbox`, `min < max` en `range`, orden de la leyenda,
+  unicidad de `id`, coherencia zona/capa, prefijo `data/<datasetMode>/`, existencia y alfa del
+  PNG, coherencia `datasetMode`/`status` y valores de `imageCrs`) corresponde al validador de
+  WP-04 (`frontend/scripts/validate-lib.mjs`), complementado por el `if/then` del esquema y no
+  por el JSON Schema mínimo por sí solo.
 
 ### 2.1 Decisión de producto: `bbox` global, mapa centrado en España
 
@@ -70,6 +73,47 @@ La primera redacción de A02 divergía del ejemplo §4.3 del plan v2 en tres pun
 por ello la versión sigue siendo **1.1.0** (corrección previa a la implementación, no cambio
 de interfaz ya desplegada). A partir de la aprobación de GA, cualquier cambio se rige por la
 regla de la sección 4.
+
+### 2.3 Ampliación WP04-01 (aditiva) dentro de v1.1.0
+
+El nodo WP04-01 completó el JSON Schema y el validador con las reglas que la congelación ya
+delegaba explícitamente en WP-04. **No se añaden campos, no se renombra nada y no cambia el
+orden de `bbox`**, por lo que los manifiestos y fixtures existentes siguen siendo válidos y
+`frontend/src/types/manifest.ts` no requiere cambios. La versión declarada por los manifiestos
+continúa siendo `1.1.0`.
+
+| Regla | Dónde se aplica | Efecto |
+|---|---|---|
+| `imageCrs` cerrado a `["EPSG:3857"]` | Esquema | El PNG de overlay se prepara en Web Mercator, norte arriba y extensión de `layer.bbox`. Antes era una cadena libre «por concretar en WP-04». |
+| `unit` no vacío ni solo espacios | Esquema (`minLength: 1` + patrón `\S`) | Evita unidades vacías en la leyenda y la procedencia. |
+| `legend` con al menos 2 paradas | Esquema (`minItems: 2`) | Una escala necesita al menos dos extremos; el ejemplo §4.3 usa tres. |
+| `legend` ordenada por `value` creciente estricto | Semántica | La UI puede pintar la escala sin reordenar; valores repetidos se rechazan. |
+| `id` de zona en kebab-case | Esquema (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) | Slugs estables (`jaen-demo`), sin mayúsculas, guiones dobles ni guiones en los extremos. |
+| `datasetMode: sample` ⇒ toda capa `synthetic`; `datasetMode: real` ⇒ toda capa `processed_real` | Esquema (`if/then`) y semántica | Bloquea mezclar ejemplos con datos reales y viceversa. |
+| `processed_real` exige `provenance.acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no nulas | Esquema (`if/then`) y semántica | No se concede el estado real sin fecha, identificador de escena/producto y URL de referencia. |
+| `west < east`, `south < north` en zona y capa | Semántica | Cajas geográficas válidas. |
+| `layer.bbox` dentro de `zone.bbox` con tolerancia `0.01°` | Semántica | La cobertura del raster no puede salirse de su zona de estudio. |
+| `range` con `min < max` estricto | Semántica | La escala tiene un intervalo no degenerado. |
+| `id` de zona único e `id` de capa único por zona | Semántica | Evita selecciones ambiguas en el manifiesto activo. |
+| `image` bajo `data/<datasetMode>/` | Semántica | Un manifiesto `sample` no puede referenciar assets de `real` ni al revés. |
+| `image` sin ningún `%` | Esquema (patrón), semántica y runtime (`assetUrl`) | El navegador normaliza la codificación porcentual: `%2e%2e` equivale a `..`, así que se veta cualquier `%` aunque no haya `..` literal. |
+| `acquisitionDate` es una fecha real | Esquema (`format: date`/`date-time` con ajv-formats) y semántica (calendario) | Se aceptan `2026-10-19T11:19:03Z` (pipeline NISAR) y `2026-10-19`; se rechazan `2026-13-45` o `2026-02-30`, que `Date.parse` normalizaría en silencio. |
+| PNG existente en `frontend/public/` y con canal alfa (color type 4 o 6, o `tRNS`) | Semántica + assets | Un overlay sin transparencia o un 404 se detectan antes de publicar. |
+| `schemaVersion` semver de la major 1 | Esquema + semántica | Solo se admiten contratos `1.x.y`. |
+
+La decisión de producto sobre `bbox` **global** (longitud ±180°, latitud ±90°, sin limitar las
+zonas a España) se mantiene sin cambios y queda registrada en §2.1. El mapa navegable sigue
+centrado en España; el contrato solo permite probar zonas externas sin tocar el esquema.
+
+La lógica semántica y de assets vive en `frontend/scripts/validate-lib.mjs`, compartida por la
+CLI `frontend/scripts/validate-data.mjs` y los tests `frontend/src/types/contract.test.ts`.
+El runtime de WP-04 replica en `frontend/src/services/manifestSemantics.ts` el subconjunto
+mínimo de geometría e ids (orden de `bbox`, contención con tolerancia de 0.01° y unicidad de
+ids de zona) para no cargar `node:fs`/`node:path` en el navegador; ambas implementaciones deben
+mantenerse alineadas y probadas.
+Los fixtures contractuales viven en `frontend/scripts/fixtures/` y **no** se publican en
+`frontend/public/data/`; el fixture `real-with-processed-real.json` existe solo para probar el
+estado `processed_real` y declara explícitamente que no es una observación científica.
 
 ## 3. Tipos TypeScript de referencia
 
@@ -134,6 +178,8 @@ Casos negativos exigidos:
 | `legend` como objeto | rechazado por `type: array` |
 | `image: "/abs.png"` | rechazado por el patrón de ruta segura |
 | `image: "../x.png"` | rechazado por el patrón de ruta segura |
+| `image: "data/sample/%2e%2e/x.png"` | rechazado por el patrón de ruta segura (sin `%`) |
+| `acquisitionDate: "2026-13-45"` | rechazado por `format: date` y por la semántica de calendario |
 
 Evidencia de la ejecución de A02-fix con `ajv@8.20.0` en modo draft 2020-12, desde
 `frontend/` y con el runner en `/tmp` (no versionado), 18/18 comprobaciones correctas:

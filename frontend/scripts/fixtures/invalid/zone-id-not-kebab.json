@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.1.0",
+  "datasetMode": "sample",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "Jaen_Demo",
+      "name": "Jaén — demostración",
+      "bbox": [-3.86, 37.69, -3.61, 37.9],
+      "layers": []
+    }
+  ]
+}
