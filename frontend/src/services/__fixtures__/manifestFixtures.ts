@@ -115,15 +115,20 @@ export function sampleManifest(): OliveTwinManifest {
       image: 'data/sample/zones/jaen-demo/moisture.png',
     }),
   ])
-  const toledo = makeZone('toledo-demo', [
-    makeLayer('ndvi', {
-      image: 'data/sample/zones/toledo-demo/ndvi.png',
-      bbox: [-4.12, 39.78, -3.94, 39.94],
-    }),
-    makeLayer('soil-moisture', {
-      image: 'data/sample/zones/toledo-demo/moisture.png',
-      bbox: [-4.12, 39.78, -3.94, 39.94],
-    }),
-  ])
+  const TOLEDO_BBOX: BBox = [-4.12, 39.78, -3.94, 39.94]
+  const toledo = makeZone(
+    'toledo-demo',
+    [
+      makeLayer('ndvi', {
+        image: 'data/sample/zones/toledo-demo/ndvi.png',
+        bbox: TOLEDO_BBOX,
+      }),
+      makeLayer('soil-moisture', {
+        image: 'data/sample/zones/toledo-demo/moisture.png',
+        bbox: TOLEDO_BBOX,
+      }),
+    ],
+    { bbox: TOLEDO_BBOX },
+  )
   return makeManifest('sample', [jaen, toledo])
 }
