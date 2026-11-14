@@ -1,7 +1,7 @@
 # Congelación del contrato mínimo OliveTwin — v1.1.0
 
-**Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02).
-**Estado:** congelado para el arranque de Fase B.
+**Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02; corregido en A02-fix).
+**Estado:** congelado para el arranque de Fase B; alineado con el ejemplo §4.3 del plan v2.
 **Repositorio:** <https://github.com/AlRos14/olivetwin> (privado, owner `AlRos14`).
 **Alcance:** manifiestos de datos, convenciones espaciales y tipos de referencia compartidos por
 WP-04 (datos y contratos) y WP-07 (Vue + Leaflet).
@@ -26,8 +26,8 @@ siendo responsabilidad de WP-04.
 | Objeto | Campos mínimos / convenios | Propiedad del trabajo posterior |
 |---|---|---|
 | Manifest | `schemaVersion`, `datasetMode` (`sample`/`real`), `appTitle`, `zones[]` | WP-04 completa el schema |
-| Zona | `id`, `name`, `bbox`, `layers[]` | WP-04 formaliza JSON Schema; WP-07 visualiza |
-| Capa | `id` (`ndvi` o `soil-moisture`), `title`, `kind: image-overlay`, `image`, `bbox`, `imageCrs`, `unit`, `status`, `legend`, `provenance`, `qualityNote` | WP-04 define restricciones/validador; WP-07 usa props |
+| Zona | `id`, `name`, `bbox`, `layers[]`; `description` opcional | WP-04 formaliza JSON Schema; WP-07 visualiza |
+| Capa | `id` (`ndvi` o `soil-moisture`), `title`, `kind: image-overlay`, `image`, `bbox`, `imageCrs`, `unit`, `status`, `legend`, `provenance`, `qualityNote`; `variable` y `range` (`[min,max]`) opcionales | WP-04 define restricciones/validador; WP-07 usa props |
 | BBox | `[west, south, east, north]`, WGS84 EPSG:4326; Leaflet recibe `[[south,west],[north,east]]` | No cambiar orden sin versión mayor |
 | Capa PNG | PNG RGBA + `bbox` de imagen, CRS de presentación adecuado, transparencia de nodata | WP-04 genera muestra; científicos producen real |
 | Modo | `sample` / `real` en runtime; nunca fallback silencioso | WP-04 estado, WP-07 selector UI |
@@ -43,11 +43,33 @@ Notas de aplicación:
   no un error que deba rellenarse con ejemplos.
 - Las rutas `image` se resuelven como `${import.meta.env.BASE_URL}${image}`. WP-04 entrega la
   URL resuelta; WP-07 no compone rutas.
-- `legend` y `provenance` tienen forma mínima en v1.1.0 (`legend`: objeto no vacío;
-  `provenance`: objeto con `source` no vacío). WP-04 concretará su interior de forma aditiva.
-- La semántica de los valores (rango de `bbox`, unicidad de `id`, coherencia zona/capa,
-  existencia del PNG, valores de `imageCrs`) corresponde al validador de WP-04, no al JSON
-  Schema mínimo.
+- `legend` es una **lista no vacía** de clases `{value: number, color: "#rrggbb", label:
+  string}`, coherente con el ejemplo §4.3 del plan v2; no es un objeto libre.
+- `provenance` exige `provider`, `product` y `processingVersion`. Admite
+  `acquisitionDate` (fecha ISO 8601 o `null`), `sceneId`, `referenceUrl` y `note` (string o
+  `null`). Se mantiene `additionalProperties: true` para extensiones aditivas del pipeline
+  científico (por ejemplo CRID o madurez de NISAR SME2). El antiguo campo `source` se elimina.
+- La semántica de los valores (rango de `bbox`, `min <= max` en `range`, unicidad de `id`,
+  coherencia zona/capa, existencia del PNG, valores de `imageCrs`) corresponde al validador de
+  WP-04, no al JSON Schema mínimo.
+
+### 2.1 Decisión de producto: `bbox` global, mapa centrado en España
+
+El contrato **no limita las zonas a España**. El rango admitido de `bbox` es el global
+(longitud ±180°, latitud ±90°) y se mantiene así deliberadamente: el equipo puede probar
+manifiestos con datos NISAR reales de zonas fuera de España sin tocar el esquema ni sus
+consumidores. Esta decisión no cambia el producto visible: el mapa navegable de WP-07 sigue
+centrado en España (Península, Baleares y Canarias) y el encuadre inicial no se amplía por
+la mera presencia de una zona exterior. `fitBounds` solo se aplica a la zona seleccionada.
+
+### 2.2 Corrección A02-fix dentro de v1.1.0
+
+La primera redacción de A02 divergía del ejemplo §4.3 del plan v2 en tres puntos:
+`legend` era un objeto, `provenance` exigía `source` y faltaban `variable`, `range` y
+`description`. A02-fix corrigió el esquema antes de que existieran consumidores en Fase B;
+por ello la versión sigue siendo **1.1.0** (corrección previa a la implementación, no cambio
+de interfaz ya desplegada). A partir de la aprobación de GA, cualquier cambio se rige por la
+regla de la sección 4.
 
 ## 3. Tipos TypeScript de referencia
 
@@ -92,8 +114,9 @@ conozca, junto con la persona revisora independiente.
 
 ## 6. Verificación de la congelación
 
-Validación local de los dos manifiestos iniciales y de los tres casos negativos con JSON
-Schema draft 2020-12 (script temporal fuera del repositorio, no versionado):
+Validación local de los dos manifiestos iniciales, del ejemplo completo §4.3 y de los casos
+negativos con JSON Schema draft 2020-12 (script temporal fuera del repositorio, no
+versionado):
 
 ```bash
 npx -y ajv-cli@5 validate --spec=draft2020 \
@@ -109,14 +132,26 @@ Casos negativos exigidos:
 | `datasetMode: "unknown"` | rechazado por `enum` |
 | `zones: null` | rechazado por `type: array` |
 | sin `schemaVersion` | rechazado por `required` |
+| `legend` como objeto | rechazado por `type: array` |
+| `image: "/abs.png"` | rechazado por el patrón de ruta segura |
+| `image: "../x.png"` | rechazado por el patrón de ruta segura |
 
-Evidencia de la ejecución de A02:
+Evidencia de la ejecución de A02-fix con `ajv@8.20.0` en modo draft 2020-12, desde
+`frontend/` y con el runner en `/tmp` (no versionado), 18/18 comprobaciones correctas:
 
-- `sample/manifest.json`: válido.
-- `real/manifest.json`: válido.
-- `datasetMode: "unknown"`: inválido (`/datasetMode` debe ser igual a uno de los valores del enum).
-- `zones: null`: inválido (`/zones` debe ser array).
-- sin `schemaVersion`: inválido (falta la propiedad requerida `schemaVersion`).
+- el ejemplo completo §4.3 del plan v2 (con `description`, `variable`, `range` y `legend`
+  como lista): válido;
+- `sample/manifest.json` y `real/manifest.json` vacíos: válidos;
+- `datasetMode: "unknown"`: inválido por `enum`;
+- `zones: null`: inválido por `type: array`;
+- sin `schemaVersion`: inválido por `required`;
+- `legend` como objeto: inválido por `type: array`;
+- `image: "/abs.png"` e `image: "../x.png"`: inválidos por el patrón de ruta;
+- `provenance` sin `provider` o sin `processingVersion`: inválido por `required`;
+- `provenance` con `source` y con campos extra `crid`/`maturity`: válido
+  (`additionalProperties: true`), sin exigir ya `source`;
+- `range` con un solo valor, `legend` vacía o color no `#rrggbb`: inválidos;
+- zona con `bbox` fuera de España: válida, confirmando que el contrato es global.
 
 La automatización en CI pertenece a A04 (`frontend/scripts/validate-data.*` y
 `.github/workflows/ci.yml`); WP-04 ampliará el esquema y añadirá casos de prueba semánticos.

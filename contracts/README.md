@@ -1,6 +1,6 @@
 # Contrato de manifiestos OliveTwin — v1.1.0
 
-**Estado:** congelado en Fase A (nodo A02), fecha 2026-11-14.
+**Estado:** congelado en Fase A (nodo A02), corregido en A02-fix para alinearse con el ejemplo §4.3 del plan v2, fecha 2026-11-14.
 **Ámbito:** estructura mínima que comparten el cargador de datos (WP-04) y la interfaz Vue + Leaflet (WP-07).
 **Acuerdo completo:** [`docs/contract-freeze.md`](../docs/contract-freeze.md).
 
@@ -43,16 +43,27 @@ La ausencia de zonas es intencionada: Fase A prepara contratos, no enseña capas
 | `appTitle` | string | No vacío, no solo espacios. Obligatorio. |
 | `zones` | array | Obligatorio; puede ser `[]`, pero nunca `null`. |
 
-Cada zona (`$defs.zone`) exige `id`, `name`, `bbox` y `layers[]`. Cada capa
-(`$defs.layer`) exige `id` (`ndvi` \| `soil-moisture`), `title`, `kind`
-(`image-overlay`), `image`, `bbox`, `imageCrs`, `unit`, `status`
-(`synthetic` \| `processed_real`), `legend`, `provenance` y `qualityNote`.
+Cada zona (`$defs.zone`) exige `id`, `name`, `bbox` y `layers[]`, y admite
+opcionalmente `description`. Cada capa (`$defs.layer`) exige `id`
+(`ndvi` \| `soil-moisture`), `title`, `kind` (`image-overlay`), `image`, `bbox`,
+`imageCrs`, `unit`, `status` (`synthetic` \| `processed_real`), `legend`,
+`provenance` y `qualityNote`; admite opcionalmente `variable` y `range`
+(`[min, max]` de números).
 
-`legend` y `provenance` son deliberadamente mínimos en v1.1.0: `legend` debe ser un objeto
-no vacío y `provenance` debe contener al menos `source`. WP-04 concretará su estructura
-interna de forma aditiva. Lo mismo aplica a los valores admitidos de `imageCrs` y a las
-validaciones semánticas (por ejemplo `west < east`, unicidad de `id` o existencia del PNG),
-que **no** forman parte de este esquema.
+`legend` es una **lista no vacía** de clases con la forma
+`{"value": number, "color": "#rrggbb", "label": string}`, tal como aparece en el
+ejemplo §4.3 del plan v2. No es un objeto libre.
+
+`provenance` exige `provider`, `product` y `processingVersion`; admite
+`acquisitionDate`, `sceneId`, `referenceUrl` y `note` como string o `null`.
+Mantiene `additionalProperties: true` de forma deliberada para extensiones
+aditivas del pipeline científico (por ejemplo CRID o madurez de NISAR SME2).
+No existe el campo `source` de versiones anteriores del borrador.
+
+Las validaciones semánticas (por ejemplo `west < east`, `min <= max` en
+`range`, unicidad de `id` o existencia del PNG) **no** forman parte de este
+esquema y pertenecen a WP-04; tampoco se fijan aquí los valores admitidos de
+`imageCrs`.
 
 ## Convenciones congeladas
 
@@ -72,8 +83,12 @@ que **no** forman parte de este esquema.
 - Orden: `[oeste, sur, este, norte]`, es decir `[longitud mínima, latitud mínima, longitud máxima, latitud máxima]`.
 - Leaflet recibe la caja como `[[south, west], [north, east]]`; la conversión es
   responsabilidad de WP-04/WP-07 y no altera el orden almacenado.
-- El esquema comprueba el rango geográfico de cada componente; la comprobación de que la caja
-  es válida (`west < east`, `south < north`) pertenece al validador semántico de WP-04.
+- El esquema comprueba el rango geográfico global de cada componente (longitud ±180,
+  latitud ±90); **no** limita las zonas a España. Es una decisión de producto: el mapa
+  navegable sigue centrado en España, pero el contrato admite zonas fuera de ella para
+  probar datos NISAR reales sin cambiar el esquema. Ver `docs/contract-freeze.md`.
+- La comprobación de que la caja es válida (`west < east`, `south < north`) pertenece al
+  validador semántico de WP-04.
 - El `bbox` de una capa describe la georreferenciación de **su** PNG y puede ser igual o más
   ajustado que el de la zona.
 
@@ -110,8 +125,9 @@ WP-04 expone la ruta resuelta; WP-07 solo la consume.
   en la interfaz y **no** presentarse como observación de NASA.
 - `processed_real`: dato derivado de una fuente real mediante el pipeline. Requiere
   aprobación científica y trazabilidad; no se declara sin evidencia.
-- `provenance` complementa a `status` con el origen declarado (`source` como mínimo). No
-  inventar misiones, productos, fechas ni URLs.
+- `provenance` complementa a `status` con proveedor (`provider`), producto (`product`) y
+  versión de procesamiento (`processingVersion`) obligatorios, más fecha, escena, URL de
+  referencia y nota opcionales. No inventar misiones, productos, fechas ni URLs.
 
 ### 6. Estados de carga
 
@@ -148,8 +164,19 @@ Casos negativos mínimos que el contrato debe rechazar:
 1. `datasetMode: "unknown"` → falla el `enum`.
 2. `zones: null` → falla `type: array`.
 3. manifiesto sin `schemaVersion` → falla `required`.
+4. `legend` como objeto en vez de lista → falla `type: array`.
+5. `image: "/abs.png"` → falla el patrón de ruta segura (sin `/` inicial).
+6. `image: "../x.png"` → falla el patrón de ruta segura (sin `..`).
 
-Un manifiesto con `zones: []` y modo `sample` o `real` debe aceptarse.
+Un manifiesto con `zones: []` y modo `sample` o `real` debe aceptarse. El
+ejemplo completo §4.3 del plan v2 (zona con `description`, capa con `variable`,
+`range` y `legend` como lista, `provenance` con `provider`/`product`/
+`processingVersion`) debe validar sin cambios.
+
+La comprobación de aceptación de A02-fix se ejecutó con `ajv@8.20.0` en modo
+draft 2020-12 desde `frontend/`, con el script temporal fuera del repositorio:
+18/18 comprobaciones correctas (válidos, negativos mínimos y extensiones
+aditivas de `provenance`).
 
 ## Propiedad y cambios
 
