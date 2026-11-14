@@ -189,7 +189,6 @@ versionado):
 ```bash
 npx -y ajv-cli@5 validate --spec=draft2020 \
   -s contracts/manifest.schema.json \
-  -d frontend/public/data/sample/manifest.json \
   -d frontend/public/data/real/manifest.json
 ```
 

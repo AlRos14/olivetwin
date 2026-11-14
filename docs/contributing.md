@@ -33,7 +33,7 @@ compartida, avisa en la Issue correspondiente antes de hacerlo.
 |---|---|---|
 | `frontend/src/components/`, estilos, Leaflet | Mapa, paneles, leyenda, controles y avisos. | WP-07 |
 | `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Contrato, carga de manifiestos y estado. | WP-04 |
-| `frontend/public/data/` | Manifiestos y assets optimizados `sample`/`real`. | WP-04 |
+| `frontend/public/data/` | Manifiesto y assets optimizados `real` (la demo no incluye datos de muestra). | WP-04 |
 | `contracts/` | JSON Schema y documentación del contrato. | Owner del contrato (WP-04) con revisión de integración |
 | `scripts/` de datos | Generación y validación de datos. | WP-04 |
 | `frontend/src/App.vue` | Composición de la vista. | Integración, coordinada entre WP-04 y WP-07 |

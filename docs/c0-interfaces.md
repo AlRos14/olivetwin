@@ -24,7 +24,7 @@ export function useOliveTwinData(options?: { initialMode?: DataMode; fetchImpl?:
 
 Reglas:
 
-- Modo inicial `sample`. Real vacío → `loadStatus: 'empty'`. JSON roto, 404 o schema inválido →
+- *(Histórico C0: el modo inicial era `sample`; desde §7 es `real`.)* Real vacío → `loadStatus: 'empty'`. JSON roto, 404 o schema inválido →
   `'error'` + `errorMessage`. **Nunca** se recurre a `sample` como alternativa.
 - Cada `setDataMode`/`reload` invalida la carga anterior (AbortController o contador): una respuesta
   tardía nunca sobrescribe el modo actual.
@@ -65,7 +65,7 @@ Solo props y emits; ningún componente hace `fetch`, construye rutas ni importa 
 - PNOA: `https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg` con `{-y}` y **sin** `tms: true`.
   OSM: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Atribuciones visibles siempre.
 - Leaflet: `bbox [w,s,e,n]` → `L.latLngBounds([[s,w],[n,e]])`.
-- Aviso «DATOS SIMULADOS» persistente si `hasSyntheticLayer` o `dataMode === 'sample'`.
+- Aviso «DATOS SIMULADOS» persistente si `hasSyntheticLayer` o `dataMode === 'sample'`. *(Histórico C0; desde §7 la app arranca en `real` y no hay modo muestra.)*
 
 ## 4. Integración (INT01)
 
@@ -82,7 +82,7 @@ mantiene `baseMap`, `overlayError` y `basemapError`, y conecta props/emits.
 | Nodo | Scope exclusivo |
 |---|---|
 | WP04-01 | `contracts/`, `frontend/src/types/`, `frontend/scripts/validate-data.mjs`, `frontend/scripts/fixtures/` |
-| WP04-02 | `scripts/generate-sample-data.mjs`, `frontend/public/data/sample/`, `frontend/public/data/real/` |
+| WP04-02 | *(retirado en §7)* ~~`scripts/generate-sample-data.mjs`, `frontend/public/data/sample/`~~; `frontend/public/data/real/` |
 | WP04-03 | `frontend/src/services/` |
 | WP04-04 | `frontend/src/composables/` |
 | WP04-05 | `docs/data-contract.md`, `docs/handoff-science.md` |
