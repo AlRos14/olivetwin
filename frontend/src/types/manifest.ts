@@ -1,9 +1,12 @@
 /**
- * Tipos compartidos del contrato OliveTwin v1.1.0 (interfaz C0).
+ * Tipos compartidos del contrato OliveTwin v1.2.0 (interfaz C0).
  *
  * Owner: WP-04. Creado por R1 en C0 como stub congelado; WP-04 lo amplía de forma
  * ADITIVA (nuevos campos opcionales). Cambiar o quitar un campo existente es un
  * cambio de interfaz y requiere revisión de WP-04 y WP-07 (docs/c0-interfaces.md).
+ * La v1.2.0 añade la línea temporal opcional (`TimeStep`, `StudyLayer.timeSteps`,
+ * `selectedTimeIndex`, `ActiveOverlay.timeIndex/timeStep`); los manifiestos v1.1.0
+ * sin `timeSteps` siguen siendo válidos.
  * Fuente de verdad estructural: contracts/manifest.schema.json.
  */
 

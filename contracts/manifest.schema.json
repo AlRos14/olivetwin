@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:olivetwin:contract:manifest:1.1.0",
-  "title": "OliveTwin manifest — contrato mínimo v1.1.0",
-  "description": "Contrato mínimo congelado en Fase A (nodo A02), alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix) y completado de forma aditiva por WP04-01 dentro de la misma versión 1.1.0. Describe la estructura que WP-04 (datos) y WP-07 (UI) comparten. Las ampliaciones de WP04-01 están registradas en docs/contract-freeze.md §2.3: imageCrs cerrado a EPSG:3857, unit no vacío, leyenda de al menos dos paradas, id de zona en kebab-case y coherencia if/then entre datasetMode y status de capa. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (west < east, coherencia entre bbox de zona y de capa con tolerancia, min < max en range, orden de la leyenda, unicidad de ids, prefijo data/<datasetMode>/, fechas de adquisición reales y existencia/alfa del PNG) NO forma parte de este esquema y corresponde al validador de WP-04 (frontend/scripts/validate-lib.mjs).",
+  "$id": "urn:olivetwin:contract:manifest:1.2.0",
+  "title": "OliveTwin manifest — contrato mínimo v1.2.0",
+  "description": "Contrato mínimo congelado en Fase A (nodo A02), alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix) y completado de forma aditiva por WP04-01 dentro de la misma versión 1.1.0. La versión 1.2.0 (C1, docs/c0-interfaces.md §6) añade de forma opcional layer.timeSteps para series temporales; los manifiestos 1.1.0 sin timeSteps siguen siendo válidos. Describe la estructura que WP-04 (datos) y WP-07 (UI) comparten. Las ampliaciones de WP04-01 están registradas en docs/contract-freeze.md §2.3: imageCrs cerrado a EPSG:3857, unit no vacío, leyenda de al menos dos paradas, id de zona en kebab-case y coherencia if/then entre datasetMode y status de capa. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (west < east, coherencia entre bbox de zona y de capa con tolerancia, min < max en range, orden de la leyenda, unicidad de ids, prefijo data/<datasetMode>/, fechas de adquisición reales, orden estricto de timeSteps, igualdad del último paso con layer.image/bbox, procedencia efectiva de cada paso y existencia/alfa del PNG) NO forma parte de este esquema y corresponde al validador de WP-04 (frontend/scripts/validate-lib.mjs).",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -15,7 +15,7 @@
     "schemaVersion": {
       "type": "string",
       "pattern": "^1\\.[0-9]+\\.[0-9]+$",
-      "description": "Versión SemVer del contrato dentro de la major 1. Valor vigente: \"1.1.0\". Las ampliaciones aditivas suben la minor; un cambio incompatible sube la major."
+      "description": "Versión SemVer del contrato dentro de la major 1. Valor vigente: \"1.2.0\". Un manifiesto con layer.timeSteps DEBE declarar \"1.2.0\"; sin timeSteps se admiten \"1.1.0\" y \"1.2.0\". Las ampliaciones aditivas suben la minor; un cambio incompatible sube la major."
     },
     "datasetMode": {
       "type": "string",
@@ -115,6 +115,53 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "zones"
+        ],
+        "properties": {
+          "zones": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": [
+                "layers"
+              ],
+              "properties": {
+                "layers": {
+                  "type": "array",
+                  "contains": {
+                    "type": "object",
+                    "required": [
+                      "timeSteps"
+                    ],
+                    "properties": {
+                      "timeSteps": {
+                        "type": "array"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "schemaVersion"
+        ],
+        "description": "La línea temporal es una ampliación v1.2.0: usar timeSteps obliga a declarar schemaVersion \"1.2.0\".",
+        "properties": {
+          "schemaVersion": {
+            "const": "1.2.0"
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -199,6 +246,126 @@
         }
       }
     },
+    "timeStepProvenance": {
+      "type": "object",
+      "description": "Procedencia parcial de un paso temporal. Se superpone a layer.provenance: la procedencia efectiva es { ...layer.provenance, ...step.provenance }. Ningún campo es obligatorio aquí; en capas processed_real la procedencia efectiva de cada paso debe contener acquisitionDate, sceneId y referenceUrl (validación semántica). Se admiten extensiones aditivas del pipeline.",
+      "additionalProperties": true,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Proveedor u origen del procesamiento, si difiere del de la capa."
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Producto o descripción del dato, si difiere del de la capa."
+        },
+        "acquisitionDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Fecha ISO 8601 real de adquisición del paso, o null. No inventar fechas para capas sintéticas."
+        },
+        "sceneId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Identificador de escena o producto del paso, o null."
+        },
+        "processingVersion": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Versión del procesamiento que produjo este paso, si difiere del de la capa."
+        },
+        "referenceUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^https?://",
+          "description": "URL http(s) verificable asociada al paso, o null."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Nota libre sobre la procedencia o limitaciones del paso, o null."
+        }
+      }
+    },
+    "timeStep": {
+      "type": "object",
+      "description": "Paso temporal de una capa (contrato v1.2.0, aditivo). Unidad, range, legend y status son comunes a todos los pasos: la escala es fija en el tiempo para poder comparar fechas. La comprobación de fecha real, orden creciente estricto, bbox dentro de zone.bbox, ruta bajo data/<datasetMode>, existencia/alfa del PNG e igualdad del último paso con layer.image/bbox es validación semántica de WP-04.",
+      "required": [
+        "date",
+        "image",
+        "bbox"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": "string",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "string",
+              "format": "date-time"
+            }
+          ],
+          "description": "Fecha ISO 8601 real de la observación (fecha sola o fecha-hora con zona). Los pasos deben estar en orden estrictamente creciente y sin duplicados (validación semántica)."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Etiqueta corta opcional para el control temporal; si falta, la UI formatea `date`."
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*%)(?!.*\\.\\.)(?!.*:)(?!.*\\\\).+$",
+          "description": "Ruta del PNG del paso, relativa a frontend/public/ y sujeta a las mismas reglas seguras que layer.image: sin \"/\" inicial, \"%\", \"..\", \":\" ni barras invertidas. Debe empezar por data/<datasetMode>/ (validación semántica)."
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "provenance": {
+          "$ref": "#/$defs/timeStepProvenance"
+        }
+      }
+    },
+    "timeSteps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Serie temporal opcional de una capa (v1.2.0). Al menos un paso. El ÚLTIMO paso es el que debe coincidir con layer.image y layer.bbox para que un consumidor v1.1 siga viendo la fecha más reciente.",
+      "items": {
+        "$ref": "#/$defs/timeStep"
+      }
+    },
     "zone": {
       "type": "object",
       "description": "Zona de estudio. Esquema mínimo: WP-04 podrá añadir propiedades opcionales de forma aditiva.",
@@ -264,7 +431,7 @@
             "ndvi",
             "soil-moisture"
           ],
-          "description": "Tipo de capa. El enum es cerrado en v1.1.0: añadir un identificador nuevo requiere cambio de contrato (ver docs/contract-freeze.md)."
+          "description": "Tipo de capa. El enum es cerrado en v1.2.0: añadir un identificador nuevo requiere cambio de contrato (ver docs/contract-freeze.md)."
         },
         "title": {
           "type": "string",
@@ -274,7 +441,7 @@
         },
         "kind": {
           "const": "image-overlay",
-          "description": "Forma de presentación. En v1.1.0 solo se admite ImageOverlay."
+          "description": "Forma de presentación. En v1.2.0 solo se admite ImageOverlay."
         },
         "variable": {
           "type": "string",
@@ -296,7 +463,7 @@
           "enum": [
             "EPSG:3857"
           ],
-          "description": "CRS de presentación con el que se georreferencia la imagen mediante bbox. En v1.1.0 solo se admite EPSG:3857 (Web Mercator): el PNG se prepara en ese CRS, norte arriba y con la extensión exacta de layer.bbox."
+          "description": "CRS de presentación con el que se georreferencia la imagen mediante bbox. En v1.2.0 solo se admite EPSG:3857 (Web Mercator): el PNG se prepara en ese CRS, norte arriba y con la extensión exacta de layer.bbox."
         },
         "unit": {
           "type": "string",
@@ -395,6 +562,9 @@
           "type": "string",
           "minLength": 1,
           "description": "Nota breve sobre limitaciones o calidad del dato que la UI pueda mostrar junto a la capa."
+        },
+        "timeSteps": {
+          "$ref": "#/$defs/timeSteps"
         }
       },
       "allOf": [

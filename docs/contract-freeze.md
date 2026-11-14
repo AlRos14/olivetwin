@@ -1,4 +1,4 @@
-# Congelación del contrato mínimo OliveTwin — v1.1.0
+# Congelación del contrato mínimo OliveTwin — v1.1.0, ampliación aditiva v1.2.0
 
 **Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02; corregido en A02-fix).
 **Estado:** congelado para el arranque de Fase B; alineado con el ejemplo §4.3 del plan v2.
@@ -38,7 +38,8 @@ siendo responsabilidad de WP-04.
 
 Notas de aplicación:
 
-- `schemaVersion` debe cumplir `^1\.[0-9]+\.[0-9]+$` y vale `1.1.0` en este baseline.
+- `schemaVersion` debe cumplir `^1\.[0-9]+\.[0-9]+$`. En este baseline se admiten
+  `1.1.0` (sin serie temporal) y `1.2.0` (con o sin `timeSteps`, ver §2.4).
 - `zones: []` es válido en ambos modos; en `real` expresa ausencia deliberada de mediciones,
   no un error que deba rellenarse con ejemplos.
 - Las rutas `image` se resuelven como `${import.meta.env.BASE_URL}${image}`. WP-04 entrega la
@@ -114,6 +115,30 @@ mantenerse alineadas y probadas.
 Los fixtures contractuales viven en `frontend/scripts/fixtures/` y **no** se publican en
 `frontend/public/data/`; el fixture `real-with-processed-real.json` existe solo para probar el
 estado `processed_real` y declara explícitamente que no es una observación científica.
+
+### 2.4 Ampliación C1 (aditiva, v1.2.0): línea temporal
+
+La decisión C1 (docs/c0-interfaces.md §6) añade **una propiedad opcional**,
+`layer.timeSteps`, para que una capa real pueda traer varias fechas y la UI
+ofrezca un control temporal. Es un cambio de minor conforme a §4.1: no cambia
+campos existentes, no altera el orden de `bbox` ni el significado de
+`sample`/`real`, y los manifiestos v1.1.0 sin `timeSteps` siguen validando.
+
+| Regla | Dónde se aplica | Efecto |
+|---|---|---|
+| `layer.timeSteps` es array de ≥ 1 pasos `{date, label?, image, bbox, provenance?}` | Esquema | Unidad, `range`, `legend` y `status` siguen siendo de la capa y comunes a todos los pasos. |
+| `schemaVersion: "1.2.0"` obligatorio si hay `timeSteps`; sin serie se admiten `"1.1.0"` y `"1.2.0"` | Esquema (`if/then` + `const`) y semántica | Un manifiesto con serie no puede declararse v1.1.0. |
+| `date` ISO 8601 real y orden estrictamente creciente sin duplicados | Esquema (`format`) y semántica | El slider no recibe fechas imposibles ni repetidas. |
+| `image` de cada paso con las mismas reglas seguras y prefijo `data/<datasetMode>/` | Esquema, semántica y assets | No se mezclan assets de modos ni se lee fuera de `public/`. |
+| `bbox` de cada paso dentro de `zone.bbox` (tolerancia 0.01°) | Semántica | La cobertura de cualquier fecha queda dentro de la zona. |
+| `layer.image` y `layer.bbox` iguales a los del **último** paso | Semántica y runtime | Un consumidor v1.1 que ignore `timeSteps` sigue mostrando la fecha más reciente. |
+| Procedencia efectiva `{ ...layer.provenance, ...step.provenance }` con `acquisitionDate`, `sceneId` y `referenceUrl` en `processed_real` | Semántica | No se aprueba una serie real con pasos sin trazabilidad. |
+| PNG de **cada** paso existente y con alfa | Assets (`validate:data`) | Se detecta un 404 o un PNG opaco antes de publicar. |
+
+`frontend/src/types/manifest.ts` ya exponía `TimeStep` y los campos
+`timeSteps`/`selectedTimeIndex`/`selectTimeStep` congelados en C1; esta
+ampliación no los reinterpreta. El estado (`useOliveTwinData`) elige el último
+paso por defecto y reinicia el índice al cambiar de modo, zona o capa.
 
 ## 3. Tipos TypeScript de referencia
 

@@ -8,6 +8,7 @@ import {
 import {
   makeLayer,
   makeManifest,
+  makeTimeStep,
   makeZone,
   sampleManifest,
 } from './__fixtures__/manifestFixtures'
@@ -293,6 +294,140 @@ describe('loadManifest', () => {
     )
 
     expect(error.message).toContain('duplicado')
+  })
+
+  it('acepta un manifiesto v1.2.0 con timeSteps ordenados', async () => {
+    const steps = [
+      makeTimeStep('2026-09-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+      }),
+      makeTimeStep('2026-10-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+      }),
+    ]
+    const layer = makeLayer('ndvi', {
+      image: steps[1].image,
+      bbox: steps[1].bbox,
+      timeSteps: steps,
+    })
+    const manifest = makeManifest(
+      'sample',
+      [makeZone('jaen-demo', [layer])],
+      { schemaVersion: '1.2.0' },
+    )
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const result = await loadManifest('sample', { fetchImpl })
+
+    expect(result.status).toBe('ready')
+    expect(result.manifest.zones[0].layers[0].timeSteps).toHaveLength(2)
+  })
+
+  it('rechaza timeSteps desordenados con error semantic', async () => {
+    const steps = [
+      makeTimeStep('2026-10-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+      }),
+      makeTimeStep('2026-09-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+      }),
+    ]
+    const layer = makeLayer('ndvi', {
+      image: steps[1].image,
+      bbox: steps[1].bbox,
+      timeSteps: steps,
+    })
+    const manifest = makeManifest(
+      'sample',
+      [makeZone('jaen-demo', [layer])],
+      { schemaVersion: '1.2.0' },
+    )
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'semantic',
+    )
+
+    expect(error.message).toContain('orden estrictamente creciente')
+  })
+
+  it('rechaza que layer.image no sea el último paso temporal', async () => {
+    const steps = [
+      makeTimeStep('2026-09-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+      }),
+      makeTimeStep('2026-10-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+      }),
+    ]
+    const layer = makeLayer('ndvi', {
+      image: steps[0].image,
+      bbox: steps[0].bbox,
+      timeSteps: steps,
+    })
+    const manifest = makeManifest(
+      'sample',
+      [makeZone('jaen-demo', [layer])],
+      { schemaVersion: '1.2.0' },
+    )
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'semantic',
+    )
+
+    expect(error.message).toContain('último paso temporal')
+  })
+
+  it('rechaza en runtime una ruta insegura en un paso temporal', async () => {
+    const steps = [
+      makeTimeStep('2026-09-01', {
+        image: '   ',
+      }),
+      makeTimeStep('2026-10-01', {
+        image: 'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+      }),
+    ]
+    const layer = makeLayer('ndvi', {
+      image: steps[1].image,
+      bbox: steps[1].bbox,
+      timeSteps: steps,
+    })
+    const manifest = makeManifest(
+      'sample',
+      [makeZone('jaen-demo', [layer])],
+      { schemaVersion: '1.2.0' },
+    )
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'unsafe-path',
+    )
+
+    expect(error.message).toContain('paso temporal 0')
+  })
+
+  it('rechaza por esquema timeSteps con schemaVersion 1.1.0', async () => {
+    const step = makeTimeStep('2026-09-01', {
+      image: 'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+    })
+    const layer = makeLayer('ndvi', {
+      image: step.image,
+      bbox: step.bbox,
+      timeSteps: [step],
+    })
+    const manifest = makeManifest('sample', [makeZone('jaen-demo', [layer])])
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'schema',
+    )
+
+    expect(error.message).toContain('schemaVersion')
   })
 
   it('envuelve un fallo de red en un error tipado', async () => {
