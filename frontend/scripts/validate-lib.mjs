@@ -26,7 +26,11 @@ import addFormats from 'ajv-formats'
 
 /** Major del contrato admitida por esta versión del validador. */
 export const SCHEMA_MAJOR = 1
-/** Único CRS de presentación admitido en v1.1.0. */
+/** Versiones exactas admitidas: 1.1.0 (sin serie temporal) y 1.2.0 (con o sin timeSteps). */
+export const SUPPORTED_SCHEMA_VERSIONS = Object.freeze(['1.1.0', '1.2.0'])
+/** Versión obligatoria cuando el manifiesto usa layer.timeSteps. */
+export const TIMESTEPS_SCHEMA_VERSION = '1.2.0'
+/** Único CRS de presentación admitido en esta versión. */
 export const SUPPORTED_IMAGE_CRS = Object.freeze(['EPSG:3857'])
 /** Tolerancia en grados al comprobar que layer.bbox cae dentro de zone.bbox. */
 export const BBOX_TOLERANCE_DEG = 0.01
@@ -63,6 +67,56 @@ function isBBox(value) {
 
 function pushError(errors, at, message) {
   errors.push({ path: at, message })
+}
+
+function sameBBox(left, right) {
+  return (
+    isBBox(left) &&
+    isBBox(right) &&
+    left.every((component, index) => component === right[index])
+  )
+}
+
+/** `true` si alguna capa del manifiesto declara timeSteps (aunque sea inválido). */
+function manifestHasTimeSteps(manifest) {
+  if (!isPlainObject(manifest) || !Array.isArray(manifest.zones)) {
+    return false
+  }
+  return manifest.zones.some(
+    (zone) =>
+      isPlainObject(zone) &&
+      Array.isArray(zone.layers) &&
+      zone.layers.some(
+        (layer) => isPlainObject(layer) && Array.isArray(layer.timeSteps),
+      ),
+  )
+}
+
+/**
+ * Comprueba una ruta `image` (de capa o de paso): seguridad y prefijo del modo.
+ * La regla es idéntica para layer.image y timeSteps[].image.
+ */
+function pushImagePathErrors(errors, at, image, mode) {
+  if (typeof image !== 'string') {
+    return
+  }
+  if (!SAFE_IMAGE_PATH_PATTERN.test(image)) {
+    pushError(
+      errors,
+      at,
+      `ruta image insegura: debe ser relativa a public/, sin "/" inicial, "%", "..", ":" ni "\\" (${JSON.stringify(image)})`,
+    )
+  }
+  if (mode === 'sample' || mode === 'real') {
+    const expectedPrefix = `${IMAGE_PATH_ROOT}${mode}/`
+    if (!image.startsWith(expectedPrefix)) {
+      pushError(
+        errors,
+        at,
+        `image debe estar bajo "${expectedPrefix}" para datasetMode="${mode}" (recibido ${JSON.stringify(image)})`,
+      )
+    }
+  }
 }
 
 function isLeapYear(year) {
@@ -159,6 +213,7 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
   }
 
   const mode = manifest.datasetMode
+  const usesTimeSteps = manifestHasTimeSteps(manifest)
 
   if (
     typeof manifest.schemaVersion === 'string' &&
@@ -169,6 +224,23 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
       '/schemaVersion',
       `schemaVersion debe ser una versión semver de la major ${SCHEMA_MAJOR} (recibido ${JSON.stringify(manifest.schemaVersion)})`,
     )
+  } else if (typeof manifest.schemaVersion === 'string') {
+    if (usesTimeSteps && manifest.schemaVersion !== TIMESTEPS_SCHEMA_VERSION) {
+      pushError(
+        errors,
+        '/schemaVersion',
+        `layer.timeSteps exige schemaVersion "${TIMESTEPS_SCHEMA_VERSION}" (recibido ${JSON.stringify(manifest.schemaVersion)})`,
+      )
+    } else if (
+      !usesTimeSteps &&
+      !SUPPORTED_SCHEMA_VERSIONS.includes(manifest.schemaVersion)
+    ) {
+      pushError(
+        errors,
+        '/schemaVersion',
+        `schemaVersion debe ser ${SUPPORTED_SCHEMA_VERSIONS.map((version) => `"${version}"`).join(' o ')} (recibido ${JSON.stringify(manifest.schemaVersion)})`,
+      )
+    }
   }
 
   if (expectedMode && mode !== expectedMode) {
@@ -327,25 +399,7 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
         })
       }
 
-      if (typeof layer.image === 'string') {
-        if (!SAFE_IMAGE_PATH_PATTERN.test(layer.image)) {
-          pushError(
-            errors,
-            `${layerPath}/image`,
-            `ruta image insegura: debe ser relativa a public/, sin "/" inicial, "%", "..", ":" ni "\\" (${JSON.stringify(layer.image)})`,
-          )
-        }
-        if (mode === 'sample' || mode === 'real') {
-          const expectedPrefix = `${IMAGE_PATH_ROOT}${mode}/`
-          if (!layer.image.startsWith(expectedPrefix)) {
-            pushError(
-              errors,
-              `${layerPath}/image`,
-              `image debe estar bajo "${expectedPrefix}" para datasetMode="${mode}" (recibido ${JSON.stringify(layer.image)})`,
-            )
-          }
-        }
-      }
+      pushImagePathErrors(errors, `${layerPath}/image`, layer.image, mode)
 
       if (mode === 'sample' && layer.status !== 'synthetic') {
         pushError(
@@ -396,6 +450,162 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
                 `processed_real exige provenance.${field} como cadena no vacía (no null)`,
               )
             }
+          }
+        }
+      }
+
+      if (Array.isArray(layer.timeSteps)) {
+        if (layer.timeSteps.length === 0) {
+          pushError(
+            errors,
+            `${layerPath}/timeSteps`,
+            'timeSteps debe contener al menos un paso temporal',
+          )
+        }
+
+        let previousTimestamp
+        let previousDate
+
+        layer.timeSteps.forEach((step, stepIndex) => {
+          const stepPath = `${layerPath}/timeSteps/${stepIndex}`
+          if (!isPlainObject(step)) {
+            return
+          }
+
+          if (typeof step.date === 'string') {
+            if (!isValidAcquisitionDate(step.date)) {
+              pushError(
+                errors,
+                `${stepPath}/date`,
+                `date no es una fecha ISO 8601 real (fecha o fecha-hora con zona): ${JSON.stringify(step.date)}`,
+              )
+            } else {
+              const timestamp = Date.parse(step.date.replace(' ', 'T'))
+              if (previousTimestamp !== undefined) {
+                if (timestamp === previousTimestamp) {
+                  pushError(
+                    errors,
+                    `${stepPath}/date`,
+                    `date duplicada: el paso ${stepIndex} repite ${JSON.stringify(step.date)} (${JSON.stringify(previousDate)})`,
+                  )
+                } else if (!(timestamp > previousTimestamp)) {
+                  pushError(
+                    errors,
+                    `${stepPath}/date`,
+                    `timeSteps debe estar en orden estrictamente creciente: ${JSON.stringify(step.date)} es anterior a ${JSON.stringify(previousDate)}`,
+                  )
+                }
+              }
+              previousTimestamp = timestamp
+              previousDate = step.date
+            }
+          }
+
+          pushImagePathErrors(errors, `${stepPath}/image`, step.image, mode)
+
+          const stepBbox = step.bbox
+          if (isBBox(stepBbox)) {
+            if (!(stepBbox[0] < stepBbox[2])) {
+              pushError(
+                errors,
+                `${stepPath}/bbox`,
+                `timeStep.bbox inválido: west (${stepBbox[0]}) debe ser menor que east (${stepBbox[2]})`,
+              )
+            }
+            if (!(stepBbox[1] < stepBbox[3])) {
+              pushError(
+                errors,
+                `${stepPath}/bbox`,
+                `timeStep.bbox inválido: south (${stepBbox[1]}) debe ser menor que north (${stepBbox[3]})`,
+              )
+            }
+
+            if (isBBox(zoneBbox)) {
+              const [west, south, east, north] = stepBbox
+              const [zoneWest, zoneSouth, zoneEast, zoneNorth] = zoneBbox
+              if (west < zoneWest - BBOX_TOLERANCE_DEG) {
+                pushError(
+                  errors,
+                  `${stepPath}/bbox`,
+                  `timeStep.bbox queda fuera de zone.bbox: west (${west}) < zone.west - ${BBOX_TOLERANCE_DEG} (${zoneWest})`,
+                )
+              }
+              if (south < zoneSouth - BBOX_TOLERANCE_DEG) {
+                pushError(
+                  errors,
+                  `${stepPath}/bbox`,
+                  `timeStep.bbox queda fuera de zone.bbox: south (${south}) < zone.south - ${BBOX_TOLERANCE_DEG} (${zoneSouth})`,
+                )
+              }
+              if (east > zoneEast + BBOX_TOLERANCE_DEG) {
+                pushError(
+                  errors,
+                  `${stepPath}/bbox`,
+                  `timeStep.bbox queda fuera de zone.bbox: east (${east}) > zone.east + ${BBOX_TOLERANCE_DEG} (${zoneEast})`,
+                )
+              }
+              if (north > zoneNorth + BBOX_TOLERANCE_DEG) {
+                pushError(
+                  errors,
+                  `${stepPath}/bbox`,
+                  `timeStep.bbox queda fuera de zone.bbox: north (${north}) > zone.north + ${BBOX_TOLERANCE_DEG} (${zoneNorth})`,
+                )
+              }
+            }
+          }
+
+          if (isPlainObject(step.provenance)) {
+            const acquisitionDate = step.provenance.acquisitionDate
+            if (
+              typeof acquisitionDate === 'string' &&
+              acquisitionDate.trim() !== '' &&
+              !isValidAcquisitionDate(acquisitionDate)
+            ) {
+              pushError(
+                errors,
+                `${stepPath}/provenance/acquisitionDate`,
+                `acquisitionDate del paso no es una fecha ISO 8601 real (fecha o fecha-hora con zona): ${JSON.stringify(acquisitionDate)}`,
+              )
+            }
+          }
+
+          if (layer.status === 'processed_real') {
+            const effectiveProvenance = {
+              ...(isPlainObject(layer.provenance) ? layer.provenance : {}),
+              ...(isPlainObject(step.provenance) ? step.provenance : {}),
+            }
+            for (const field of ['acquisitionDate', 'sceneId', 'referenceUrl']) {
+              const value = effectiveProvenance[field]
+              if (typeof value !== 'string' || value.trim() === '') {
+                pushError(
+                  errors,
+                  `${stepPath}/provenance/${field}`,
+                  `processed_real exige que la procedencia efectiva del paso incluya ${field} como cadena no vacía (no null)`,
+                )
+              }
+            }
+          }
+        })
+
+        const lastStep = layer.timeSteps[layer.timeSteps.length - 1]
+        if (isPlainObject(lastStep)) {
+          if (
+            typeof lastStep.image === 'string' &&
+            typeof layer.image === 'string' &&
+            lastStep.image !== layer.image
+          ) {
+            pushError(
+              errors,
+              `${layerPath}/image`,
+              `layer.image debe coincidir con el image del último timeStep (${JSON.stringify(lastStep.image)}); recibido ${JSON.stringify(layer.image)}`,
+            )
+          }
+          if (isBBox(lastStep.bbox) && isBBox(layer.bbox) && !sameBBox(lastStep.bbox, layer.bbox)) {
+            pushError(
+              errors,
+              `${layerPath}/bbox`,
+              `layer.bbox debe coincidir con el bbox del último timeStep (${JSON.stringify(lastStep.bbox)}); recibido ${JSON.stringify(layer.bbox)}`,
+            )
           }
         }
       }
@@ -530,49 +740,78 @@ export async function assetErrors(manifest, { publicDir = null, readAsset } = {}
     }
     for (let layerIndex = 0; layerIndex < zone.layers.length; layerIndex += 1) {
       const layer = zone.layers[layerIndex]
-      if (!isPlainObject(layer) || typeof layer.image !== 'string') {
-        continue
-      }
-      // Una ruta insegura ya la reporta el esquema/semántica: no leer fuera.
-      if (!assertSafeRelativeImage(layer.image)) {
+      if (!isPlainObject(layer)) {
         continue
       }
 
-      let bytes
-      try {
-        bytes = await reader(layer.image)
-      } catch {
-        pushError(
-          errors,
-          `/zones/${zoneIndex}/layers/${layerIndex}/image`,
-          `no existe el PNG referenciado en public/: ${layer.image}`,
-        )
-        continue
+      /** @type {{ path: string, image: string }[]} */
+      const images = []
+      if (typeof layer.image === 'string') {
+        images.push({
+          path: `/zones/${zoneIndex}/layers/${layerIndex}/image`,
+          image: layer.image,
+        })
+      }
+      if (Array.isArray(layer.timeSteps)) {
+        layer.timeSteps.forEach((step, stepIndex) => {
+          if (isPlainObject(step) && typeof step.image === 'string') {
+            images.push({
+              path: `/zones/${zoneIndex}/layers/${layerIndex}/timeSteps/${stepIndex}/image`,
+              image: step.image,
+            })
+          }
+        })
       }
 
-      const header = readPngHeader(bytes)
-      if (!header.signatureOk) {
-        pushError(
-          errors,
-          `/zones/${zoneIndex}/layers/${layerIndex}/image`,
-          `el asset ${layer.image} no es un PNG válido (firma incorrecta)`,
-        )
-        continue
-      }
-      if (!(header.colorType === 6 || header.colorType === 4 || header.hasTrns)) {
-        pushError(
-          errors,
-          `/zones/${zoneIndex}/layers/${layerIndex}/image`,
-          `el PNG ${layer.image} no tiene canal alfa (color type ${header.colorType}); se exige RGBA (6), gris+alfa (4) o tRNS`,
-        )
-        continue
-      }
-      if (!header.width || !header.height) {
-        pushError(
-          errors,
-          `/zones/${zoneIndex}/layers/${layerIndex}/image`,
-          `el PNG ${layer.image} declara dimensiones inválidas (${header.width}x${header.height})`,
-        )
+      // layer.image coincide con el último paso: se valida una sola vez por ruta.
+      const seenImages = new Set()
+      for (const { path: imagePath, image } of images) {
+        if (seenImages.has(image)) {
+          continue
+        }
+        seenImages.add(image)
+
+        // Una ruta insegura ya la reporta el esquema/semántica: no leer fuera.
+        if (!assertSafeRelativeImage(image)) {
+          continue
+        }
+
+        let bytes
+        try {
+          bytes = await reader(image)
+        } catch {
+          pushError(
+            errors,
+            imagePath,
+            `no existe el PNG referenciado en public/: ${image}`,
+          )
+          continue
+        }
+
+        const header = readPngHeader(bytes)
+        if (!header.signatureOk) {
+          pushError(
+            errors,
+            imagePath,
+            `el asset ${image} no es un PNG válido (firma incorrecta)`,
+          )
+          continue
+        }
+        if (!(header.colorType === 6 || header.colorType === 4 || header.hasTrns)) {
+          pushError(
+            errors,
+            imagePath,
+            `el PNG ${image} no tiene canal alfa (color type ${header.colorType}); se exige RGBA (6), gris+alfa (4) o tRNS`,
+          )
+          continue
+        }
+        if (!header.width || !header.height) {
+          pushError(
+            errors,
+            imagePath,
+            `el PNG ${image} declara dimensiones inválidas (${header.width}x${header.height})`,
+          )
+        }
       }
     }
   }

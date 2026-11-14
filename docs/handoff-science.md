@@ -13,7 +13,9 @@ La aplicación ya distingue dos modos:
   estado válido.
 
 Una capa real aparece en el modo «Datos reales» únicamente si cumple el
-contrato v1.1.0 y ha pasado la validación y la revisión científica.
+contrato v1.2.0 y ha pasado la validación y la revisión científica. Los
+manifiestos v1.1.0 sin serie temporal siguen siendo válidos; para publicar
+varias fechas se usa `timeSteps` y `schemaVersion: "1.2.0"` (§3.1).
 
 ## 0. Límites científicos que no se pueden cruzar
 
@@ -47,7 +49,7 @@ Antes de tocar el repositorio, el equipo científico debe tener:
 | Requisito | Detalle |
 |---|---|
 | Formato | PNG con canal alfa: RGBA, gris+alfa o paleta con `tRNS`. |
-| CRS de presentación | **EPSG:3857 (Web Mercator)**. Es el único admitido en v1.1.0. |
+| CRS de presentación | **EPSG:3857 (Web Mercator)**. Es el único admitido en v1.2.0. |
 | Orientación | **Norte arriba**: la primera fila de píxeles es el borde norte. |
 | Extensión | Exactamente la de `layer.bbox`. El PNG no guarda coordenadas; la posición la aporta el JSON. |
 | Píxeles sin dato | **Alpha 0**, con RGB a 0. No se pinta «sin dato» como valor 0 opaco. |
@@ -123,7 +125,7 @@ marcadores, `validate:data` rechazará el manifiesto, y eso es intencionado.
 Notas de cumplimentación:
 
 - `id` de zona: kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) y único.
-- `id` de capa: solo `"ndvi"` o `"soil-moisture"` en v1.1.0. No se inventan
+- `id` de capa: solo `"ndvi"` o `"soil-moisture"` en v1.2.0. No se inventan
   identificadores nuevos.
 - `image`: relativa a `frontend/public/`, bajo `data/real/`, sin `/` inicial,
   sin `..`, sin `:` ni `\`.
@@ -143,6 +145,111 @@ El fixture
 [`frontend/scripts/fixtures/valid/real-with-processed-real.json`](../frontend/scripts/fixtures/valid/real-with-processed-real.json)
 es un ejemplo **contractual** que valida el estado `processed_real`, pero no es
 una observación científica y **no se copia a `public/data/real/`**.
+
+### 3.1 Varias fechas: `timeSteps` (v1.2.0)
+
+Si el producto tiene una serie temporal, declara **todos** los pasos en
+`layer.timeSteps`, en orden de más antiguo a más reciente. La unidad, `range`,
+`legend` y `status` son comunes a todos los pasos: no cambies la escala entre
+fechas o las comparaciones visuales serán engañosas.
+
+Requisitos:
+
+- `schemaVersion: "1.2.0"` en el manifiesto.
+- Cada paso tiene `date` ISO 8601 real (fecha o fecha-hora con zona), `image`,
+  `bbox` y, opcionalmente, `label` y `provenance` parcial.
+- Fechas **estrictamente crecientes**, sin duplicados.
+- Cada `image` de paso es un PNG RGBA en EPSG:3857 bajo `data/real/` y su
+  `bbox` cae dentro de `zone.bbox`.
+- `layer.image` y `layer.bbox` deben ser los del **último** paso.
+- En `processed_real`, la procedencia efectiva
+  `{ ...layer.provenance, ...step.provenance }` de cada paso debe incluir
+  `acquisitionDate`, `sceneId` y `referenceUrl`. Si un paso no tiene escena o
+  URL verificable, no se publica como `processed_real`.
+
+```json
+{
+  "schemaVersion": "1.2.0",
+  "datasetMode": "real",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "nombre-de-la-zona",
+      "name": "Nombre legible de la zona",
+      "bbox": [-4.0, 37.5, -3.9, 37.6],
+      "layers": [
+        {
+          "id": "soil-moisture",
+          "title": "Humedad superficial (NISAR SME2)",
+          "kind": "image-overlay",
+          "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-03-15.png",
+          "bbox": [-4.0, 37.5, -3.9, 37.6],
+          "imageCrs": "EPSG:3857",
+          "unit": "m³/m³",
+          "range": [0, 0.6],
+          "legend": [
+            { "value": 0, "color": "#ffffd9", "label": "Más seco" },
+            { "value": 0.3, "color": "#41b6c4", "label": "0.30 m³/m³" },
+            { "value": 0.6, "color": "#081d58", "label": "Más húmedo" }
+          ],
+          "status": "processed_real",
+          "provenance": {
+            "provider": "<proveedor real del producto>",
+            "product": "<producto, versión y variable>",
+            "acquisitionDate": "2026-03-15",
+            "sceneId": "<identificador del último paso>",
+            "processingVersion": "<versión del procesamiento o CRID>",
+            "referenceUrl": "<https://... verificable>",
+            "note": "Escala fija común a todos los pasos de la serie.",
+            "approvedBy": "<nombre de quien aprobó y fecha>"
+          },
+          "qualityNote": "Limitaciones de calidad y madurez de la serie.",
+          "timeSteps": [
+            {
+              "date": "2026-01-15",
+              "label": "15 ene",
+              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-01-15.png",
+              "bbox": [-4.0, 37.5, -3.9, 37.6],
+              "provenance": {
+                "acquisitionDate": "2026-01-15",
+                "sceneId": "<escena del 15 ene>"
+              }
+            },
+            {
+              "date": "2026-02-15",
+              "label": "15 feb",
+              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-02-15.png",
+              "bbox": [-4.0, 37.5, -3.9, 37.6],
+              "provenance": {
+                "acquisitionDate": "2026-02-15",
+                "sceneId": "<escena del 15 feb>"
+              }
+            },
+            {
+              "date": "2026-03-15",
+              "label": "15 mar",
+              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-03-15.png",
+              "bbox": [-4.0, 37.5, -3.9, 37.6],
+              "provenance": {
+                "acquisitionDate": "2026-03-15",
+                "sceneId": "<escena del 15 mar>"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Los valores entre `<...>` son marcadores: sustitúyelos por procedencia
+verificable. `example.org`/`example.invalid` y las escenas de fixture solo
+sirven para tests, nunca para la demo pública.
+
+El fixture
+[`frontend/scripts/fixtures/valid/real-with-timesteps.json`](../frontend/scripts/fixtures/valid/real-with-timesteps.json)
+muestra la forma completa sin ser una observación real.
 
 ### Variante NDVI
 
@@ -184,9 +291,16 @@ La validación comprueba:
 - que el esquema JSON compila;
 - que los manifiestos publicados cumplen esquema, semántica y assets;
 - que el modo del manifiesto coincide con su carpeta;
-- que cada `image` existe en `public/`, es PNG y tiene canal alfa;
+- que cada `image` —también la de cada `timeSteps[].image`— existe en
+  `public/`, es PNG y tiene canal alfa;
 - que `bbox`, `range`, leyenda, ids, coherencia `datasetMode`/`status` y
   procedencia de `processed_real` son correctos;
+- que `timeSteps`, si existe, tiene fechas ISO reales en orden estricto, sin
+  duplicados, cada `bbox` dentro de la zona y el último paso igual a
+  `layer.image`/`layer.bbox`;
+- que la procedencia efectiva de cada paso de una capa `processed_real` incluye
+  fecha, escena y URL;
+- que `schemaVersion` es `"1.2.0"` cuando hay `timeSteps`;
 - que los fixtures válidos pasan y los inválidos fallan.
 
 Para completar la entrega:
@@ -303,7 +417,7 @@ Salidas en `pipelines/nisar/sme2_staging/<zone-id>/`:
 | `png/soil-moisture_<fecha>_<órbita>.png` | Overlay por fecha. |
 | `layer.staging.json` | Entrada de capa preparada; no se copia a mano. |
 | `report.json` | Cobertura, estadísticas, avisos, escenas descartadas y comprobación de georreferencia. |
-| `timeseries.json` | Borrador de serie temporal para una futura v1.2; la app v1.1.0 no lo lee. |
+| `timeseries.json` | Borrador de todas las fechas. El contrato v1.2.0 ya admite `timeSteps`, pero el `--publish` actual del conversor todavía no los escribe: añadirlos manualmente al manifiesto (o adaptar el conversor en el nodo de pipeline de C1 §6.4) antes de publicar la serie. |
 | `geotiff/` | Maestro científico intermedio; **no se versiona**. |
 
 ### 8.3 Revisión antes de publicar
@@ -382,6 +496,10 @@ de referencia del equipo.
 - [ ] `image` bajo `data/real/zones/<id>/` y sin rutas inseguras.
 - [ ] `status: "processed_real"` solo tras aprobación humana.
 - [ ] `provenance` completa: proveedor, producto, versión, fecha, escena y URL.
+- [ ] Si hay `timeSteps`: `schemaVersion: "1.2.0"`, fechas ISO ordenadas y
+      únicas, cada PNG/`bbox` válido y el último paso igual a
+      `layer.image`/`layer.bbox`. En `processed_real`, cada paso tiene
+      procedencia efectiva completa.
 - [ ] `legend` de al menos dos paradas, ordenada y coherente con la paleta.
 - [ ] `qualityNote` explica madurez y limitaciones; no promete riego ni kg/ha.
 - [ ] `npm run validate:data --prefix frontend` pasa.
@@ -402,7 +520,7 @@ de referencia del equipo.
 - Desplegar la web (lo hace integración).
 - Inventar valores donde no hay dato o rellenar huecos de cobertura.
 - Entregar HDF5/GeoTIFF versionados en Git.
-- Hacer consultas por píxel: v1.1.0 solo pinta una imagen georreferenciada.
+- Hacer consultas por píxel: v1.2.0 solo pinta imágenes georreferenciadas (una por fecha como máximo).
 
 ## 11. Advertencia sobre la demo sintética y el concurso
 

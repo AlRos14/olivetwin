@@ -4,6 +4,7 @@ import type { BBox, DataMode } from '../types/manifest'
 import {
   makeLayer,
   makeManifest,
+  makeTimeStep,
   makeZone,
   sampleManifest,
   TEST_BBOX,
@@ -54,6 +55,32 @@ function deferred<T>() {
 /** Deja correr las microtareas pendientes de promesas ya resueltas. */
 function settle(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/** Manifiesto sample v1.2.0 con una capa NDVI de tres pasos. */
+function timedSampleManifest() {
+  const steps = [
+    makeTimeStep('2026-09-01', {
+      image: 'data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+    }),
+    makeTimeStep('2026-10-01', {
+      image: 'data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+    }),
+    makeTimeStep('2026-11-01', {
+      image: 'data/sample/zones/jaen-demo/ndvi-2026-11-01.png',
+    }),
+  ]
+  const layer = makeLayer('ndvi', {
+    image: steps[2].image,
+    bbox: steps[2].bbox,
+    timeSteps: steps,
+  })
+  return {
+    manifest: makeManifest('sample', [makeZone('jaen-demo', [layer])], {
+      schemaVersion: '1.2.0',
+    }),
+    steps,
+  }
 }
 
 describe('useOliveTwinData', () => {
@@ -396,5 +423,184 @@ describe('useOliveTwinData', () => {
     expect(calls[0]?.signal?.aborted).toBe(true)
 
     await vi.waitFor(() => expect(data.vm.loadStatus).toBe('empty'))
+  })
+
+  it('T-04: al seleccionar una capa con timeSteps usa el último paso por defecto', async () => {
+    const { manifest, steps } = timedSampleManifest()
+    const { fetchImpl } = createRouter({
+      sample: () => jsonResponse(manifest),
+    })
+
+    const data = useOliveTwinData({ fetchImpl })
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+
+    expect(data.vm.selectedTimeIndex).toBeNull()
+    expect(data.activeTimeStep.value).toBeNull()
+
+    data.selectZone('jaen-demo')
+
+    expect(data.vm.selectedLayerId).toBe('ndvi')
+    expect(data.vm.selectedTimeIndex).toBe(2)
+    expect(data.activeTimeStep.value).toEqual(steps[2])
+    expect(data.overlay.value).toMatchObject({
+      zoneId: 'jaen-demo',
+      layerId: 'ndvi',
+      url: '/data/sample/zones/jaen-demo/ndvi-2026-11-01.png',
+      bbox: steps[2].bbox,
+      timeIndex: 2,
+      timeStep: steps[2],
+    })
+  })
+
+  it('T-04: selectTimeStep cambia URL, bbox y paso activo del overlay', async () => {
+    const { manifest, steps } = timedSampleManifest()
+    const { fetchImpl } = createRouter({
+      sample: () => jsonResponse(manifest),
+    })
+
+    const data = useOliveTwinData({ fetchImpl })
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+    data.selectZone('jaen-demo')
+
+    data.selectTimeStep(0)
+
+    expect(data.vm.selectedTimeIndex).toBe(0)
+    expect(data.activeTimeStep.value).toEqual(steps[0])
+    expect(data.overlay.value?.timeIndex).toBe(0)
+    expect(data.overlay.value?.timeStep).toEqual(steps[0])
+    expect(data.overlay.value?.url).toBe(
+      '/data/sample/zones/jaen-demo/ndvi-2026-09-01.png',
+    )
+    expect(data.overlay.value?.bbox).toEqual(steps[0].bbox)
+
+    data.selectTimeStep(1)
+    expect(data.overlay.value?.timeIndex).toBe(1)
+    expect(data.overlay.value?.url).toBe(
+      '/data/sample/zones/jaen-demo/ndvi-2026-10-01.png',
+    )
+  })
+
+  it('T-04: ignora índices fuera de rango, no enteros o capas sin timeSteps', async () => {
+    const { manifest } = timedSampleManifest()
+    const { fetchImpl } = createRouter({
+      sample: () => jsonResponse(manifest),
+    })
+
+    const data = useOliveTwinData({ fetchImpl })
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+    data.selectZone('jaen-demo')
+    data.selectTimeStep(0)
+
+    data.selectTimeStep(3)
+    data.selectTimeStep(-1)
+    data.selectTimeStep(0.5)
+    data.selectTimeStep(Number.NaN)
+    expect(data.vm.selectedTimeIndex).toBe(0)
+
+    data.selectLayer(null)
+    expect(data.vm.selectedTimeIndex).toBeNull()
+    expect(data.activeTimeStep.value).toBeNull()
+    data.selectTimeStep(1)
+    expect(data.vm.selectedTimeIndex).toBeNull()
+  })
+
+  it('T-04: cambiar de capa, zona o modo reinicia el índice temporal', async () => {
+    const { manifest } = timedSampleManifest()
+    const staticLayer = makeLayer('soil-moisture', {
+      image: 'data/sample/zones/jaen-demo/moisture.png',
+    })
+    const withSecondLayer = makeManifest(
+      'sample',
+      [
+        makeZone('jaen-demo', [
+          manifest.zones[0].layers[0],
+          staticLayer,
+        ]),
+        makeZone('toledo-demo', [makeLayer('ndvi', {
+          image: 'data/sample/zones/toledo-demo/ndvi.png',
+        })]),
+      ],
+      { schemaVersion: '1.2.0' },
+    )
+    const { fetchImpl } = createRouter({
+      sample: () => jsonResponse(withSecondLayer),
+      real: () => jsonResponse(makeManifest('real')),
+    })
+
+    const data = useOliveTwinData({ fetchImpl })
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+    data.selectZone('jaen-demo')
+    data.selectTimeStep(0)
+    expect(data.vm.selectedTimeIndex).toBe(0)
+
+    // La capa de humedad no tiene timeSteps: índice null.
+    data.selectLayer('soil-moisture')
+    expect(data.vm.selectedTimeIndex).toBeNull()
+    expect(data.overlay.value?.timeIndex).toBeNull()
+    expect(data.overlay.value?.timeStep).toBeNull()
+
+    // Volver a NDVI selecciona de nuevo el último paso.
+    data.selectLayer('ndvi')
+    expect(data.vm.selectedTimeIndex).toBe(2)
+
+    // Cambiar de zona (primera capa = NDVI sin timeSteps) reinicia.
+    data.selectTimeStep(0)
+    data.selectZone('toledo-demo')
+    expect(data.vm.selectedTimeIndex).toBeNull()
+
+    // Cambiar de modo limpia también el índice.
+    data.selectZone('jaen-demo')
+    data.selectTimeStep(1)
+    expect(data.vm.selectedTimeIndex).toBe(1)
+    data.setDataMode('real')
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('empty'))
+    expect(data.vm.selectedTimeIndex).toBeNull()
+  })
+
+  it('T-04: una respuesta tardía no reactiva el índice temporal del modo anterior', async () => {
+    const { manifest } = timedSampleManifest()
+    const realDeferred = deferred<Response>()
+    let sampleRequests = 0
+
+    const { fetchImpl } = createRouter({
+      sample: () => {
+        sampleRequests += 1
+        return jsonResponse(manifest)
+      },
+      real: () => realDeferred.promise,
+    })
+
+    const data = useOliveTwinData({ fetchImpl })
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+    data.selectZone('jaen-demo')
+    data.selectTimeStep(0)
+    expect(data.vm.selectedTimeIndex).toBe(0)
+
+    data.setDataMode('real')
+    data.setDataMode('sample')
+    await vi.waitFor(() => expect(sampleRequests).toBe(2))
+    await vi.waitFor(() => expect(data.vm.loadStatus).toBe('ready'))
+
+    realDeferred.resolve(
+      jsonResponse(
+        makeManifest(
+          'real',
+          [
+            makeZone('jaen-demo', [
+              makeLayer('ndvi', {
+                image: 'data/real/zones/jaen-demo/ndvi.png',
+                status: 'processed_real',
+              }),
+            ]),
+          ],
+          { schemaVersion: '1.2.0' },
+        ),
+      ),
+    )
+    await settle()
+
+    expect(data.vm.dataMode).toBe('sample')
+    expect(data.vm.selectedTimeIndex).toBeNull()
+    expect(data.overlay.value).toBeNull()
   })
 })

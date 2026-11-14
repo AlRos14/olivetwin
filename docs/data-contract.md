@@ -1,4 +1,4 @@
-# Contrato de datos OliveTwin v1.1.0 — referencia práctica
+# Contrato de datos OliveTwin v1.2.0 — referencia práctica
 
 Este documento describe el contrato **tal como está implementado** en el
 repositorio: el JSON Schema, el validador de datos, el cargador de manifiestos y
@@ -13,8 +13,11 @@ evita tener que leer el código para saber qué se puede publicar y qué se rech
 | [`docs/c0-interfaces.md`](c0-interfaces.md) | Interfaces congeladas entre WP-04 y WP-07. |
 | [`docs/handoff-science.md`](handoff-science.md) | Guía para publicar una zona real sin tocar Vue. |
 
-Versión vigente: **1.1.0**. El valor se declara en `schemaVersion`; el
-validador solo admite la major `1`.
+Versión vigente: **1.2.0**. El valor se declara en `schemaVersion`; el
+validador solo admite la major `1` y, en esta rama, las versiones exactas
+`1.1.0` (manifiestos sin serie temporal) y `1.2.0` (con o sin `timeSteps`).
+La v1.2.0 es **aditiva**: un manifiesto v1.1.0 sin `timeSteps` sigue siendo
+válido y se muestra con su `layer.image`/`layer.bbox`.
 
 ## 1. Dónde vive cada cosa
 
@@ -45,7 +48,7 @@ frontend/public/data/
 
 | Campo | Obligatorio | Tipo | Regla |
 |---|---|---|---|
-| `schemaVersion` | Sí | string | SemVer de la major 1: `^1\.[0-9]+\.[0-9]+$`. Valor vigente: `"1.1.0"`. |
+| `schemaVersion` | Sí | string | SemVer de la major 1. Valores admitidos: `"1.1.0"` o `"1.2.0"`; con `timeSteps` es obligatorio `"1.2.0"`. |
 | `datasetMode` | Sí | string | Enum cerrado: `"sample"` \| `"real"`. |
 | `appTitle` | Sí | string | No vacío ni solo espacios. |
 | `zones` | Sí | array | Puede ser `[]`; **nunca** `null`. |
@@ -73,7 +76,7 @@ valores inventados: la interfaz simplemente no tendrá capa que pintar.
 |---|---|---|---|
 | `id` | Sí | string | Enum cerrado: `"ndvi"` \| `"soil-moisture"`. Añadir otro id exige cambio de contrato. |
 | `title` | Sí | string | No vacío ni solo espacios. |
-| `kind` | Sí | string | Constante `"image-overlay"`; en v1.1.0 no hay otro tipo de capa. |
+| `kind` | Sí | string | Constante `"image-overlay"`; en v1.2.0 no hay otro tipo de capa. |
 | `variable` | No | string | Etiqueta científica, por ejemplo `"NDVI"` o `"Humedad superficial"`. |
 | `image` | Sí | string | Ruta relativa a `public/`, segura y bajo `data/<datasetMode>/`; ver §3.4. |
 | `bbox` | Sí | number[4] | Cobertura del PNG; puede ser menor que `zone.bbox`. |
@@ -84,6 +87,7 @@ valores inventados: la interfaz simplemente no tendrá capa que pintar.
 | `status` | Sí | string | Enum cerrado: `"synthetic"` \| `"processed_real"`. |
 | `provenance` | Sí | objeto | Trazabilidad; ver §2.5. |
 | `qualityNote` | Sí | string | No vacío; limitaciones que la UI puede mostrar. |
+| `timeSteps` | No | array | **v1.2.0**: serie temporal ordenada de al menos un paso; ver §2.7. |
 
 ### 2.4 Leyenda
 
@@ -172,6 +176,92 @@ correspondiente en `frontend/public/data/sample/zones/zona-ejemplo/ndvi.png`.
 }
 ```
 
+### 2.7 Línea temporal (`timeSteps`, v1.2.0)
+
+Una capa puede declarar **varias fechas** en `timeSteps`. La ampliación es
+opcional y aditiva; el resto de reglas de la capa no cambia. La unidad,
+`range`, `legend` y `status` son **comunes a todos los pasos**: la escala debe
+ser fija en el tiempo para que las fechas se puedan comparar.
+
+```json
+{
+  "schemaVersion": "1.2.0",
+  "datasetMode": "sample",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "jaen-demo",
+      "name": "Jaén — demostración temporal",
+      "bbox": [-3.86, 37.69, -3.61, 37.9],
+      "layers": [
+        {
+          "id": "ndvi",
+          "title": "Vegetación (NDVI)",
+          "kind": "image-overlay",
+          "image": "data/sample/zones/jaen-demo/ndvi-2026-11-01.png",
+          "bbox": [-3.86, 37.69, -3.61, 37.9],
+          "imageCrs": "EPSG:3857",
+          "unit": "index",
+          "range": [-1, 1],
+          "legend": [
+            { "value": -1, "color": "#8c510a", "label": "Bajo" },
+            { "value": 0, "color": "#dfc27d", "label": "Intermedio" },
+            { "value": 1, "color": "#01665e", "label": "Alto" }
+          ],
+          "status": "synthetic",
+          "provenance": {
+            "provider": "Generador sintético",
+            "product": "NDVI ilustrativo — no satelital",
+            "processingVersion": "sample-v1"
+          },
+          "qualityNote": "NO apto para decisiones agronómicas",
+          "timeSteps": [
+            {
+              "date": "2026-09-01",
+              "label": "1 sep",
+              "image": "data/sample/zones/jaen-demo/ndvi-2026-09-01.png",
+              "bbox": [-3.86, 37.69, -3.61, 37.9]
+            },
+            {
+              "date": "2026-10-01",
+              "label": "1 oct",
+              "image": "data/sample/zones/jaen-demo/ndvi-2026-10-01.png",
+              "bbox": [-3.86, 37.69, -3.61, 37.9],
+              "provenance": { "note": "Paso intermedio sintético" }
+            },
+            {
+              "date": "2026-11-01",
+              "label": "1 nov",
+              "image": "data/sample/zones/jaen-demo/ndvi-2026-11-01.png",
+              "bbox": [-3.86, 37.69, -3.61, 37.9]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Reglas obligatorias:
+
+| Regla | Detalle |
+|---|---|
+| `schemaVersion` | `"1.2.0"` si se usa `timeSteps`; sin serie temporal se admiten `"1.1.0"` y `"1.2.0"`. |
+| Tamaño | `timeSteps` tiene al menos un paso. |
+| `date` | ISO 8601 real: fecha (`2026-10-19`) o fecha-hora con zona (`2026-10-19T11:19:03Z`). |
+| Orden | Estrictamente creciente por `date`, sin duplicados. |
+| `image` del paso | Mismas reglas seguras que `layer.image` y prefijo `data/<datasetMode>/`; PNG existente con alfa en `validate:data`. |
+| `bbox` del paso | `[west, south, east, north]`, válido y dentro de `zone.bbox` con tolerancia 0.01°. |
+| Último paso | `layer.image` y `layer.bbox` deben ser **exactamente** los del último paso. Así un consumidor v1.1 sigue mostrando la fecha más reciente. |
+| `provenance` del paso | Parcial; la procedencia efectiva es `{ ...layer.provenance, ...step.provenance }`. |
+| `processed_real` | La procedencia efectiva de **cada** paso debe tener `acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no vacías (no `null`). |
+
+En runtime, `useOliveTwinData` selecciona por defecto el último paso al elegir
+la capa. `selectTimeStep(index)` cambia el paso activo y `ActiveOverlay` expone
+`url`/`bbox` del paso junto con `timeIndex` y `timeStep`. Cambiar de modo, zona
+o capa reinicia el índice; un índice fuera de rango se ignora.
+
 ## 3. Convenciones geoespaciales y de assets
 
 ### 3.1 `bbox` = `[west, south, east, north]`
@@ -201,19 +291,24 @@ Cada `image` debe ser un PNG:
   también RGB a 0 para evitar halos;
 - con tamaño razonable (objetivo orientativo: menos de 1 MB por PNG). Si el
   raster es enorme, se recorta, se optimiza o se prepara una teselación en una
-  fase posterior; v1.1.0 solo admite una imagen por capa.
+  fase posterior; cada capa admite una imagen, o una por paso temporal si usa
+  `timeSteps`.
 
 La reproyección debe documentarse. Para valores discretos o para no inventar
 valores intermedios se usa vecino más próximo; un remuestreo bilineal suaviza y
 puede fabricar valores que no existían en el dato original.
 
+Con `timeSteps`, **cada paso** aporta su propio PNG y su `bbox`; se aplican las
+mismas reglas de CRS, orientación, transparencia y ruta segura. El último PNG
+es el que debe coincidir con `layer.image`.
+
 Un PNG es una **representación visual**: no expone valores científicos
 consultables. La consulta por píxel requeriría un `values`/grid numérico con
-contrato propio (P1, fuera de v1.1.0).
+contrato propio (P1, fuera de v1.2.0).
 
 ### 3.3 `imageCrs`
 
-En v1.1.0 el único valor admitido es `"EPSG:3857"`. Un PNG en EPSG:4326 u otro
+En v1.2.0 el único valor admitido es `"EPSG:3857"`. Un PNG en EPSG:4326 u otro
 CRS se rechaza aunque se vea «casi bien» al superponerlo.
 
 ### 3.4 Rutas de imagen
@@ -302,10 +397,16 @@ Reglas del cargador y del composable (`loadManifest`, `useOliveTwinData`):
   actual.
 - Al cambiar de modo se vacían `zones`, `selectedZoneId` y `selectedLayerId`.
 - Al seleccionar una zona se elige su primera capa, o `null` si no tiene.
+- Al seleccionar una capa (o una zona con capa), `selectedTimeIndex` apunta al
+  **último** paso si la capa tiene `timeSteps`; si no, es `null`.
+- `selectTimeStep(index)` solo acepta un entero dentro de `0..timeSteps.length-1`;
+  fuera de rango o sin serie temporal se ignora. Cambiar de modo, zona o capa
+  reinicia el índice.
 - `selectZone`/`selectLayer` ignoran ids que no existan en el manifiesto
   activo.
 - `overlay` es `null` si no hay zona y capa válidas. Si hay selección, la URL se
-  resuelve con `BASE_URL` y se entrega como `ActiveOverlay`.
+  resuelve con `BASE_URL` y se entrega como `ActiveOverlay`; con `timeSteps`, la
+  URL, el `bbox`, `timeIndex` y `timeStep` salen del paso activo.
 - Opacidad inicial `0.7`, recortada siempre a `[0, 1]`; overlay visible por
   defecto.
 - No hay persistencia del modo ni de la selección entre recargas.
@@ -341,15 +442,24 @@ seguro de `image` y coherencia `datasetMode`/`status`.
 | Prefijo de `image` | `data/<datasetMode>/` (publicación). |
 | Coherencia de estado | `sample` ⇒ `synthetic`; `real` ⇒ `processed_real`. |
 | `processed_real` | `acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no vacías. |
+| Versión y `timeSteps` | `timeSteps` exige `schemaVersion: "1.2.0"`; sin serie se admiten `"1.1.0"` y `"1.2.0"`. |
+| Fechas de pasos | ISO 8601 reales, en orden estrictamente creciente y sin duplicados. |
+| `bbox` de pasos | Cada paso dentro de `zone.bbox` con tolerancia `0.01°`. |
+| Último paso | `layer.image` y `layer.bbox` idénticos a los del último `timeStep`. |
+| Procedencia de pasos | En `processed_real`, la procedencia efectiva de cada paso incluye `acquisitionDate`, `sceneId` y `referenceUrl`. |
 
 ### 5.3 Assets
 
-Para cada `image` de los manifiestos publicados:
+Para cada `image` de los manifiestos publicados —incluidos **todos** los
+`timeSteps[].image`— se comprueba que:
 
 - el archivo existe bajo `frontend/public/`;
 - la firma PNG es correcta;
 - el PNG tiene canal alfa (`color type` 4 o 6, o `tRNS`);
 - las dimensiones declaradas son válidas.
+
+El runtime no descarga ni decodifica el PNG para comprobar alfa, pero sí rechaza
+rutas inseguras de capa y de paso antes de pintar.
 
 Los fixtures contractuales de `frontend/scripts/fixtures/` se validan sin
 comprobar assets, porque no se sirven desde `public/`.
@@ -371,7 +481,7 @@ El comando:
 3. exige que todos los fixtures de `fixtures/valid/` pasen;
 4. exige que todos los fixtures de `fixtures/invalid/` fallen.
 
-Sale con código 1 si algo falla. En el estado actual de la rama se ejecutan 25
+Sale con código 1 si algo falla. En el estado actual de la rama se ejecutan 35
 comprobaciones (manifiestos + fixtures).
 
 ### 5.5 Validación en runtime frente a validación de publicación
@@ -418,7 +528,7 @@ componentes). `npm run build` ejecuta `vue-tsc -b` y genera `frontend/dist/`.
 
 | Tipo de cambio | Versión | Ejemplos |
 |---|---|---|
-| **Aditivo** | Minor: `1.2.0`, `1.3.0`… | Nueva propiedad **opcional** en el esquema, nuevo `$def` reutilizable, nueva documentación o aclaración. |
+| **Aditivo** | Minor: `1.2.0`, `1.3.0`… | Nueva propiedad **opcional** en el esquema (así se añadió `layer.timeSteps` en v1.2.0), nuevo `$def` reutilizable, nueva documentación o aclaración. |
 | **Incompatible** | Major: `2.0.0` | Campo obligatorio nuevo, cambio de tipo o semántica, eliminación o renombrado, cambio del orden de `bbox`, ampliación de un enum que los consumidores tratan de forma exhaustiva. |
 
 Reglas concretas:
@@ -442,7 +552,10 @@ Reglas concretas:
 |---|---|---|
 | `image debe estar bajo "data/real/"` | Ruta de una capa real apunta a `sample/` o a otra carpeta. | Mover el PNG y corregir `image`. |
 | `layer.bbox queda fuera de zone.bbox` | La cobertura del raster excede la zona (más de 0.01°). | Ampliar `zone.bbox` o recortar el raster. |
-| `processed_real exige provenance.sceneId` | Falta la escena, la fecha o la URL, o están a `null`. | Completar la procedencia verificable. |
+| `processed_real exige provenance.sceneId` | Falta la escena, la fecha o la URL, o están a `null`. | Completar la procedencia verificable (también en la procedencia efectiva de cada paso temporal). |
+| `timeSteps debe estar en orden estrictamente creciente` | Dos pasos desordenados o con la misma `date`. | Reordenar y eliminar duplicados; cada paso debe tener una fecha distinta. |
+| `layer.image debe coincidir con el image del último timeStep` | La capa muestra una fecha antigua mientras `timeSteps` termina en otra. | Igualar `layer.image`/`layer.bbox` al último paso. |
+| `layer.timeSteps exige schemaVersion "1.2.0"` | Series temporales declaradas como `1.1.0`. | Cambiar `schemaVersion` a `"1.2.0"`. |
 | `el PNG ... no tiene canal alfa` | El PNG se exportó RGB opaco. | Reexportar RGBA con alpha 0 en no-data. |
 | `must NOT have fewer than 2 items` en `legend` | Leyenda con una sola parada. | Añadir al menos dos clases ordenadas. |
 | `datasetMode="sample" exige status="synthetic"` | Capa real dentro del manifiesto de muestra. | Separar los manifiestos; no mezclar modos. |
@@ -457,8 +570,8 @@ Los comandos de §6 se ejecutaron en la rama de documentación el 2026-11-14:
 |---|---|
 | `npm ci --prefix frontend` | Instalación correcta (con avisos `EBADENGINE` de dependencias, sin error). |
 | `npm run generate:sample --prefix frontend` | 4 PNG y `sample/manifest.json` regenerados; `real/manifest.json` sin cambios. |
-| `npm run validate:data --prefix frontend` | `OK — 25 comprobaciones superadas (0 fallos)`. |
-| `npm test --prefix frontend` | 16 archivos y 168 tests superados. |
+| `npm run validate:data --prefix frontend` | `OK — 35 comprobaciones superadas (0 fallos)` (incluye los fixtures de `timeSteps`). |
+| `npm test --prefix frontend` | 18 archivos y 244 tests superados. |
 | `npm run build --prefix frontend` | `vue-tsc -b` + `vite build` correctos; `dist/` generado. |
 
 La guía para publicar datos reales está en

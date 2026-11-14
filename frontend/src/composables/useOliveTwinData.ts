@@ -20,6 +20,7 @@ import type {
   OliveTwinViewModel,
   StudyLayer,
   StudyZone,
+  TimeStep,
 } from '../types/manifest'
 import { resolveAssetUrl } from '../services/assetUrl'
 import {
@@ -39,7 +40,17 @@ export interface UseOliveTwinDataReturn extends OliveTwinActions {
   vm: DeepReadonly<OliveTwinViewModel>
   selectedZone: ComputedRef<StudyZone | null>
   selectedLayer: ComputedRef<StudyLayer | null>
+  /** Paso temporal activo de la capa seleccionada; `null` si no declara timeSteps. */
+  activeTimeStep: ComputedRef<TimeStep | null>
   overlay: ComputedRef<ActiveOverlay | null>
+}
+
+/** Índice por defecto de una capa: el último paso si hay serie temporal; si no, `null`. */
+function defaultTimeIndex(layer: StudyLayer | null): number | null {
+  if (!layer || !Array.isArray(layer.timeSteps) || layer.timeSteps.length === 0) {
+    return null
+  }
+  return layer.timeSteps.length - 1
 }
 
 function errorMessageFor(error: unknown, mode: DataMode): string {
@@ -61,7 +72,6 @@ export function useOliveTwinData(
     overlayVisible: true,
     overlayOpacity: 0.7,
     errorMessage: null,
-    // C1 stub: WP-04 implementa la línea temporal (docs/c0-interfaces.md §6).
     selectedTimeIndex: null,
   })
 
@@ -80,11 +90,23 @@ export function useOliveTwinData(
     return zone.layers.find((layer) => layer.id === state.selectedLayerId) ?? null
   })
 
+  const activeTimeStep = computed<TimeStep | null>(() => {
+    const layer = selectedLayer.value
+    const index = state.selectedTimeIndex
+    if (!layer || !Array.isArray(layer.timeSteps) || index === null) {
+      return null
+    }
+    return layer.timeSteps[index] ?? null
+  })
+
   /**
    * `null` si no hay selección válida en el manifiesto activo. La ruta ya
    * validada al cargar se resuelve aquí para que los componentes no compongan
    * URLs; si un manifiesto manipulado hubiera pasado una ruta insegura, el
    * overlay no se pinta en lugar de exponer una URL fuera del despliegue.
+   *
+   * Con `timeSteps`, la URL, el bbox y la identificación del paso salen del
+   * paso activo. Sin serie temporal se mantiene el comportamiento v1.1.
    */
   const overlay = computed<ActiveOverlay | null>(() => {
     const zone = selectedZone.value
@@ -92,9 +114,17 @@ export function useOliveTwinData(
     if (!zone || !layer) {
       return null
     }
+
+    const hasTimeSteps = Array.isArray(layer.timeSteps) && layer.timeSteps.length > 0
+    const step = activeTimeStep.value
+    if (hasTimeSteps && !step) {
+      return null
+    }
+    const source = hasTimeSteps && step ? step : layer
+
     let url: string
     try {
-      url = resolveAssetUrl(layer.image)
+      url = resolveAssetUrl(source.image)
     } catch {
       return null
     }
@@ -102,10 +132,12 @@ export function useOliveTwinData(
       zoneId: zone.id,
       layerId: layer.id,
       url,
-      bbox: layer.bbox,
+      bbox: source.bbox,
       opacity: state.overlayOpacity,
       visible: state.overlayVisible,
       status: layer.status,
+      timeIndex: hasTimeSteps ? state.selectedTimeIndex : null,
+      timeStep: hasTimeSteps ? step : null,
     }
   })
 
@@ -124,6 +156,7 @@ export function useOliveTwinData(
     state.zones = []
     state.selectedZoneId = null
     state.selectedLayerId = null
+    state.selectedTimeIndex = null
 
     try {
       const result = await loadManifest(mode, {
@@ -144,6 +177,7 @@ export function useOliveTwinData(
       state.zones = []
       state.selectedZoneId = null
       state.selectedLayerId = null
+      state.selectedTimeIndex = null
       state.loadStatus = 'error'
       state.errorMessage = errorMessageFor(error, mode)
     }
@@ -161,6 +195,7 @@ export function useOliveTwinData(
     if (zoneId === null) {
       state.selectedZoneId = null
       state.selectedLayerId = null
+      state.selectedTimeIndex = null
       return
     }
     const zone = state.zones.find((candidate) => candidate.id === zoneId)
@@ -168,20 +203,25 @@ export function useOliveTwinData(
       // Un id inexistente en el manifiesto activo se ignora.
       return
     }
+    const layer = zone.layers[0] ?? null
     state.selectedZoneId = zone.id
-    state.selectedLayerId = zone.layers[0]?.id ?? null
+    state.selectedLayerId = layer?.id ?? null
+    state.selectedTimeIndex = defaultTimeIndex(layer)
   }
 
   function selectLayer(layerId: LayerId | null): void {
     if (layerId === null) {
       state.selectedLayerId = null
+      state.selectedTimeIndex = null
       return
     }
     const zone = selectedZone.value
-    if (!zone || !zone.layers.some((layer) => layer.id === layerId)) {
+    const layer = zone?.layers.find((candidate) => candidate.id === layerId)
+    if (!zone || !layer) {
       return
     }
     state.selectedLayerId = layerId
+    state.selectedTimeIndex = defaultTimeIndex(layer)
   }
 
   function setOpacity(opacity: number): void {
@@ -195,8 +235,16 @@ export function useOliveTwinData(
     state.overlayVisible = visible
   }
 
-  // C1 stub: WP-04 lo sustituye por la implementación real.
-  function selectTimeStep(_index: number): void {}
+  function selectTimeStep(index: number): void {
+    const layer = selectedLayer.value
+    if (!layer || !Array.isArray(layer.timeSteps)) {
+      return
+    }
+    if (!Number.isInteger(index) || index < 0 || index >= layer.timeSteps.length) {
+      return
+    }
+    state.selectedTimeIndex = index
+  }
 
   function reload(): void {
     void load(state.dataMode)
@@ -209,6 +257,7 @@ export function useOliveTwinData(
     vm: readonly(state),
     selectedZone,
     selectedLayer,
+    activeTimeStep,
     overlay,
     setDataMode,
     selectZone,

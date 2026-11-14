@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.2.0",
+  "datasetMode": "real",
+  "appTitle": "OliveTwin",
+  "zones": [
+    {
+      "id": "parcela-real-fixture",
+      "name": "Parcela real — fixture temporal",
+      "description": "Fixture contractual para probar processed_real con timeSteps. No es una observación real ni debe publicarse en frontend/public/data/.",
+      "bbox": [-4.0, 37.5, -3.9, 37.6],
+      "layers": [
+        {
+          "id": "soil-moisture",
+          "title": "Humedad superficial — fixture",
+          "kind": "image-overlay",
+          "variable": "Humedad superficial",
+          "image": "data/real/zones/parcela-real-fixture/soil-moisture-2026-02-15.png",
+          "bbox": [-4.0, 37.5, -3.9, 37.6],
+          "imageCrs": "EPSG:3857",
+          "unit": "m³/m³",
+          "range": [0, 0.6],
+          "legend": [
+            { "value": 0, "color": "#ffffd9", "label": "Más seco" },
+            { "value": 0.3, "color": "#41b6c4", "label": "0.30 m³/m³" },
+            { "value": 0.6, "color": "#081d58", "label": "Más húmedo" }
+          ],
+          "status": "processed_real",
+          "provenance": {
+            "provider": "Fixture contractual OliveTwin",
+            "product": "Capa de prueba temporal; no es un producto satelital",
+            "acquisitionDate": "2026-02-15",
+            "sceneId": "FIXTURE-SCENE-TS-0002",
+            "processingVersion": "fixture-v1",
+            "referenceUrl": "https://example.org/olivetwin/fixture-timesteps",
+            "note": "URL y escenas reservadas para documentación (RFC 2606). Este fixture no es una observación real."
+          },
+          "qualityNote": "Fixture contractual: no usar en la demo ni en decisiones agronómicas",
+          "timeSteps": [
+            {
+              "date": "2026-01-15",
+              "label": "15 ene",
+              "image": "data/real/zones/parcela-real-fixture/soil-moisture-2026-01-15.png",
+              "bbox": [-4.0, 37.5, -3.9, 37.6],
+              "provenance": {
+                "acquisitionDate": "2026-01-15",
+                "sceneId": "FIXTURE-SCENE-TS-0001"
+              }
+            },
+            {
+              "date": "2026-02-15",
+              "label": "15 feb",
+              "image": "data/real/zones/parcela-real-fixture/soil-moisture-2026-02-15.png",
+              "bbox": [-4.0, 37.5, -3.9, 37.6],
+              "provenance": {
+                "acquisitionDate": "2026-02-15",
+                "sceneId": "FIXTURE-SCENE-TS-0002"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

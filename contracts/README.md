@@ -1,6 +1,6 @@
-# Contrato de manifiestos OliveTwin — v1.1.0
+# Contrato de manifiestos OliveTwin — v1.2.0
 
-**Estado:** congelado en Fase A (nodo A02), corregido en A02-fix para alinearse con el ejemplo §4.3 del plan v2, fecha 2026-11-14.
+**Estado:** congelado en Fase A (nodo A02), corregido en A02-fix para alinearse con el ejemplo §4.3 del plan v2. Ampliación aditiva C1 (v1.2.0) para la línea temporal, 2026-11-14.
 **Ámbito:** estructura mínima que comparten el cargador de datos (WP-04) y la interfaz Vue + Leaflet (WP-07).
 **Acuerdo completo:** [`docs/contract-freeze.md`](../docs/contract-freeze.md).
 
@@ -12,7 +12,7 @@ propietario de `contracts/` y ampliará este esquema **de forma aditiva**.
 
 | Archivo | Papel |
 |---|---|
-| `manifest.schema.json` | JSON Schema draft 2020-12 del manifiesto mínimo. `$id`: `urn:olivetwin:contract:manifest:1.1.0`. |
+| `manifest.schema.json` | JSON Schema draft 2020-12 del manifiesto mínimo. `$id`: `urn:olivetwin:contract:manifest:1.2.0`. |
 | `README.md` | Este documento: convenciones y validación local. |
 
 Manifiestos vigilados por el contrato:
@@ -29,7 +29,7 @@ La ausencia de zonas es intencionada: Fase A prepara contratos, no enseña capas
 
 ```json
 {
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "datasetMode": "sample",
   "appTitle": "OliveTwin",
   "zones": []
@@ -38,7 +38,7 @@ La ausencia de zonas es intencionada: Fase A prepara contratos, no enseña capas
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `schemaVersion` | string | SemVer dentro de la major 1: patrón `^1\.[0-9]+\.[0-9]+$`. Valor vigente `1.1.0`. Obligatorio. |
+| `schemaVersion` | string | SemVer dentro de la major 1: patrón `^1\.[0-9]+\.[0-9]+$`. Se admiten `1.1.0` (sin serie) y `1.2.0`; con `timeSteps` es obligatorio `1.2.0`. |
 | `datasetMode` | string | Enum cerrado `sample` \| `real`. Obligatorio. |
 | `appTitle` | string | No vacío, no solo espacios. Obligatorio. |
 | `zones` | array | Obligatorio; puede ser `[]`, pero nunca `null`. |
@@ -49,7 +49,8 @@ opcionalmente `description`. El `id` de zona es un slug kebab-case
 (`ndvi` \| `soil-moisture`), `title`, `kind` (`image-overlay`), `image`, `bbox`,
 `imageCrs` (`EPSG:3857`), `unit` no vacío, `status` (`synthetic` \|
 `processed_real`), `legend`, `provenance` y `qualityNote`; admite opcionalmente
-`variable` y `range` (`[min, max]` de números).
+`variable`, `range` (`[min, max]` de números) y, desde v1.2.0, `timeSteps`
+(lista de al menos un paso `{date, label?, image, bbox, provenance?}`).
 
 `legend` es una **lista de al menos dos clases** con la forma
 `{"value": number, "color": "#rrggbb", "label": string}`, tal como aparece en el
@@ -74,7 +75,11 @@ de `zone.bbox` con tolerancia de 0.01°, `min < max` en `range`, orden de
 `data/<datasetMode>/` en `image`, fechas de adquisición reales, existencia del
 PNG y canal alfa) **no** forman parte de este esquema y pertenecen a WP-04. Se
 implementan en `frontend/scripts/validate-lib.mjs` y se ejecutan con
-`npm run validate:data` (ver §Validación local).
+`npm run validate:data` (ver §Validación local). Con `timeSteps` se añaden:
+fechas ISO reales en orden estrictamente creciente y sin duplicados, `bbox` de
+cada paso dentro de `zone.bbox`, `layer.image`/`layer.bbox` iguales al último
+paso, prefijo y PNG de cada paso, y procedencia efectiva completa por paso en
+`processed_real`.
 
 La coherencia entre `datasetMode` y `status` sí se expresa en el esquema mediante
 `if/then`: `sample` solo admite capas `synthetic` y `real` solo `processed_real`.
@@ -85,7 +90,8 @@ Además, `processed_real` exige `provenance.acquisitionDate`, `sceneId` y
 
 ### 1. Versión del contrato
 
-- La versión vigente es **1.1.0** y se declara en `schemaVersion`.
+- La versión vigente es **1.2.0** (la 1.1.0 sigue admitida si no hay `timeSteps`) y se
+  declara en `schemaVersion`.
 - Un cambio **aditivo** (nueva propiedad opcional, nuevo `$def` reutilizable, aclaración de
   documentación) sube la minor: `1.2.0`, `1.3.0`…
 - Un cambio **incompatible** (campo obligatorio nuevo, cambio de tipo, de semántica, del orden
@@ -203,6 +209,9 @@ Casos negativos mínimos que el contrato debe rechazar:
 7. `image: "data/sample/%2e%2e/x.png"` → falla el patrón de ruta segura (sin `%`).
 8. `provenance.acquisitionDate: "2026-13-45"` → falla el formato `date`/`date-time`
    y la comprobación semántica de calendario.
+9. `timeSteps` desordenados, con fechas duplicadas, con un paso fuera de la zona,
+   con `layer.image` distinto del último paso o declarados con `schemaVersion: "1.1.0"`
+   → rechazados por la semántica o por el `if/then` del esquema.
 
 Un manifiesto con `zones: []` y modo `sample` o `real` debe aceptarse. El
 ejemplo completo §4.3 del plan v2 (zona con `description`, capa con `variable`,

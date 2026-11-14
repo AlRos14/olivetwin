@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OliveTwin — validador del contrato de manifiestos v1.1.0 (A04 + WP04-01).
+ * OliveTwin — validador del contrato de manifiestos v1.2.0 (A04 + WP04-01 + C1).
  *
  * Comprueba cuatro capas:
  *   1. El esquema `contracts/manifest.schema.json` compila con Ajv (draft 2020-12).
@@ -93,7 +93,7 @@ async function listJsonFiles(dir) {
 }
 
 async function main() {
-  console.log('OliveTwin — validación del contrato de manifiestos v1.1.0')
+  console.log('OliveTwin — validación del contrato de manifiestos v1.2.0')
   console.log(`  Esquema: ${relative(schemaPath)}`)
 
   // --- 1. Cargar el schema y compilarlo --------------------------------

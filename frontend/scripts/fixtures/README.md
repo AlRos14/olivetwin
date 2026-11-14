@@ -18,6 +18,8 @@ Deben validar contra `contracts/manifest.schema.json` y las reglas semánticas.
 | `real-empty.json` | Manifiesto `real` con `zones: []`; el modo vacío es válido. |
 | `sample-plan-4.3.json` | Ejemplo completo de la sección 4.3 del plan v2 (zona, capa NDVI, leyenda de tres clases, procedencia sintética). |
 | `real-with-processed-real.json` | Zona `real` con una capa `processed_real` y `provenance` completa (fecha, escena y URL). Es un **fixture contractual** para AT-16: no debe publicarse en `data/real/` ni presentarse como dato científico. |
+| `sample-with-timesteps.json` | Manifiesto `sample` v1.2.0 con tres pasos temporales ordenados, el último igual a `layer.image`/`bbox` y `provenance` parcial en un paso. |
+| `real-with-timesteps.json` | Manifiesto `real` v1.2.0 con `processed_real` y procedencia efectiva completa en cada paso. Fixture contractual; no es una observación real. |
 
 ## `invalid/`
 
@@ -47,3 +49,9 @@ error del propio fixture.
 | `legend-single-stop.json` | Leyenda con una sola parada (mínimo: dos). |
 | `range-inverted.json` | `range` con `min` ≥ `max`. |
 | `zone-id-not-kebab.json` | `id` de zona que no cumple kebab-case (`Jaen_Demo`). |
+| `timesteps-unordered.json` | `timeSteps` con fechas no crecientes. |
+| `timesteps-duplicate-date.json` | Dos pasos con la misma `date`. |
+| `timesteps-last-step-mismatch.json` | `layer.image` no coincide con el `image` del último paso. |
+| `timestep-outside-zone.json` | Un paso intermedio con `bbox` fuera de `zone.bbox`. |
+| `timesteps-processed-real-step-missing-scene.json` | `processed_real` con un paso cuya procedencia efectiva deja `sceneId` a `null`. |
+| `timesteps-schema-version-1.1.0.json` | `timeSteps` declarados con `schemaVersion: "1.1.0"` en vez de `"1.2.0"`. |
