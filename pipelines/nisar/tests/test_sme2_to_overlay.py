@@ -19,6 +19,8 @@ NAMES = [
     "NISAR_L3_PR_SME2_030_156_D_073_4005_DHDH_A_20260917T004509_20260917T004543_P05023_N_F_J_001.h5",
     "NISAR_L3_PR_SME2_033_105_A_017_4005_DHDH_A_20261019T111903_20261019T111937_P05023_N_F_J_001.h5",
 ]
+THIRD = ("NISAR_L3_PR_SME2_034_112_A_022_4005_DHDH_A_20261107T120145_20261107T120219_"
+         "P05023_N_F_J_001.h5")
 
 
 @pytest.fixture
@@ -177,3 +179,153 @@ def test_mixed_crid_staging_exit_code(scenes, tmp_path):
     mixed = scenes[1].with_name(scenes[1].name.replace("P05023", "P05036"))
     scenes[1].rename(mixed)
     assert run([scenes[0], mixed], tmp_path) == 2
+
+
+# --------------------------------------------------------------- serie temporal v1.2
+@pytest.fixture
+def three_scenes(tmp_path):
+    paths = []
+    for i, n in enumerate([*NAMES, THIRD]):
+        p = tmp_path / n
+        fake_sme2.make(p, seed=i)
+        paths.append(p)
+    return paths
+
+
+def published_layer(public):
+    m = json.loads((public / "data/real/manifest.json").read_text())
+    zone = next(z for z in m["zones"] if z["id"] == "delta-test")
+    layer = next(l for l in zone["layers"] if l["id"] == "soil-moisture")
+    return m, zone, layer
+
+
+def test_publish_series_time_steps(three_scenes, tmp_path, public):
+    assert run(three_scenes, tmp_path, "--publish", "--approved-by", "Revisor",
+               "--public-dir", str(public)) == 0
+    m, zone, layer = published_layer(public)
+    assert m["schemaVersion"] == "1.2.0"
+    steps = layer["timeSteps"]
+    assert len(steps) == 3
+    dates = [s["date"] for s in steps]
+    assert dates == sorted(dates) and len(set(dates)) == 3
+    # layer.image / bbox = último paso (compatibilidad v1.1)
+    assert layer["image"] == steps[-1]["image"]
+    assert layer["bbox"] == steps[-1]["bbox"]
+    assert layer["image"] == "data/real/zones/delta-test/soil-moisture/20261107T120145.png"
+    # Escala y leyenda comunes a toda la serie.
+    assert layer["range"] == [0.0, 0.6]
+    assert layer["legend"][0]["label"] == "Más seco"
+    assert layer["legend"][-1]["label"] == "Más húmedo"
+    assert layer["legend"][1]["label"] == "0,12 m³/m³"
+    for step in steps:
+        prov = step["provenance"]
+        assert set(prov) == {"acquisitionDate", "sceneId", "processingVersion", "note", "crid"}
+        assert prov["acquisitionDate"] == step["date"]
+        assert prov["processingVersion"] == "P05023"
+        assert prov["crid"] == "P05023"
+        assert (public / step["image"]).is_file()
+        # El bbox de la zona contiene TODOS los pasos.
+        assert zone["bbox"][0] <= step["bbox"][0] and zone["bbox"][1] <= step["bbox"][1]
+        assert zone["bbox"][2] >= step["bbox"][2] and zone["bbox"][3] >= step["bbox"][3]
+    assert len(list((public / "data/real/zones/delta-test/soil-moisture").glob("*.png"))) == 3
+
+
+def test_date_publishes_single_image_without_series(scenes, tmp_path, public):
+    assert run(scenes, tmp_path, "--publish", "--approved-by", "R",
+               "--date", "2026-09-17", "--public-dir", str(public)) == 0
+    m, _, layer = published_layer(public)
+    assert "timeSteps" not in layer
+    assert layer["image"] == "data/real/zones/delta-test/soil-moisture/20260917T004509.png"
+    assert layer["provenance"]["acquisitionDate"] == "2026-09-17T00:45:09Z"
+    assert m["schemaVersion"] == "1.1.0"  # sin timeSteps no sube la versión del contrato
+    assert (public / layer["image"]).is_file()
+
+
+def test_auto_scale_uses_pooled_percentiles(scenes, tmp_path):
+    assert run(scenes, tmp_path, "--auto-scale") == 0
+    out = tmp_path / "st/delta-test"
+    report = json.loads((out / "report.json").read_text())
+    scale = report["scale"]
+    assert scale["mode"] == "auto" and scale["vmin"] < scale["vmax"]
+    vmin, vmax = scale["vmin"], scale["vmax"]
+    assert abs(round(vmin / 0.05) * 0.05 - vmin) < 1e-9
+    assert abs(round(vmax / 0.05) * 0.05 - vmax) < 1e-9
+    assert scale["percentiles"]["p2"] >= vmin - 1e-9
+    assert scale["percentiles"]["p98"] <= vmax + 1e-9
+    assert (scale["percentiles"]["samples"]) > 0
+    layer = json.loads((out / "layer.staging.json").read_text())["layer"]
+    assert layer["range"] == [vmin, vmax]
+    # La leyenda intermedia usa coma decimal española.
+    assert all("," in s["label"] or s["label"] in ("Más seco", "Más húmedo")
+               for s in layer["legend"])
+
+
+def test_from_staging_rerenders_same_bbox_with_other_scale(scenes, tmp_path):
+    assert run(scenes, tmp_path) == 0
+    src = tmp_path / "st/delta-test"
+    before = {s["sceneId"]: s["bbox"]
+              for s in json.loads((src / "report.json").read_text())["scenes"]}
+    rc = conv.main(["--from-staging", str(src), "--zone-id", "delta-test",
+                    "--zone-name", "Delta (test)", "--staging", str(tmp_path / "st2"),
+                    "--vmin", "0.1", "--vmax", "0.4"])
+    assert rc == 0
+    out2 = tmp_path / "st2/delta-test"
+    report2 = json.loads((out2 / "report.json").read_text())
+    assert report2["mode"] == "from-staging"
+    assert report2["scale"]["mode"] == "manual"
+    assert [report2["scale"]["vmin"], report2["scale"]["vmax"]] == [0.1, 0.4]
+    after = {s["sceneId"]: s["bbox"] for s in report2["scenes"]}
+    assert after.keys() == before.keys()
+    for scene_id, bbox in before.items():
+        assert after[scene_id] == bbox  # mismo bbox: no se recalcula la georreferencia
+    assert all(s["georefCheck"]["ok"] for s in report2["scenes"])
+    assert len(list((out2 / "png").glob("*.png"))) == 2
+    # No se reescribe layer.staging.json de la fuente.
+    assert json.loads((src / "layer.staging.json").read_text())["layer"]["range"] == [0.0, 0.6]
+
+
+def test_from_staging_publishes_series(scenes, tmp_path, public):
+    assert run(scenes, tmp_path) == 0
+    src = tmp_path / "st/delta-test"
+    assert conv.main(["--from-staging", str(src), "--zone-id", "delta-test",
+                      "--zone-name", "Delta (test)", "--staging", str(tmp_path / "st2"),
+                      "--vmin", "0.1", "--vmax", "0.4",
+                      "--publish", "--approved-by", "Revisor",
+                      "--public-dir", str(public)]) == 0
+    m, _, layer = published_layer(public)
+    assert m["schemaVersion"] == "1.2.0"
+    assert len(layer["timeSteps"]) == 2
+    assert layer["provenance"]["sceneId"] == layer["timeSteps"][-1]["provenance"]["sceneId"]
+    assert layer["provenance"]["acquisitionDate"] == "2026-10-19T11:19:03Z"
+    assert layer["range"] == [0.1, 0.4]
+    assert all((public / s["image"]).is_file() for s in layer["timeSteps"])
+
+
+def test_meta_from_provenance_uses_standard_name_or_fallback():
+    prov = {"sceneId": "escena-rara", "acquisitionDate": "2026-05-01T10:00:00Z",
+            "crid": "P05036", "maturity": "BETA"}
+    meta = conv.meta_from_provenance(prov, "x")
+    assert meta["acquisitionStart"] == "2026-05-01T10:00:00Z"
+    assert meta["date"] == "2026-05-01" and meta["crid"] == "P05036"
+    std = conv.meta_from_provenance({"sceneId": Path(NAMES[0]).stem,
+                                     "acquisitionDate": "2000-01-01T00:00:00Z"}, "x")
+    assert std["crid"] == "P05023" and std["track"] == 156 and std["date"] == "2026-09-17"
+
+
+def test_skipped_series_requires_allow_skipped(tmp_path, public):
+    import h5py
+    good = tmp_path / NAMES[0]
+    fake_sme2.make(good, seed=0)
+    empty = tmp_path / NAMES[1]
+    fake_sme2.make(empty, seed=1)
+    with h5py.File(empty, "r+") as f:
+        f["/science/LSAR/SME2/grids/soilMoisture"][...] = -9999.0
+    args = ("--publish", "--approved-by", "R", "--public-dir", str(public))
+    before = (public / "data/real/manifest.json").read_text()
+    assert run([good, empty], tmp_path, *args) == 1
+    assert (public / "data/real/manifest.json").read_text() == before
+    assert run([good, empty], tmp_path, *args, "--allow-skipped") == 0
+    m, _, layer = published_layer(public)
+    assert m["schemaVersion"] == "1.2.0"
+    assert len(layer["timeSteps"]) == 1
+    assert layer["timeSteps"][0]["date"] == "2026-09-17T00:45:09Z"
