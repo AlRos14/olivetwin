@@ -32,7 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shutil
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -282,26 +282,57 @@ def build_layer(meta: dict, image_rel: str, bbox: list[float], vmin: float, vmax
     }
 
 
+def bbox_union(a, b) -> list[float]:
+    return [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
+
+
+def atomic_write(path: Path, data: bytes) -> None:
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+
+
 def publish(args, layer_entry: dict, png_src: Path) -> Path:
     public = Path(args.public_dir)
     manifest_path = public / "data/real/manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not manifest_path.is_file():
+        sys.exit(f"ERROR: no existe {manifest_path} (¿--public-dir correcto?)")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        sys.exit(f"ERROR: {manifest_path} no es JSON válido: {exc}")
+    # Validar todo ANTES de escribir nada.
     if manifest.get("datasetMode") != "real":
         sys.exit(f"ERROR: {manifest_path} no es un manifiesto real")
-    dst = public / layer_entry["image"]
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(png_src, dst)
+    zones = manifest.get("zones")
+    if not isinstance(zones, list) or not all(isinstance(z, dict) and isinstance(z.get("layers"), list)
+                                              and "id" in z for z in zones):
+        sys.exit(f"ERROR: {manifest_path} no tiene una lista 'zones' válida")
+    dst = (public / layer_entry["image"]).resolve()
+    if public.resolve() not in dst.parents:
+        sys.exit(f"ERROR: ruta de imagen fuera de {public}")
+
     layer_entry = dict(layer_entry)
     layer_entry["provenance"] = dict(layer_entry["provenance"], approvedBy=args.approved_by)
-    zones = manifest["zones"]
     zone = next((z for z in zones if z["id"] == args.zone_id), None)
     if zone is None:
-        zone = {"id": args.zone_id, "name": args.zone_name, "bbox": list(args.aoi), "layers": []}
+        zone = {"id": args.zone_id, "name": args.zone_name,
+                "bbox": bbox_union(list(args.aoi), layer_entry["bbox"]), "layers": []}
         if args.zone_description:
             zone["description"] = args.zone_description
         zones.append(zone)
-    zone["layers"] = [l for l in zone["layers"] if l["id"] != "soil-moisture"] + [layer_entry]
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    else:
+        old = zone.get("bbox")
+        new = bbox_union(old, layer_entry["bbox"]) if isinstance(old, list) and len(old) == 4 else list(layer_entry["bbox"])
+        if new != old:
+            print(f"[aviso] bbox de la zona existente '{args.zone_id}' ampliado de {old} a {new} "
+                  "para contener la capa", file=sys.stderr)
+            zone["bbox"] = new
+    zone["layers"] = [l for l in zone["layers"] if l.get("id") != "soil-moisture"] + [layer_entry]
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write(dst, png_src.read_bytes())
+    atomic_write(manifest_path, (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     return manifest_path
 
 
@@ -336,6 +367,8 @@ def main(argv=None) -> int:
         p.error("--aoi inválido: se espera west < east y south < north")
     if not 0 <= args.vmin < args.vmax <= 1:
         p.error("--vmin/--vmax deben cumplir 0 <= vmin < vmax <= 1 (m³/m³)")
+    if not 0 < args.min_valid <= 1:
+        p.error("--min-valid debe estar en (0, 1]")
     if not 1 <= args.upscale <= 16:
         p.error("--upscale fuera de rango")
     if args.publish and not (args.approved_by or "").strip():
@@ -343,22 +376,23 @@ def main(argv=None) -> int:
 
     out = args.staging / args.zone_id
     image_rel = f"data/real/zones/{args.zone_id}/soil-moisture.png"
-    results, problems = [], []
+    results, problems, warnings, skipped = [], [], [], []
     for h5_path in sorted(args.h5):
         meta = parse_name(h5_path)
         c = crop(h5_path, args.layer, tuple(args.aoi))
         if not c:
-            problems.append(f"{h5_path.name}: el AOI queda fuera de la escena")
+            skipped.append(f"{h5_path.name}: el AOI queda fuera de la escena")
             continue
         valid = float(np.isfinite(c["data"]).mean())
         if valid < args.min_valid:
-            problems.append(f"{h5_path.name}: solo {valid:.0%} de píxeles válidos")
+            skipped.append(f"{h5_path.name}: solo {valid:.0%} de píxeles válidos")
             continue
         if c["units"] and "meter^3" not in c["units"] and "m3" not in c["units"]:
-            problems.append(f"{h5_path.name}: unidades inesperadas '{c['units']}'")
+            skipped.append(f"{h5_path.name}: unidades inesperadas '{c['units']}'")
             continue
         layer_name = c["layerPath"].split("/grids/", 1)[-1]
-        tag = f"{meta['date']}_{meta['direction'][0].upper()}{meta['track']:03d}"
+        tag = (f"{meta['acquisitionStart'][:19].replace('-', '').replace(':', '')}_"
+               f"{meta['direction'][0].upper()}{meta['track']:03d}_F{meta['frame']:03d}")
         src_t = write_master(c, out / "geotiff" / f"{tag}_{layer_name.replace('/', '_')}.tif")
         merc, bounds = warp_to_mercator(c, src_t, args.upscale)
         # 3857 -> 4326 conserva los ejes (cilíndrica): las esquinas dan el bbox exacto.
@@ -373,11 +407,16 @@ def main(argv=None) -> int:
         if not check["ok"]:
             problems.append(f"{h5_path.name}: verificación de georreferencia fallida {check}")
         v = c["data"][np.isfinite(c["data"])]
+        clipped = float((v > args.vmax).mean())
+        if c["aoiCoverage"] < 0.9:
+            warnings.append(f"{h5_path.name}: la escena cubre solo {c['aoiCoverage']:.0%} del AOI")
+        if clipped > 0.05:
+            warnings.append(f"{h5_path.name}: {clipped:.0%} de píxeles por encima de vmax={args.vmax} (saturan)")
         results.append({
             "meta": meta, "png": png, "bbox": bbox, "layerName": layer_name,
             "layer": build_layer(meta, image_rel, bbox, args.vmin, args.vmax, layer_name, args.maturity),
             "stats": {"validFraction": round(valid, 4), "min": float(v.min()), "median": float(np.median(v)),
-                      "max": float(v.max()), "clippedAboveVmax": float((v > args.vmax).mean()),
+                      "max": float(v.max()), "clippedAboveVmax": clipped,
                       "shape": list(c["data"].shape), "pngShape": list(rgba.shape[:2]),
                       "aoiCoverage": round(c["aoiCoverage"], 3), "pngBytes": png.stat().st_size},
             "georefCheck": check,
@@ -386,7 +425,7 @@ def main(argv=None) -> int:
               f"mediana={np.median(v):.3f} georef={check['passed']}/{check['checked']} -> {png}")
 
     if not results:
-        print("ERROR: ninguna escena utilizable", *problems, sep="\n  ", file=sys.stderr)
+        print("ERROR: ninguna escena utilizable", *skipped, *problems, sep="\n  ", file=sys.stderr)
         return 1
 
     crids = {r["meta"]["crid"] for r in results}
@@ -401,7 +440,9 @@ def main(argv=None) -> int:
             return 1
         chosen = matches[-1]
 
-    (out / "layer.json").write_text(json.dumps(chosen["layer"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (out / "layer.staging.json").write_text(json.dumps({
+        "_staging": "NO copiar a mano al manifiesto: publicar con --publish --approved-by tras la revisión científica.",
+        "layer": chosen["layer"]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (out / "timeseries.json").write_text(json.dumps({
         "note": "Borrador para una futura extensión aditiva del contrato (v1.2); no lo consume la app v1.1.0.",
         "zoneId": args.zone_id, "layerId": "soil-moisture",
@@ -411,24 +452,31 @@ def main(argv=None) -> int:
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     report = {"schemaVersion": SCHEMA_VERSION, "aoi": args.aoi, "layer": args.layer,
               "scale": [args.vmin, args.vmax], "chosen": chosen["meta"]["sceneId"],
-              "problems": problems,
+              "problems": problems, "skipped": skipped, "warnings": warnings,
               "scenes": [{"sceneId": r["meta"]["sceneId"], "bbox": r["bbox"], **r["stats"],
                           "georefCheck": r["georefCheck"]} for r in results]}
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    for msg in problems:
+    for msg in skipped:
+        print(f"[descartada] {msg}", file=sys.stderr)
+    for msg in problems + warnings:
         print(f"[aviso] {msg}", file=sys.stderr)
     print(f"Staging listo en {out} (capa elegida: {chosen['meta']['date']})")
 
     if args.publish:
-        if any("georreferencia" in m or "CRID" in m for m in problems):
-            print("ERROR: no se publica con avisos de georreferencia o CRID mezclados", file=sys.stderr)
+        if problems:
+            print("ERROR: no se publica con fallos de georreferencia o CRID mezclados", file=sys.stderr)
+            return 1
+        if skipped and not args.date:
+            print("ERROR: se descartaron escenas; la elegida podría no ser la más reciente. "
+                  "Indica --date explícitamente o pasa solo ficheros válidos.", file=sys.stderr)
             return 1
         mp = publish(args, chosen["layer"], chosen["png"])
         print(f"Publicado en {mp}. Ejecuta `npm run validate:data --prefix frontend` antes de la PR.")
     else:
         print("No se ha tocado el manifiesto real (usa --publish --approved-by tras la revisión científica).")
-    return 0 if not any("georreferencia" in m for m in problems) else 2
+    # Códigos: 0 = ok; 1 = error/publicación bloqueada; 2 = staging con problemas (georref. o CRID).
+    return 2 if problems else 0
 
 
 if __name__ == "__main__":

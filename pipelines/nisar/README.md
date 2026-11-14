@@ -46,7 +46,7 @@ principal documentada por ASF), `--date YYYY-MM-DD` (por defecto la fecha más r
 6. **Comprueba la georreferencia**: 25 píxeles de origen, colocados como lo hace Leaflet `ImageOverlay`
    (interpolación lineal en Mercator dentro del `bbox`), deben caer en un píxel opaco del color esperado.
 
-Salidas en `staging/<zona>/`: `png/soil-moisture_<fecha>_<órbita>.png`, `layer.json` (entrada de capa),
+Salidas en `staging/<zona>/`: `png/soil-moisture_<fecha>_<órbita>.png`, `layer.staging.json` (entrada de capa envuelta para que no se copie a mano),
 `timeseries.json` (todas las fechas; borrador para una futura extensión v1.2 del contrato, la app v1.1.0
 no lo lee) y `report.json` (estadísticas, cobertura, píxeles recortados por `vmax`, comprobaciones).
 
@@ -54,13 +54,27 @@ no lo lee) y `report.json` (estadísticas, cobertura, píxeles recortados por `v
 
 - `--publish` exige `--approved-by`: el contrato reserva `processed_real` para datos revisados.
 - No publica si falla la verificación de georreferencia o si se mezclan versiones de procesamiento (CRID).
+- Si se descartó alguna escena (AOI fuera, pocos válidos, unidades raras), exige `--date` explícito para no
+  publicar en silencio una fecha antigua como «la más reciente».
+- Valida el manifiesto antes de escribir y escribe PNG y manifiesto de forma atómica (sin huérfanos).
+- El `bbox` de la zona se amplía, con aviso, para contener el `bbox` de la capa.
+- Avisa si la escena cubre < 90 % del AOI o si > 5 % de píxeles saturan por encima de `--vmax`.
 - Descarta escenas con menos de `--min-valid` (10 %) de píxeles válidos o con unidades inesperadas.
 - Republicar reemplaza la capa `soil-moisture` de la zona; no duplica.
 - `qualityNote` indica la madurez (PROVISIONAL = no totalmente calibrado), las zonas sin estimación y que
   la humedad superficial no equivale a necesidad de riego.
 
+## Códigos de salida
+
+| Código | Significado |
+|---|---|
+| 0 | Correcto (puede haber avisos en stderr) |
+| 1 | Error de entrada, ninguna escena utilizable o publicación bloqueada |
+| 2 | Staging generado con problemas: verificación de georreferencia fallida o CRID mezclados |
+
 ## Limitaciones
 
+- La máscara descarta valores fuera de [0, 1] m³/m³ (rango físico).
 - Interpreta el nombre de fichero NISAR para fecha, track, órbita y CRID; un nombre no estándar se rechaza.
 - No aplica todavía las capas de banderas de calidad de SME2 (codificación pendiente de confirmar en la
   [especificación](https://nisar-docs.asf.alaska.edu/sme2)).

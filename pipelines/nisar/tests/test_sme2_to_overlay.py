@@ -56,7 +56,9 @@ def test_staging_outputs_and_georef(scenes, tmp_path):
         # El bbox de la imagen cubre el AOI con a lo sumo ~1 píxel (200 m) de margen.
         assert w <= -90.32 and e >= -90.24 and so <= 29.90 and n >= 29.96
         assert -90.32 - w < 0.003 and e + 90.24 < 0.003
-    layer = json.loads((out / "layer.json").read_text())
+    staged = json.loads((out / "layer.staging.json").read_text())
+    assert "_staging" in staged
+    layer = staged["layer"]
     assert layer["provenance"]["acquisitionDate"] == "2026-10-19T11:19:03Z"  # la más reciente
     assert layer["provenance"]["processingVersion"] == "P05023"
     assert layer["status"] == "processed_real" and layer["imageCrs"] == "EPSG:3857"
@@ -125,3 +127,53 @@ def test_aoi_outside_scene_fails(scenes, tmp_path):
 def test_rejects_bad_name(tmp_path):
     with pytest.raises(ValueError):
         conv.parse_name(Path("cualquier_cosa.h5"))
+
+
+def test_skipped_latest_blocks_publish_without_date(tmp_path, public):
+    good = tmp_path / NAMES[0]
+    fake_sme2.make(good, seed=0)
+    empty = tmp_path / NAMES[1]
+    fake_sme2.make(empty, seed=1)
+    import h5py
+    with h5py.File(empty, "r+") as f:
+        f["/science/LSAR/SME2/grids/soilMoisture"][...] = -9999.0
+    args = ("--publish", "--approved-by", "R", "--public-dir", str(public))
+    assert run([good, empty], tmp_path, *args) == 1
+    assert run([good, empty], tmp_path, *args, "--date", "2026-09-17") == 0
+    m = json.loads((public / "data/real/manifest.json").read_text())
+    assert m["zones"][0]["layers"][0]["provenance"]["acquisitionDate"] == "2026-09-17T00:45:09Z"
+
+
+def test_same_day_frames_do_not_collide(tmp_path):
+    a = tmp_path / "NISAR_L3_PR_SME2_030_156_D_073_4005_DHDH_A_20260917T004509_20260917T004543_P05023_N_F_J_001.h5"
+    b = tmp_path / "NISAR_L3_PR_SME2_030_156_D_074_4005_DHDH_A_20260917T004543_20260917T004617_P05023_N_F_J_001.h5"
+    fake_sme2.make(a, seed=0)
+    fake_sme2.make(b, seed=1)
+    assert run([a, b], tmp_path) == 0
+    assert len(list((tmp_path / "st/delta-test/png").glob("*.png"))) == 2
+    assert len(list((tmp_path / "st/delta-test/geotiff").glob("*.tif"))) == 2
+
+
+def test_zone_bbox_contains_layer(scenes, tmp_path, public):
+    mp = public / "data/real/manifest.json"
+    m = json.loads(mp.read_text())
+    m["zones"] = [{"id": "delta-test", "name": "x", "bbox": [-90.31, 29.91, -90.25, 29.95], "layers": []}]
+    mp.write_text(json.dumps(m))
+    assert run(scenes, tmp_path, "--publish", "--approved-by", "R", "--public-dir", str(public)) == 0
+    z = json.loads(mp.read_text())["zones"][0]
+    lb = z["layers"][0]["bbox"]
+    assert z["bbox"][0] <= lb[0] and z["bbox"][1] <= lb[1] and z["bbox"][2] >= lb[2] and z["bbox"][3] >= lb[3]
+
+
+def test_bad_manifest_leaves_no_orphan_png(scenes, tmp_path, public):
+    mp = public / "data/real/manifest.json"
+    mp.write_text(json.dumps({"schemaVersion": "1.1.0", "datasetMode": "real", "appTitle": "x"}))
+    with pytest.raises(SystemExit):
+        run(scenes, tmp_path, "--publish", "--approved-by", "R", "--public-dir", str(public))
+    assert not (public / "data/real/zones").exists()
+
+
+def test_mixed_crid_staging_exit_code(scenes, tmp_path):
+    mixed = scenes[1].with_name(scenes[1].name.replace("P05023", "P05036"))
+    scenes[1].rename(mixed)
+    assert run([scenes[0], mixed], tmp_path) == 2
