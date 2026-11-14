@@ -44,15 +44,17 @@ La ausencia de zonas es intencionada: Fase A prepara contratos, no enseña capas
 | `zones` | array | Obligatorio; puede ser `[]`, pero nunca `null`. |
 
 Cada zona (`$defs.zone`) exige `id`, `name`, `bbox` y `layers[]`, y admite
-opcionalmente `description`. Cada capa (`$defs.layer`) exige `id`
+opcionalmente `description`. El `id` de zona es un slug kebab-case
+(`^[a-z0-9]+(?:-[a-z0-9]+)*$`). Cada capa (`$defs.layer`) exige `id`
 (`ndvi` \| `soil-moisture`), `title`, `kind` (`image-overlay`), `image`, `bbox`,
-`imageCrs`, `unit`, `status` (`synthetic` \| `processed_real`), `legend`,
-`provenance` y `qualityNote`; admite opcionalmente `variable` y `range`
-(`[min, max]` de números).
+`imageCrs` (`EPSG:3857`), `unit` no vacío, `status` (`synthetic` \|
+`processed_real`), `legend`, `provenance` y `qualityNote`; admite opcionalmente
+`variable` y `range` (`[min, max]` de números).
 
-`legend` es una **lista no vacía** de clases con la forma
+`legend` es una **lista de al menos dos clases** con la forma
 `{"value": number, "color": "#rrggbb", "label": string}`, tal como aparece en el
-ejemplo §4.3 del plan v2. No es un objeto libre.
+ejemplo §4.3 del plan v2. No es un objeto libre y debe estar ordenada por
+`value` de forma creciente estricta (validación semántica).
 
 `provenance` exige `provider`, `product` y `processingVersion`; admite
 `acquisitionDate`, `sceneId`, `referenceUrl` y `note` como string o `null`.
@@ -60,10 +62,18 @@ Mantiene `additionalProperties: true` de forma deliberada para extensiones
 aditivas del pipeline científico (por ejemplo CRID o madurez de NISAR SME2).
 No existe el campo `source` de versiones anteriores del borrador.
 
-Las validaciones semánticas (por ejemplo `west < east`, `min <= max` en
-`range`, unicidad de `id` o existencia del PNG) **no** forman parte de este
-esquema y pertenecen a WP-04; tampoco se fijan aquí los valores admitidos de
-`imageCrs`.
+Las validaciones semánticas (`west < east`, `south < north`, `layer.bbox` dentro
+de `zone.bbox` con tolerancia de 0.01°, `min < max` en `range`, orden de
+`legend`, unicidad de `id` de zona y de capa por zona, prefijo
+`data/<datasetMode>/` en `image`, existencia del PNG y canal alfa) **no** forman
+parte de este esquema y pertenecen a WP-04. Se implementan en
+`frontend/scripts/validate-lib.mjs` y se ejecutan con `npm run validate:data`
+(ver §Validación local).
+
+La coherencia entre `datasetMode` y `status` sí se expresa en el esquema mediante
+`if/then`: `sample` solo admite capas `synthetic` y `real` solo `processed_real`.
+Además, `processed_real` exige `provenance.acquisitionDate`, `sceneId` y
+`referenceUrl` como cadenas no nulas.
 
 ## Convenciones congeladas
 
@@ -158,6 +168,18 @@ npx -y ajv-cli@5 validate --spec=draft2020 \
   -d frontend/public/data/sample/manifest.json \
   -d frontend/public/data/real/manifest.json
 ```
+
+Desde WP04-01, la comprobación completa (esquema + semántica + existencia y alfa
+del PNG) se ejecuta con:
+
+```bash
+npm run validate:data --prefix frontend
+```
+
+Los casos negativos de `frontend/scripts/fixtures/invalid/` cubren, entre otros,
+`datasetMode`/`status` incoherentes, `bbox` invertido, capa fuera de zona,
+rutas `image` absolutas, con `..` o con URL externa, `imageCrs` no admitido,
+ids de zona duplicados, leyenda desordenada y `range` invertido.
 
 Casos negativos mínimos que el contrato debe rechazar:
 
