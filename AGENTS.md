@@ -64,6 +64,11 @@ A04 (CI) tienen ámbitos separados. A01 no edita `frontend/public/data/`, A02 no
 edita `frontend/src/`, y A04 no edita `package.json` sin coordinación con A01.
 Los agentes de Fase A tampoco implementan WP-04 ni WP-07.
 
+La Fase A está cerrada. La fase vigente es la **Fase B** (WP-04 ∥ WP-07), regida
+por la tabla de ámbitos anterior y por [`docs/c0-interfaces.md`](docs/c0-interfaces.md).
+El estado de los nodos y los planes archivados están en
+[`docs/work-packets/README.md`](docs/work-packets/README.md).
+
 ## Comprobaciones obligatorias
 
 Desde `frontend/`, antes de declarar terminado un cambio:
