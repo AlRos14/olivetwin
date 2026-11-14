@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:olivetwin:contract:manifest:1.1.0",
+  "title": "OliveTwin manifest — contrato mínimo v1.1.0",
+  "description": "Contrato mínimo congelado en Fase A (nodo A02). Describe únicamente la estructura que WP-04 (datos) y WP-07 (UI) necesitan compartir para avanzar sin romperse. WP-04 completará este esquema de forma aditiva (nuevas propiedades opcionales y $defs), sin alterar los campos ni las convenciones congeladas en docs/contract-freeze.md. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. La validación semántica (por ejemplo west < east, coherencia entre bbox de zona y de capa, o existencia real del PNG) NO forma parte de este esquema y corresponde a WP-04.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "datasetMode",
+    "appTitle",
+    "zones"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$",
+      "description": "Versión SemVer del contrato dentro de la major 1. Valor vigente: \"1.1.0\". Las ampliaciones aditivas suben la minor; un cambio incompatible sube la major."
+    },
+    "datasetMode": {
+      "type": "string",
+      "enum": [
+        "sample",
+        "real"
+      ],
+      "description": "Modo de datos seleccionado. No existe un tercer modo ni fallback silencioso entre ellos: \"real\" sin zonas es un estado válido y debe mostrarse como vacío."
+    },
+    "appTitle": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Título mostrado por la aplicación. No puede ser cadena vacía ni solo espacios."
+    },
+    "zones": {
+      "type": "array",
+      "description": "Zonas de estudio disponibles en el modo. La lista vacía es válida e intencionada en Fase A.",
+      "items": {
+        "$ref": "#/$defs/zone"
+      }
+    }
+  },
+  "$defs": {
+    "bbox": {
+      "type": "array",
+      "description": "Caja geográfica [west, south, east, north] en grados decimales, EPSG:4326 (WGS84). Leaflet debe recibirla transformada a [[south, west], [north, east]]. El orden no puede cambiar sin subir la major del contrato. La comprobación de que west < east y south < north es validación semántica de WP-04.",
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "west (longitud oeste)"
+        },
+        {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "south (latitud sur)"
+        },
+        {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "east (longitud este)"
+        },
+        {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "north (latitud norte)"
+        }
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "zone": {
+      "type": "object",
+      "description": "Zona de estudio. Esquema mínimo: WP-04 podrá añadir propiedades opcionales de forma aditiva.",
+      "required": [
+        "id",
+        "name",
+        "bbox",
+        "layers"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identificador estable de la zona, único dentro del manifiesto. Se recomienda slug en minúsculas (por ejemplo \"jaen\"). La unicidad es validación semántica de WP-04."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Nombre legible de la zona."
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "layers": {
+          "type": "array",
+          "description": "Capas científicas de la zona. Puede estar vacía.",
+          "items": {
+            "$ref": "#/$defs/layer"
+          }
+        }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "description": "Capa visualizada como ImageOverlay de Leaflet. Esquema mínimo: WP-04 concretará leyenda, procedencia y restricciones de imagen de forma aditiva.",
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "image",
+        "bbox",
+        "imageCrs",
+        "unit",
+        "status",
+        "legend",
+        "provenance",
+        "qualityNote"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "ndvi",
+            "soil-moisture"
+          ],
+          "description": "Tipo de capa. El enum es cerrado en v1.1.0: añadir un identificador nuevo requiere cambio de contrato (ver docs/contract-freeze.md)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Título legible de la capa."
+        },
+        "kind": {
+          "const": "image-overlay",
+          "description": "Forma de presentación. En v1.1.0 solo se admite ImageOverlay."
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*\\.\\.)(?!.*:)(?!.*\\\\).+$",
+          "description": "Ruta del PNG relativa a frontend/public/, sin \"/\" inicial, sin \"..\", sin \":\" (URLs absolutas o unidades de disco) y sin barras invertidas. Ejemplo: \"data/sample/ndvi/jaen.png\". La UI la resolverá con import.meta.env.BASE_URL."
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "imageCrs": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CRS de presentación con el que se georreferencia la imagen mediante bbox (por ejemplo un EPSG definido por WP-04). Los valores admitidos se concretarán en WP-04."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unidad o naturaleza del valor representado (por ejemplo índice adimensional o porcentaje), tal como la defina el pipeline científico."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "synthetic",
+            "processed_real"
+          ],
+          "description": "Procedencia del dato. \"synthetic\" es material de ejemplo y nunca debe presentarse como observación real de NASA; \"processed_real\" exige aprobación científica y trazabilidad del pipeline."
+        },
+        "legend": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Metadatos de leyenda. v1.1.0 solo exige un objeto no vacío; WP-04 definirá su estructura (gradiente, clases, unidades) de forma aditiva."
+        },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "description": "Trazabilidad del dato. v1.1.0 exige al menos source; WP-04 podrá añadir campos aditivos (misión, producto, fecha, versión del pipeline, referencia).",
+          "additionalProperties": true,
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S",
+              "description": "Origen declarado del dato. No inventar misiones, productos ni URLs."
+            }
+          }
+        },
+        "qualityNote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Nota breve sobre limitaciones o calidad del dato que la UI pueda mostrar junto a la capa."
+        }
+      }
+    }
+  }
+}
