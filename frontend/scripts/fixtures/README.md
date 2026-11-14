@@ -37,7 +37,9 @@ error del propio fixture.
 | `layer-outside-zone.json` | `layer.bbox` fuera de `zone.bbox` más allá de la tolerancia de 0.01°. |
 | `image-absolute-path.json` | Ruta `image` con `/` inicial (`/x.png`). |
 | `image-parent-traversal.json` | Ruta `image` con `..` (`../x.png`). |
+| `image-percent-encoded.json` | Ruta `image` con codificación porcentual (`%2e%2e`, que el navegador normaliza como `..`). |
 | `image-external-url.json` | URL externa en `image` (`https://x/y.png`). |
+| `acquisition-date-impossible.json` | `provenance.acquisitionDate` con una fecha imposible (`2026-13-45`). |
 | `image-crs-unsupported.json` | `imageCrs` distinto de `EPSG:3857`. |
 | `image-wrong-mode-directory.json` | `image` de `real` referenciada desde un manifiesto `sample`. |
 | `duplicate-zone-ids.json` | Dos zonas con el mismo `id`. |

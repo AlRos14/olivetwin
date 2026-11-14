@@ -10,7 +10,8 @@
  *      patrones y coherencia if/then entre datasetMode y status.
  *   2. Semántica — west < east, south < north, layer.bbox dentro de zone.bbox
  *      (tolerancia 0.01°), min < max en range, leyenda ordenada, ids únicos,
- *      prefijo `data/<datasetMode>/` y versión semver 1.x.
+ *      prefijo `data/<datasetMode>/`, fechas de adquisición reales y versión
+ *      semver 1.x.
  *   3. Assets — el PNG existe en `frontend/public/` y tiene canal alfa
  *      (IHDR color type 4 o 6, o chunk tRNS).
  *
@@ -34,8 +35,14 @@ export const IMAGE_PATH_ROOT = 'data/'
 
 const SCHEMA_VERSION_PATTERN = /^1\.[0-9]+\.[0-9]+$/
 const KEBAB_CASE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-// Misma regla que el esquema: sin "/" inicial, sin "..", sin ":" ni "\".
-const SAFE_IMAGE_PATH_PATTERN = /^(?!\/)(?!.*\.\.)(?!.*:)(?!.*\\).+$/
+// Misma regla que el esquema: sin "/" inicial, sin "%", sin "..", sin ":" ni "\".
+// El "%" se prohíbe porque el navegador normaliza la codificación porcentual
+// ("%2e%2e" equivale a "..") y permitiría salir de public/.
+const SAFE_IMAGE_PATH_PATTERN = /^(?!\/)(?!.*%)(?!.*\.\.)(?!.*:)(?!.*\\).+$/
+// Fecha sola o fecha-hora con zona (mismo formato que el esquema, que además
+// aplica los format `date`/`date-time` de ajv-formats).
+const ISO_DATE_TIME_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-](\d{2}):(\d{2})))?$/
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 
 function isPlainObject(value) {
@@ -56,6 +63,66 @@ function isBBox(value) {
 
 function pushError(errors, at, message) {
   errors.push({ path: at, message })
+}
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
+
+function daysInMonth(year, month) {
+  const lengths = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return lengths[month - 1] ?? 0
+}
+
+/**
+ * Comprueba que `value` es una fecha ISO 8601 real (calendario gregoriano),
+ * no solo una cadena con la forma correcta.
+ *
+ * Acepta fecha sola (`2026-10-19`) o fecha-hora con zona
+ * (`2026-10-19T11:19:03Z`, formato del pipeline NISAR). Rechaza fechas
+ * imposibles como `2026-13-45` o `2026-02-30`, que `Date.parse` normalizaría
+ * en silencio; por eso se validan los componentes además de `Date.parse`.
+ *
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isValidAcquisitionDate(value) {
+  if (typeof value !== 'string') {
+    return false
+  }
+  const match = ISO_DATE_TIME_PATTERN.exec(value)
+  if (!match) {
+    return false
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (month < 1 || month > 12) {
+    return false
+  }
+  if (day < 1 || day > daysInMonth(year, month)) {
+    return false
+  }
+
+  if (match[4] !== undefined) {
+    const hour = Number(match[4])
+    const minute = Number(match[5])
+    const second = match[6] === undefined ? 0 : Number(match[6])
+    if (hour > 23 || minute > 59 || second > 59) {
+      return false
+    }
+    if (match[8] !== undefined) {
+      const offsetHour = Number(match[8])
+      const offsetMinute = Number(match[9])
+      if (offsetHour > 23 || offsetMinute > 59) {
+        return false
+      }
+    }
+  }
+
+  // Comprobación redundante de Date.parse: refuerza el formato completo.
+  return !Number.isNaN(Date.parse(value.replace(' ', 'T')))
 }
 
 /** Convierte los errores de Ajv en `{path, message}` estables para la UI/CLI. */
@@ -265,7 +332,7 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
           pushError(
             errors,
             `${layerPath}/image`,
-            `ruta image insegura: debe ser relativa a public/, sin "/" inicial, "..", ":" ni "\\" (${JSON.stringify(layer.image)})`,
+            `ruta image insegura: debe ser relativa a public/, sin "/" inicial, "%", "..", ":" ni "\\" (${JSON.stringify(layer.image)})`,
           )
         }
         if (mode === 'sample' || mode === 'real') {
@@ -293,6 +360,21 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
           `${layerPath}/status`,
           `datasetMode="real" exige status="processed_real" (recibido ${JSON.stringify(layer.status)})`,
         )
+      }
+
+      if (isPlainObject(layer.provenance)) {
+        const acquisitionDate = layer.provenance.acquisitionDate
+        if (
+          typeof acquisitionDate === 'string' &&
+          acquisitionDate.trim() !== '' &&
+          !isValidAcquisitionDate(acquisitionDate)
+        ) {
+          pushError(
+            errors,
+            `${layerPath}/provenance/acquisitionDate`,
+            `acquisitionDate no es una fecha ISO 8601 real (fecha o fecha-hora con zona): ${JSON.stringify(acquisitionDate)}`,
+          )
+        }
       }
 
       if (layer.status === 'processed_real') {
@@ -410,6 +492,7 @@ export function pngHasAlpha(bytes) {
 function assertSafeRelativeImage(image) {
   return (
     typeof image === 'string' &&
+    !image.includes('%') &&
     SAFE_IMAGE_PATH_PATTERN.test(image) &&
     !path.isAbsolute(image) &&
     !image.split('/').includes('..')

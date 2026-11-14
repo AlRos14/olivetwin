@@ -65,6 +65,9 @@ export declare function semanticErrors(
   options?: SemanticOptions,
 ): ValidationError[]
 
+/** Fecha ISO 8601 real (fecha sola o fecha-hora con zona), no solo con forma válida. */
+export declare function isValidAcquisitionDate(value: unknown): boolean
+
 export declare function readPngHeader(bytes: Uint8Array): PngHeader
 
 export declare function pngHasAlpha(bytes: Uint8Array): boolean

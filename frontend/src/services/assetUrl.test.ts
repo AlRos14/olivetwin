@@ -34,6 +34,10 @@ describe('resolveAssetUrl', () => {
     '/data/sample/ndvi.png',
     '../data/sample/ndvi.png',
     'data/../../secret.png',
+    'data/sample/%2e%2e/%2e%2e/x.png',
+    'data/real/%2e%2e/%2e%2e/x.png',
+    'data/sample/%2E%2E/x.png',
+    'data/sample/100%.png',
     'https://example.com/ndvi.png',
     'C:\\datos\\ndvi.png',
     'data\\sample\\ndvi.png',
@@ -53,5 +57,11 @@ describe('isSafeAssetPath', () => {
 
   it('rechaza rutas con segmentos ascendentes aunque no empiecen por ..', () => {
     expect(isSafeAssetPath('data/sample/../../x.png')).toBe(false)
+  })
+
+  it('rechaza cualquier codificación porcentual (%2e%2e equivale a ..)', () => {
+    expect(isSafeAssetPath('data/real/%2e%2e/%2e%2e/x.png')).toBe(false)
+    expect(isSafeAssetPath('data/sample/%2E%2E/x.png')).toBe(false)
+    expect(isSafeAssetPath('data/sample/ndvi%20demo.png')).toBe(false)
   })
 })

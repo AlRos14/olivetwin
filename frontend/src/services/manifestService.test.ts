@@ -209,7 +209,12 @@ describe('loadManifest', () => {
     expect(error.message).toContain('«processed_real»')
   })
 
-  it.each(['/data/sample/ndvi.png', '../ndvi.png', 'data\\ndvi.png'])(
+  it.each([
+    '/data/sample/ndvi.png',
+    '../ndvi.png',
+    'data\\ndvi.png',
+    'data/sample/%2e%2e/%2e%2e/x.png',
+  ])(
     'rechaza la ruta de imagen insegura %j (esquema o runtime)',
     async (image) => {
       const manifest = makeManifest('sample', [
@@ -240,6 +245,54 @@ describe('loadManifest', () => {
     )
 
     expect(error.message).toContain('ruta de imagen no permitida')
+  })
+
+  it('rechaza en runtime un zone.bbox invertido con error semantic', async () => {
+    const manifest = makeManifest('sample', [
+      makeZone('jaen-demo', [makeLayer()], {
+        bbox: [-3.61, 37.69, -3.86, 37.9],
+      }),
+    ])
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'semantic',
+    )
+
+    expect(error.message).toContain('no es coherente')
+    expect(error.message).toContain('west')
+  })
+
+  it('rechaza en runtime un layer.bbox fuera de zone.bbox', async () => {
+    const manifest = makeManifest('sample', [
+      makeZone('jaen-demo', [
+        makeLayer('ndvi', { bbox: [-4.5, 37.69, -3.61, 37.9] }),
+      ]),
+    ])
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'semantic',
+    )
+
+    expect(error.message).toContain('fuera de la zona')
+  })
+
+  it('rechaza en runtime ids de zona duplicados', async () => {
+    const manifest = makeManifest('sample', [
+      makeZone('jaen-demo', [makeLayer()]),
+      makeZone('jaen-demo', [makeLayer()]),
+    ])
+    const { fetchImpl } = recordingFetch(jsonResponse(manifest))
+
+    const error = await expectLoadError(
+      loadManifest('sample', { fetchImpl }),
+      'semantic',
+    )
+
+    expect(error.message).toContain('duplicado')
   })
 
   it('envuelve un fallo de red en un error tipado', async () => {

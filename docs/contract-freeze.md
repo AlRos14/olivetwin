@@ -33,7 +33,7 @@ siendo responsabilidad de WP-04.
 | Modo | `sample` / `real` en runtime; nunca fallback silencioso | WP-04 estado, WP-07 selector UI |
 | Estado de carga | `loading`, `ready`, `empty`, `error` | WP-04 servicio/composable |
 | Mapa base | `pnoa` / `osm` | WP-07 |
-| Rutas | `image` relativa a `public/`, sin `/` inicial y sin `..`; resolver con `import.meta.env.BASE_URL` | WP-04 carga, WP-07 no crea rutas |
+| Rutas | `image` relativa a `public/`, sin `/` inicial, sin `..` y sin `%`; resolver con `import.meta.env.BASE_URL` | WP-04 carga, WP-07 no crea rutas |
 | Procedencia | `synthetic` vs `processed_real`; no presentar datos inventados como NASA real | Aprobación científica cuando haya real |
 
 Notas de aplicación:
@@ -96,6 +96,8 @@ continúa siendo `1.1.0`.
 | `range` con `min < max` estricto | Semántica | La escala tiene un intervalo no degenerado. |
 | `id` de zona único e `id` de capa único por zona | Semántica | Evita selecciones ambiguas en el manifiesto activo. |
 | `image` bajo `data/<datasetMode>/` | Semántica | Un manifiesto `sample` no puede referenciar assets de `real` ni al revés. |
+| `image` sin ningún `%` | Esquema (patrón), semántica y runtime (`assetUrl`) | El navegador normaliza la codificación porcentual: `%2e%2e` equivale a `..`, así que se veta cualquier `%` aunque no haya `..` literal. |
+| `acquisitionDate` es una fecha real | Esquema (`format: date`/`date-time` con ajv-formats) y semántica (calendario) | Se aceptan `2026-10-19T11:19:03Z` (pipeline NISAR) y `2026-10-19`; se rechazan `2026-13-45` o `2026-02-30`, que `Date.parse` normalizaría en silencio. |
 | PNG existente en `frontend/public/` y con canal alfa (color type 4 o 6, o `tRNS`) | Semántica + assets | Un overlay sin transparencia o un 404 se detectan antes de publicar. |
 | `schemaVersion` semver de la major 1 | Esquema + semántica | Solo se admiten contratos `1.x.y`. |
 
@@ -105,6 +107,10 @@ centrado en España; el contrato solo permite probar zonas externas sin tocar el
 
 La lógica semántica y de assets vive en `frontend/scripts/validate-lib.mjs`, compartida por la
 CLI `frontend/scripts/validate-data.mjs` y los tests `frontend/src/types/contract.test.ts`.
+El runtime de WP-04 replica en `frontend/src/services/manifestSemantics.ts` el subconjunto
+mínimo de geometría e ids (orden de `bbox`, contención con tolerancia de 0.01° y unicidad de
+ids de zona) para no cargar `node:fs`/`node:path` en el navegador; ambas implementaciones deben
+mantenerse alineadas y probadas.
 Los fixtures contractuales viven en `frontend/scripts/fixtures/` y **no** se publican en
 `frontend/public/data/`; el fixture `real-with-processed-real.json` existe solo para probar el
 estado `processed_real` y declara explícitamente que no es una observación científica.
@@ -172,6 +178,8 @@ Casos negativos exigidos:
 | `legend` como objeto | rechazado por `type: array` |
 | `image: "/abs.png"` | rechazado por el patrón de ruta segura |
 | `image: "../x.png"` | rechazado por el patrón de ruta segura |
+| `image: "data/sample/%2e%2e/x.png"` | rechazado por el patrón de ruta segura (sin `%`) |
+| `acquisitionDate: "2026-13-45"` | rechazado por `format: date` y por la semántica de calendario |
 
 Evidencia de la ejecución de A02-fix con `ajv@8.20.0` en modo draft 2020-12, desde
 `frontend/` y con el runner en `/tmp` (no versionado), 18/18 comprobaciones correctas:

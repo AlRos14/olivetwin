@@ -14,12 +14,14 @@ import validRealEmpty from '../../scripts/fixtures/valid/real-empty.json'
 import validSampleEmpty from '../../scripts/fixtures/valid/sample-empty.json'
 import validSamplePlan from '../../scripts/fixtures/valid/sample-plan-4.3.json'
 
+import invalidAcquisitionDate from '../../scripts/fixtures/invalid/acquisition-date-impossible.json'
 import invalidBboxInverted from '../../scripts/fixtures/invalid/bbox-inverted.json'
 import invalidDuplicateZones from '../../scripts/fixtures/invalid/duplicate-zone-ids.json'
 import invalidImageAbsolute from '../../scripts/fixtures/invalid/image-absolute-path.json'
 import invalidImageCrs from '../../scripts/fixtures/invalid/image-crs-unsupported.json'
 import invalidImageExternal from '../../scripts/fixtures/invalid/image-external-url.json'
 import invalidImageParent from '../../scripts/fixtures/invalid/image-parent-traversal.json'
+import invalidImagePercent from '../../scripts/fixtures/invalid/image-percent-encoded.json'
 import invalidImageWrongMode from '../../scripts/fixtures/invalid/image-wrong-mode-directory.json'
 import invalidLayerLegendObject from '../../scripts/fixtures/invalid/layer-legend-object.json'
 import invalidLayerOutsideZone from '../../scripts/fixtures/invalid/layer-outside-zone.json'
@@ -35,6 +37,7 @@ import invalidZonesNull from '../../scripts/fixtures/invalid/zones-null.json'
 
 import {
   createManifestValidator,
+  isValidAcquisitionDate,
   pngHasAlpha,
   readPngHeader,
   semanticErrors,
@@ -48,12 +51,14 @@ const validFixtures: { name: string; manifest: unknown }[] = [
 ]
 
 const invalidFixtures: { name: string; manifest: unknown }[] = [
+  { name: 'acquisition-date-impossible', manifest: invalidAcquisitionDate },
   { name: 'bbox-inverted', manifest: invalidBboxInverted },
   { name: 'duplicate-zone-ids', manifest: invalidDuplicateZones },
   { name: 'image-absolute-path', manifest: invalidImageAbsolute },
   { name: 'image-crs-unsupported', manifest: invalidImageCrs },
   { name: 'image-external-url', manifest: invalidImageExternal },
   { name: 'image-parent-traversal', manifest: invalidImageParent },
+  { name: 'image-percent-encoded', manifest: invalidImagePercent },
   { name: 'image-wrong-mode-directory', manifest: invalidImageWrongMode },
   { name: 'layer-legend-object', manifest: invalidLayerLegendObject },
   { name: 'layer-outside-zone', manifest: invalidLayerOutsideZone },
@@ -151,6 +156,64 @@ describe('reglas semánticas concretas', () => {
   it('exige que image viva bajo data/<datasetMode>/', async () => {
     const result = await validator(invalidImageWrongMode)
     expect(result.errors.some((error) => /data\/sample\//.test(error.message))).toBe(true)
+  })
+
+  it('rechaza cualquier "%" en image para que %2e%2e no se resuelva como ".."', async () => {
+    const result = await validator(invalidImagePercent)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some((error) => error.path.endsWith('/image')),
+    ).toBe(true)
+  })
+
+  it('rechaza una fecha de adquisición imposible (2026-13-45)', async () => {
+    const result = await validator(invalidAcquisitionDate)
+    expect(result.valid).toBe(false)
+    expect(
+      result.errors.some((error) =>
+        error.path.endsWith('/provenance/acquisitionDate'),
+      ),
+    ).toBe(true)
+  })
+
+  it('la semántica también rechaza una fecha imposible sin depender del esquema', () => {
+    const errors = semanticErrors(invalidAcquisitionDate)
+    expect(
+      errors.some((error) =>
+        error.path.endsWith('/provenance/acquisitionDate'),
+      ),
+    ).toBe(true)
+  })
+
+  it.each(['2026-10-19', '2026-10-19T11:19:03Z', '2026-10-19T11:19:03+02:00'])(
+    'acepta la fecha de adquisición real %s',
+    async (acquisitionDate) => {
+      const manifest = clone(validRealProcessed) as {
+        zones: { layers: { provenance: Record<string, unknown> }[] }[]
+      }
+      manifest.zones[0].layers[0].provenance.acquisitionDate = acquisitionDate
+      const result = await validator(manifest)
+      expect(result.errors).toEqual([])
+      expect(result.valid).toBe(true)
+    },
+  )
+
+  it('rechaza fechas imposibles que Date.parse normalizaría en silencio', () => {
+    expect(isValidAcquisitionDate('2026-02-30')).toBe(false)
+    expect(isValidAcquisitionDate('2026-04-31')).toBe(false)
+    expect(isValidAcquisitionDate('2026-13-45')).toBe(false)
+    expect(isValidAcquisitionDate('2026-10-19T24:00:00Z')).toBe(false)
+    expect(isValidAcquisitionDate('2026-10-19T11:19:03')).toBe(false)
+    expect(isValidAcquisitionDate('')).toBe(false)
+    expect(isValidAcquisitionDate(null)).toBe(false)
+    expect(isValidAcquisitionDate(20261019)).toBe(false)
+  })
+
+  it('acepta fechas reales, incluido el 29 de febrero de un año bisiesto', () => {
+    expect(isValidAcquisitionDate('2026-10-19')).toBe(true)
+    expect(isValidAcquisitionDate('2026-10-19T11:19:03Z')).toBe(true)
+    expect(isValidAcquisitionDate('2024-02-29')).toBe(true)
+    expect(isValidAcquisitionDate('2024-02-29T23:59:59.123Z')).toBe(true)
   })
 
   it('rechaza un datasetMode distinto del esperado por la carpeta', () => {

@@ -7,7 +7,8 @@
  *     ANTES de Ajv, para devolver un error específico y legible en lugar del
  *     genérico del `if/then` del esquema;
  *   - valida con Ajv (draft 2020-12) contra `contracts/manifest.schema.json`;
- *   - comprueba después las rutas `image` seguras;
+ *   - comprueba después las rutas `image` seguras y la semántica mínima de
+ *     geometría e ids (`manifestSemantics.ts`);
  *   - devuelve `{ manifest, status: 'ready' | 'empty' }` sin recurrir nunca al
  *     otro modo (un modo real vacío es `empty`, no un error).
  *
@@ -21,6 +22,7 @@ import addFormats from 'ajv-formats'
 import manifestSchema from '../../../contracts/manifest.schema.json'
 import type { DataMode, OliveTwinManifest } from '../types/manifest'
 import { isSafeAssetPath, resolveAssetUrl } from './assetUrl'
+import { manifestSemanticErrors } from './manifestSemantics'
 
 export type ManifestErrorCode =
   | 'http'
@@ -30,6 +32,7 @@ export type ManifestErrorCode =
   | 'mode-mismatch'
   | 'status-mismatch'
   | 'unsafe-path'
+  | 'semantic'
 
 /** Error tipado de carga de manifiestos, con mensaje listo para la UI. */
 export class ManifestLoadError extends Error {
@@ -180,6 +183,17 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
         )
       }
     }
+  }
+
+  // Geometría e identidad: el esquema no puede expresar west < east ni la
+  // contención de layer.bbox con tolerancia, y un manifiesto manipulado no
+  // debe llegar al mapa.
+  const semanticIssues = manifestSemanticErrors(manifest)
+  if (semanticIssues.length > 0) {
+    throw new ManifestLoadError(
+      'semantic',
+      `El manifiesto de datos «${mode}» no es coherente: ${semanticIssues[0]}.`,
+    )
   }
 }
 
