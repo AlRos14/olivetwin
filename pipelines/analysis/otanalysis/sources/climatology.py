@@ -192,7 +192,7 @@ def compute(ctx: Ctx) -> GridClimate:
 
 
 DESCRIPTIONS = {
-    "climate-precip-annual": ("Precipitación media anual 1991–2020", "mm/año", "moisture", 10.0, 0.0, [300.0, 900.0], 0),
+    "climate-precip-annual": ("Precipitación media anual 1991–2020", "mm", "moisture", 10.0, 0.0, [300.0, 900.0], 0),
     "climate-tmean-annual": ("Temperatura media anual 1991–2020", "°C", "heat", 0.1, 0.0, [8.0, 20.0], 1),
     "climate-tmin-coldest": ("Mínima media del mes más frío 1991–2020", "°C", "heat", 0.1, -10.0, [-4.0, 6.0], 1),
     "climate-tabsmin": ("Mínima absoluta anual media 1991–2020", "°C", "heat", 0.1, -20.0, [-12.0, 0.0], 1),
