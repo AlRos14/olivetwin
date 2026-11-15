@@ -1,24 +1,24 @@
 ## Issue / work packet
 
-<!-- Enlaza la Issue (por ejemplo, «Closes #12») e indica el work packet:
-     Fase A (A01–A04) o Fase B (WP-04, WP-07). -->
+<!-- Link the Issue (for example, "Closes #12") and state the work packet:
+     Phase A (A01–A04) or Phase B (WP-04, WP-07). -->
 
 - Issue:
 - Work packet:
-- Rama:
+- Branch:
 
-## Dependencias
+## Dependencies
 
-<!-- PRs, contratos, decisiones o datos de los que depende este cambio.
-     Escribe «Ninguna» si no aplica. -->
+<!-- PRs, contracts, decisions or data this change depends on.
+     Write "None" if not applicable. -->
 
-## Cambios
+## Changes
 
-<!-- Qué cambia y por qué. Una PR debe tener un solo propósito. -->
+<!-- What changes and why. A PR must have a single purpose. -->
 
-## Pruebas
+## Tests
 
-Comandos ejecutados desde `frontend/` y resultado:
+Commands run from `frontend/` and their result:
 
 ```bash
 npm ci
@@ -26,50 +26,50 @@ npm run validate:data
 npm run build
 ```
 
-- Resultado de `npm ci`:
-- Resultado de `npm run validate:data`:
-- Resultado de `npm run build`:
+- `npm ci` result:
+- `npm run validate:data` result:
+- `npm run build` result:
 
-<!-- Si algún comando no aplica, explica por qué. No dejes la sección vacía. -->
+<!-- If a command does not apply, explain why. Do not leave the section empty. -->
 
-## Ficheros modificados
+## Modified files
 
-<!-- Lista de rutas. Señala cualquier archivo compartido o fuera del ámbito
-     habitual y quién lo autorizó. -->
+<!-- List of paths. Flag any shared file or file outside the usual scope
+     and who authorised it. -->
 
-## Procedencia de datos
+## Data provenance
 
-<!-- Indica: sin datos / sample (synthetic) / processed_real.
-     Para processed_real incluye proveedor, producto o escena, fecha y versión
-     de procesamiento. Confirma que no se presentan datos sintéticos como NASA. -->
+<!-- State: no data / sample (synthetic) / processed_real.
+     For processed_real include provider, product or scene, date and
+     processing version. Confirm that synthetic data are not presented as NASA. -->
 
-## Riesgos y limitaciones
+## Risks and limitations
 
-<!-- Qué puede fallar, qué no se ha podido probar, dependencias pendientes,
-     limitaciones de protección de main o de acceso. -->
+<!-- What may fail, what could not be tested, pending dependencies,
+     limitations of `main` protection or access. -->
 
-## Revisión
+## Review
 
-- Autor:
-- Revisor independiente (persona):
-- [ ] El revisor no es el autor ni la misma sesión de agente.
-- [ ] La revisión humana está registrada (un comentario automático no cuenta).
-- [ ] Check `ci` en verde.
-- [ ] Cambios en `contracts/` o `.github/workflows/` revisados por integración.
+- Author:
+- Independent reviewer (person):
+- [ ] The reviewer is not the author or the same agent session.
+- [ ] The human review is recorded (an automated comment does not count).
+- [ ] `ci` check green.
+- [ ] Changes in `contracts/` or `.github/workflows/` reviewed by integration.
 
-## Capturas (si hay cambios de interfaz)
+## Screenshots (if there are interface changes)
 
-<!-- Añade capturas o una descripción verificable del antes y el después. -->
+<!-- Add screenshots or a verifiable description of before and after. -->
 
 ## Checklist
 
-- [ ] La PR tiene un solo propósito y enlaza su Issue o work packet.
-- [ ] Solo se han modificado archivos de mi ámbito.
-- [ ] `main` sigue compilable y la build pasa.
-- [ ] Los manifiestos pasan `npm run validate:data`.
-- [ ] No se han añadido HDF5, GeoTIFF, NetCDF ni otros binarios grandes.
-- [ ] No se han incluido secretos, tokens ni credenciales.
-- [ ] Los datos sintéticos están marcados como tales y no se atribuyen a NASA.
-- [ ] El contrato v1.1.0 no se ha roto; cualquier ampliación es aditiva o está aprobada.
-- [ ] La documentación se ha actualizado si cambia el comportamiento.
-- [ ] Se fusionará con squash merge y se borrará la rama.
+- [ ] The PR has a single purpose and links its Issue or work packet.
+- [ ] Only files in my scope have been modified.
+- [ ] `main` is still buildable and the build passes.
+- [ ] The manifests pass `npm run validate:data`.
+- [ ] No HDF5, GeoTIFF, NetCDF or other large binaries have been added.
+- [ ] No secrets, tokens or credentials have been included.
+- [ ] Synthetic data are marked as such and are not attributed to NASA.
+- [ ] Contract v1.1.0 has not been broken; any extension is additive or approved.
+- [ ] Documentation has been updated if behaviour changes.
+- [ ] It will be merged with squash merge and the branch will be deleted.
