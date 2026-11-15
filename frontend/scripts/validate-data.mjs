@@ -30,7 +30,13 @@ import { readFile, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-import { createAnalysisValidator, createManifestValidator } from './validate-lib.mjs'
+import { createAnalysisValidator, createManifestValidator, siUnitErrors } from './validate-lib.mjs'
+import {
+  CATALOG_PATH,
+  catalogErrors,
+  compareStrings,
+  extractDataStrings,
+} from './extract-data-strings.mjs'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const frontendDir = path.resolve(scriptDir, '..')
@@ -111,7 +117,7 @@ async function main() {
   console.log(`  Esquema: ${relative(schemaPath)}`)
 
   // --- 1. Cargar el schema y compilarlo --------------------------------
-  console.log('\n[1/4] Esquema del contrato')
+  console.log('\n[1/5] Esquema del contrato')
   const loadedSchema = await readJsonFile(schemaPath)
   if (!loadedSchema.ok) {
     fail(`No se pudo cargar el esquema: ${relative(schemaPath)}`, [loadedSchema.error])
@@ -136,7 +142,9 @@ async function main() {
   // --- 2. Manifiestos publicados --------------------------------------
   /** @type {{ mode: 'sample' | 'real', manifest: any }[]} */
   const publishedManifests = []
-  console.log('\n[2/4] Manifiestos publicados')
+  /** @type {{ file: string, data: any }[]} */
+  const publishedAnalyses = []
+  console.log('\n[2/5] Manifiestos publicados')
   for (const { mode, file, required } of MANIFESTS) {
     const loaded = await readJsonFile(file)
     if (!loaded.ok) {
@@ -162,7 +170,7 @@ async function main() {
   const validFixtures = await listJsonFiles(path.join(fixturesDir, 'valid'))
   const invalidFixtures = await listJsonFiles(path.join(fixturesDir, 'invalid'))
 
-  console.log('\n[3/4] Fixtures de auto-test')
+  console.log('\n[3/5] Fixtures de auto-test')
   if (validFixtures.length === 0) {
     fail('No hay fixtures válidos en frontend/scripts/fixtures/valid/')
   }
@@ -206,7 +214,7 @@ async function main() {
   }
 
   // --- 4. Cubos de análisis (v1.3.0) -----------------------------------
-  console.log('\n[4/4] Cubos de análisis (v1.3.0)')
+  console.log('\n[4/5] Cubos de análisis (v1.3.0)')
   const loadedAnalysisSchema = await readJsonFile(analysisSchemaPath)
   if (!loadedAnalysisSchema.ok) {
     fail(`No se pudo cargar el esquema: ${relative(analysisSchemaPath)}`, [loadedAnalysisSchema.error])
@@ -243,6 +251,7 @@ async function main() {
             zoneBbox: zone.bbox,
           })
           if (result.valid) {
+            publishedAnalyses.push({ file, data: loaded.data })
             const variables = loaded.data.variables.length
             const steps = loaded.data.variables.reduce((total, variable) => total + variable.steps.length, 0)
             const crops = Array.isArray(loaded.data.crops) ? loaded.data.crops : []
@@ -284,6 +293,62 @@ async function main() {
         } else {
           fail(`${relative(file)} debería ser rechazado y el validador lo acepta`)
         }
+      }
+    }
+  }
+
+  // --- 5. Catálogo inglés de los datos y unidades SI -------------------
+  console.log('\n[5/5] Catálogo inglés de los datos y unidades SI')
+
+  // Unidades: SI o aceptadas para uso con el SI en todos los documentos.
+  /** @type {string[]} */
+  const unitProblems = []
+  for (const { mode, manifest } of publishedManifests) {
+    const file = path.join(dataDir, mode, 'manifest.json')
+    for (const error of siUnitErrors(manifest)) {
+      unitProblems.push(`${relative(file)} ${error.path}: ${error.message}`)
+    }
+  }
+  for (const { file, data } of publishedAnalyses) {
+    for (const error of siUnitErrors(data)) {
+      unitProblems.push(`${relative(file)} ${error.path}: ${error.message}`)
+    }
+  }
+  if (unitProblems.length > 0) {
+    fail('Hay unidades fuera del SI en los datos publicados', unitProblems)
+  } else {
+    pass('Todas las `unit` de manifiestos y análisis son del SI (o aceptadas para uso con el SI)')
+  }
+
+  // Catálogo EN de los textos que vienen de los datos.
+  const dataDirReal = path.join(publicDir, 'data', 'real')
+  const catalogFile = path.join(publicDir, CATALOG_PATH)
+  const texts = await extractDataStrings({ dataDir: dataDirReal })
+  const textCount = texts.length
+  const loadedCatalog = await readJsonFile(catalogFile)
+  if (!loadedCatalog.ok) {
+    fail(`No se pudo leer el catálogo inglés ${relative(catalogFile)}`, [
+      loadedCatalog.error,
+      'Ejecute `npm run i18n:data -- --write` y traduzca las entradas nuevas.',
+    ])
+  } else {
+    const catalogProblems = catalogErrors({ catalog: loadedCatalog.data, texts })
+    if (catalogProblems.length > 0) {
+      fail(`${relative(catalogFile)} no cubre los textos publicados`, catalogProblems)
+    } else {
+      pass(`${relative(catalogFile)} traduce las ${textCount} cadenas mostrables de data/real`)
+    }
+
+    const entries = loadedCatalog.data?.entries
+    if (entries && typeof entries === 'object' && !Array.isArray(entries)) {
+      const keys = Object.keys(entries)
+      const sorted = [...keys].sort(compareStrings)
+      if (keys.length !== sorted.length || keys.some((key, index) => key !== sorted[index])) {
+        fail('Las claves del catálogo no están ordenadas alfabéticamente', [
+          'Ejecute `npm run i18n:data -- --write` para reordenarlas.',
+        ])
+      } else {
+        pass('Las claves del catálogo están ordenadas alfabéticamente')
       }
     }
   }

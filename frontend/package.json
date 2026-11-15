@@ -11,6 +11,7 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "validate:data": "node scripts/validate-data.mjs",
+    "i18n:data": "node scripts/extract-data-strings.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "vue-tsc -b"
   },
