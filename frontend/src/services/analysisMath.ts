@@ -163,15 +163,15 @@ export function areaBreakdown(
     }
     if (pairs.length >= 3) {
       const sorted = pairs.map(([z]) => z).sort((a, b) => a - b)
-      const t1 = Math.round(sorted[Math.floor(sorted.length / 3)])
-      const t2 = Math.round(sorted[Math.floor((2 * sorted.length) / 3)])
+      const t1 = sorted[Math.floor(sorted.length / 3)]
+      const t2 = sorted[Math.floor((2 * sorted.length) / 3)]
       const low = pairs.filter(([z]) => z < t1).map(([, s]) => s)
       const mid = pairs.filter(([z]) => z >= t1 && z < t2).map(([, s]) => s)
       const high = pairs.filter(([z]) => z >= t2).map(([, s]) => s)
       result.push(
-        { id: 'elevation-low', max: t1, mean: meanOf(low) },
-        { id: 'elevation-mid', min: t1, max: t2, mean: meanOf(mid) },
-        { id: 'elevation-high', min: t2, mean: meanOf(high) },
+        { id: 'elevation-low', max: Math.round(t1), mean: meanOf(low) },
+        { id: 'elevation-mid', min: Math.round(t1), max: Math.round(t2), mean: meanOf(mid) },
+        { id: 'elevation-high', min: Math.round(t2), mean: meanOf(high) },
       )
     }
   }
