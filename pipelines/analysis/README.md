@@ -1,235 +1,252 @@
-# pipelines/analysis — cubo de análisis por zona (contrato v1.3.0)
+# pipelines/analysis — per-zone analysis cube (contract v1.3.0)
 
-`build_analysis.py` descarga datos **reales y abiertos** para las zonas de estudio (`jaen`, `toledo`) y
-escribe, por zona, un **cubo de análisis** conforme a
+`build_analysis.py` downloads **real, open** data for the study areas (`jaen`, `toledo`) and
+writes, per zone, an **analysis cube** conforming to
 [`contracts/analysis.schema.json`](../../contracts/analysis.schema.json):
 
 ```
-frontend/public/data/real/zones/<zona>/analysis/analysis.json
-frontend/public/data/real/zones/<zona>/analysis/<variable>/<YYYYMMDDTHHMMSS | YYYYMMDD | static>.png
+frontend/public/data/real/zones/<zone>/analysis/analysis.json
+frontend/public/data/real/zones/<zone>/analysis/<variable>/<YYYYMMDDTHHMMSS | YYYYMMDD | static>.png
 ```
 
-y enlaza cada cubo desde `frontend/public/data/real/manifest.json` (`zone.analysis`,
-`schemaVersion: "1.3.0"`). No modifica nada más del manifiesto.
+and links each cube from `frontend/public/data/real/manifest.json` (`zone.analysis`,
+`schemaVersion: "1.3.0"`). It modifies nothing else in the manifest.
 
-## Rejilla y codificación
+## Grid and encoding
 
-- **Rejilla común** por zona en EPSG:3857: parte de la esquina NO del `bbox` de la zona, celdas
-  cuadradas de **250 m Web Mercator** (≈ 195–198 m de terreno a estas latitudes),
-  `width = ceil(Δx/250)`, `height = ceil(Δy/250)`. La extensión exacta es `width·250 × height·250` y
-  `grid.bbox` es su WGS84 (algo mayor que la zona por el este y el sur, < 250 m), para que la conversión
-  lat/lon → celda en el cliente sea exacta. Jaén: 175 × 149 celdas; Toledo: 303 × 252.
-- **`png-uint8-linear`**: PNG gris de 8 bits (modo `L`, sin alfa ni fragmentos de color/gamma) del tamaño
-  de la rejilla; `valor = offset + scale · código` para códigos 0..254 (los valores fuera de rango se
-  recortan), **255 = sin dato**.
-- **`stats`** de cada paso se calculan con los valores float en la rejilla **antes** de cuantizar
-  (`validFraction` = celdas válidas / total).
+- **Common grid** per zone in EPSG:3857: it starts from the NW corner of the zone `bbox`, with
+  square cells of **250 m Web Mercator** (≈ 195–198 m ground at these latitudes),
+  `width = ceil(Δx/250)`, `height = ceil(Δy/250)`. The exact extent is `width·250 × height·250` and
+  `grid.bbox` is its WGS84 (somewhat larger than the zone to the east and south, < 250 m), so that
+  the lat/lon → cell conversion on the client is exact. Jaén: 175 × 149 cells; Toledo: 303 × 252.
+- **`png-uint8-linear`**: 8-bit grey PNG (`L` mode, no alpha or colour/gamma chunks) of the grid
+  size; `value = offset + scale · code` for codes 0..254 (out-of-range values are clipped),
+  **255 = no data**.
+- The **`stats`** of each step are computed from the float values on the grid **before** quantisation
+  (`validFraction` = valid cells / total).
 
-| Variable | Unidad | offset | scale |
+| Variable | Unit | offset | scale |
 |---|---|---|---|
-| `soil-moisture-all`, `soil-moisture` | m³/m³ | 0 | 0,0025 |
-| `radar-hh`, `radar-hv` | dB | −35 | 0,16 |
-| `radar-hv-hh` | dB | −25 | 0,12 |
-| `insar-coherence` | 0–1 | 0 | 1/254 |
-| `ndvi`, `ndmi` | — | −1 | 2/254 |
+| `soil-moisture-all`, `soil-moisture` | m³/m³ | 0 | 0.0025 |
+| `radar-hh`, `radar-hv` | dB | −35 | 0.16 |
+| `radar-hv-hh` | dB | −25 | 0.12 |
+| `insar-coherence` | 1 | 0 | 1/254 |
+| `ndvi`, `ndmi` | 1 | −1 | 2/254 |
 | `elevation` | m | 0 | 10 |
-| `slope` | ° | 0 | 0,25 |
-| `soil-clay`, `soil-sand` | % | 0 | 0,4 |
-| `soil-soc` | g/kg | 0 | 0,5 |
-| `soil-ph` | pH | 3 | 0,03 |
-| `climate-precip-annual` | mm/año | 0 | 10 |
-| `climate-tmean-annual` | °C | 0 | 0,1 |
-| `climate-tmin-coldest` | °C | −10 | 0,1 |
-| `climate-tabsmin` | °C | −20 | 0,1 |
-| rásteres de cultivo (`crops`) | 0–1 | 0 | 1/254 |
+| `slope` | ° | 0 | 0.25 |
+| `soil-clay`, `soil-sand` | % | 0 | 0.4 |
+| `soil-soc` | g/kg | 0 | 0.5 |
+| `soil-ph` | pH | 3 | 0.03 |
+| `climate-precip-annual` | mm | 0 | 10 |
+| `climate-tmean-annual` | °C | 0 | 0.1 |
+| `climate-tmin-coldest` | °C | −10 | 0.1 |
+| `climate-tabsmin` | °C | −20 | 0.1 |
+| crop rasters (`crops`) | 1 | 0 | 1/254 |
 
-## Variables y fuentes
+`1` is the dimensionless unit; the interface shows "dimensionless" when a variable uses it.
+Annual amounts are totals in mm: the unit never carries a year denominator.
 
-| id | Qué es | Fuente | Licencia / atribución |
+## Variables and sources
+
+| id | What it is | Source | Licence / attribution |
 |---|---|---|---|
-| `soil-moisture-all` | «Humedad superficial (NISAR SME2, todas las estimaciones)»: la misma serie, codificación, paleta, rango y remuestreo que `soil-moisture`, **sin** la máscara de `retrievalQualityFlag`; solo queda sin dato lo que el producto no estima (`_FillValue` o valores fuera de 0–1 m³/m³). Cada paso indica en `provenance.flaggedFractionOfValidCells` la fracción de celdas con dato que el producto marca como «retrieval no recomendada». Va primero en `variables`. | Igual que `soil-moisture` | Igual |
-| `soil-moisture` | «Humedad superficial (NISAR SME2, calidad recomendada)». Humedad volumétrica de los ~5 cm superiores. Serie **completa** del mismo track/dirección/frame (Jaén: track 87 ascendente, frame 21, ~05:23 UTC; Toledo: track 95 descendente, frame 68, ~19:09 UTC). Vecino más próximo. Se ocultan los píxeles con **bit 0 de `retrievalQualityFlag` = 1** («retrieval no recomendada»). | NISAR L3 SME2 PROVISIONAL (`C2854344945-ASF`), HDF5 completo desde ASF | Datos abiertos NASA ESDIS (CMR: `FreeAndOpenData`), citar doi:10.5067/NIL3SME2-P1 |
-| `radar-hh`, `radar-hv` | gamma0 (no sigma0) en dB; media en **potencia lineal** por celda (≥ 50 % de píxeles válidos) y después `10·log10`. Mismas fechas que SME2. | NISAR L2 GCOV PROVISIONAL (`C2854338529-ASF`), recorte con NASA Harmony | Guía NASA ESDIS (la colección no declara `UseConstraints` en CMR), doi:10.5067/NIL2GCOV-P1 |
-| `radar-hv-hh` | Razón de polarización cruzada HV − HH (dB) = `10·log10(HV/HH)` por celda. **No es NDVI**: solo un indicador de estructura. | Igual que GCOV | Igual |
-| `insar-coherence` | Coherencia HH de una pareja de 12 días (2026-08-19 → 2026-08-31), media por celda de píxeles de 80 m válidos según la capa `mask`. | NISAR L2 GUNW PROVISIONAL (`C2854335566-ASF`), lectura HTTP parcial del HDF5 con `earthaccess` | NASA ESDIS, doi del producto 10.5067/NIL2GUNW-P1 |
-| `ndvi`, `ndmi` | `(B08−B04)/(B08+B04)` y `(B8A−B11)/(B8A+B11)` sobre reflectancia L2A con `BOA_ADD_OFFSET` (−1000 desde la línea 04.00). Máscara SCL: solo clases 4 y 5. Mosaico de las teselas MGRS de la misma pasada; media de subpíxeles válidos con ≥ 50 % válidos por celda. Una fecha por ventana de 14 días (la de menor nubosidad de tesela, ≤ 20 %). | Sentinel-2 L2A en Microsoft Planetary Computer (`sentinel-2-l2a`), firma SAS anónima | «Contains modified Copernicus Sentinel data 2026» (aviso legal de Copernicus) |
-| `elevation`, `slope` | Altitud media por celda; pendiente en grados calculada a 30 m en EPSG:25830 y promediada. Estáticas (`date: null`). | Copernicus DEM GLO-30 (`cop-dem-glo-30`, Planetary Computer) | «produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved» |
-| `soil-clay`, `soil-sand`, `soil-soc`, `soil-ph` | Media ponderada por espesor de las capas «mean» 0–5, 5–15 y 15–30 cm, ÷ 10 (factor de conversión de SoilGrids) → %, g/kg y pH. Estáticas. | ISRIC SoilGrids 2.0 (VRT/COG oficiales de files.isric.org, rejilla nativa) | CC BY 4.0, ISRIC; Poggio et al. (2021) doi:10.5194/soil-7-217-2021 |
-| serie `precipitation`, `et0`, `temperature-max`, `temperature-min` | Valores diarios en el centroide de la rejilla, 2026-06-01 → 2026-10-31. | Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-Land) | CC BY 4.0 — Weather data by Open-Meteo.com (ERA5/ERA5-Land, Copernicus Climate Change Service) |
-| `climate-precip-annual`, `climate-tmean-annual`, `climate-tmin-coldest`, `climate-tabsmin` | Climatología **1991–2020** (periodo normal de la OMM), estática: lluvia anual media, temperatura media anual, mínima media del mes más frío y media de las mínimas absolutas anuales. Ver «Climatología». | Open-Meteo Historical Weather API, `era5_seamless`, series diarias de 5 puntos por zona | CC BY 4.0 — Weather data by Open-Meteo.com (ERA5/ERA5-Land, Copernicus Climate Change Service) |
-| `landcover-agri`, `landcover-olive` | Fracción de la celda con territorios agrícolas (CLC 2xx) y con olivares (CLC 223). Estáticas. Ver «Usos del suelo». | CORINE Land Cover 2018 (EEA, Copernicus), servicio vectorial ArcGIS REST | © Unión Europea, Copernicus Land Monitoring Service 2018, EEA; acceso libre y abierto con atribución |
-| serie `smap-soil-moisture` | Media diaria de zona (pasada AM) de las celdas de 9 km cuyo centro cae en la rejilla, solo con bit 0 de `retrieval_qual_flag` = 0. | SMAP SPL3SMP_E v006 (`C2938664763-NSIDC_CPRD`), recorte con Harmony (HOSS) | Texto `UseConstraints` de CMR (libre y abierto, citar NSIDC) |
+| `soil-moisture-all` | "Surface soil moisture (NISAR SME2, all retrievals)": the same series, encoding, palette, range and resampling as `soil-moisture`, **without** the `retrievalQualityFlag` mask; only what the product does not estimate (`_FillValue` or values outside 0–1 m³/m³) remains without data. Each step indicates in `provenance.flaggedFractionOfValidCells` the fraction of cells with data that the product marks as "retrieval not recommended". It comes first in `variables`. | Same as `soil-moisture` | Same |
+| `soil-moisture` | "Surface soil moisture (NISAR SME2, recommended quality)". Volumetric moisture of the top ~5 cm. **Complete** series of the same track/direction/frame (Jaén: track 87 ascending, frame 21, ~05:23 UTC; Toledo: track 95 descending, frame 68, ~19:09 UTC). Nearest neighbour. Pixels with **bit 0 of `retrievalQualityFlag` = 1** ("retrieval not recommended") are hidden. | NISAR L3 SME2 PROVISIONAL (`C2854344945-ASF`), full HDF5 from ASF | NASA ESDIS open data (CMR: `FreeAndOpenData`), cite doi:10.5067/NIL3SME2-P1 |
+| `radar-hh`, `radar-hv` | gamma0 (not sigma0) in dB; mean in **linear power** per cell (≥ 50% of valid pixels) and then `10·log10`. Same dates as SME2. | NISAR L2 GCOV PROVISIONAL (`C2854338529-ASF`), clipping with NASA Harmony | NASA ESDIS guide (the collection does not declare `UseConstraints` in CMR), doi:10.5067/NIL2GCOV-P1 |
+| `radar-hv-hh` | Cross-polarisation ratio HV − HH (dB) = `10·log10(HV/HH)` per cell. **It is not NDVI**: only a structure indicator. | Same as GCOV | Same |
+| `insar-coherence` | HH coherence of a 12-day pair (2026-08-19 → 2026-08-31), per-cell mean of 80 m valid pixels according to the `mask` layer. | NISAR L2 GUNW PROVISIONAL (`C2854335566-ASF`), partial HTTP read of the HDF5 with `earthaccess` | NASA ESDIS, product doi 10.5067/NIL2GUNW-P1 |
+| `ndvi`, `ndmi` | `(B08−B04)/(B08+B04)` and `(B8A−B11)/(B8A+B11)` over L2A reflectance with `BOA_ADD_OFFSET` (−1000 since baseline 04.00). SCL mask: classes 4 and 5 only. Mosaic of the MGRS tiles of the same pass; mean of valid subpixels with ≥ 50% valid per cell. One date per 14-day window (the tile with least cloud cover, ≤ 20%). | Sentinel-2 L2A on Microsoft Planetary Computer (`sentinel-2-l2a`), anonymous SAS signature | "Contains modified Copernicus Sentinel data 2026" (Copernicus legal notice) |
+| `elevation`, `slope` | Mean altitude per cell; slope in degrees computed at 30 m in EPSG:25830 and averaged. Static (`date: null`). | Copernicus DEM GLO-30 (`cop-dem-glo-30`, Planetary Computer) | "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved" |
+| `soil-clay`, `soil-sand`, `soil-soc`, `soil-ph` | Thickness-weighted mean of the 0–5, 5–15 and 15–30 cm "mean" layers, ÷ 10 (SoilGrids conversion factor) → %, g/kg and pH. Static. | ISRIC SoilGrids 2.0 (official VRT/COG from files.isric.org, native grid) | CC BY 4.0, ISRIC; Poggio et al. (2021) doi:10.5194/soil-7-217-2021 |
+| `precipitation`, `et0`, `temperature-max`, `temperature-min` series | Daily values at the grid centroid, 2026-06-01 → 2026-10-31. | Open-Meteo Historical Weather API, `era5_seamless` model (ERA5 + ERA5-Land) | CC BY 4.0 — Weather data by Open-Meteo.com (ERA5/ERA5-Land, Copernicus Climate Change Service) |
+| `climate-precip-annual`, `climate-tmean-annual`, `climate-tmin-coldest`, `climate-tabsmin` | **1991–2020** climatology (WMO normal period), static: mean annual rainfall, mean annual temperature, mean minimum of the coldest month and mean of the annual absolute minima. See "Climatology". | Open-Meteo Historical Weather API, `era5_seamless`, daily series from 5 points per zone | CC BY 4.0 — Weather data by Open-Meteo.com (ERA5/ERA5-Land, Copernicus Climate Change Service) |
+| `landcover-agri`, `landcover-olive` | Fraction of the cell with agricultural areas (CLC 2xx) and with olive groves (CLC 223). Static. See "Land cover". | CORINE Land Cover 2018 (EEA, Copernicus), ArcGIS REST vector service | © European Union, Copernicus Land Monitoring Service 2018, EEA; free and open access with attribution |
+| `smap-soil-moisture` series | Daily zone mean (AM pass) of the 9 km cells whose centre falls in the grid, only with bit 0 of `retrieval_qual_flag` = 0. | SMAP SPL3SMP_E v006 (`C2938664763-NSIDC_CPRD`), clipping with Harmony (HOSS) | CMR `UseConstraints` text (free and open, cite NSIDC) |
 
-Todas las variables se publican con `status: "processed_real"` y `provenance.approvedBy` igual al
-revisor indicado con `--approved-by` (obligatorio). Cada paso lleva su procedencia (identificador de
-escena/ítem, fecha de adquisición, CRID, notas de marcas de producción como `…_F_F_J_001`).
+All variables are published with `status: "processed_real"` and `provenance.approvedBy` equal to the
+reviewer given with `--approved-by` (mandatory). Each step carries its provenance (scene/item
+identifier, acquisition date, CRID, production-baseline notes such as `…_F_F_J_001`).
 
-### Índice exploratorio de aptitud (retirado)
+### Exploratory suitability index (retired)
 
-El índice relativo con criterios y pesos (`suitability` en la raíz del cubo) se retiró el 2026-11-15 en favor de
-la aptitud por cultivo (`crops`). El pipeline ya no lo genera; el campo sigue siendo opcional en el contrato.
+The relative index with criteria and weights (`suitability` at the cube root) was retired on 2026-11-15 in favour of
+crop suitability (`crops`). The pipeline no longer generates it; the field remains optional in the contract.
 
-## Climatología (`climatology`)
+## Climatology (`climatology`)
 
-- **Puntos**: las 4 esquinas y el centro de la rejilla de cada zona (5 puntos). Cada punto descarga la serie
-  diaria 1991-01-01 → 2020-12-31 de `temperature_2m_mean/max/min` y `precipitation_sum` (modelo
-  `era5_seamless`). En el API gratuito cada punto «cuesta» ~783 llamadas (10 958 días / 14); con el límite
-  de 5 000/hora y 10 000/día se eligieron 5 puntos por zona y peticiones espaciadas 40 s, con reintento
-  tras HTTP 429. Caché en `cache/climatology/<zona>/`.
-- **Por punto**: temperatura media, mínima y máxima medias de cada mes; lluvia mensual (total de cada mes,
-  promediado entre años); mínima absoluta de cada mes (promedio interanual); media de las mínimas
-  absolutas anuales.
-- **Por celda**: interpolación por **distancia inversa (potencia 2)** en metros Web Mercator. Las
-  temperaturas se reducen al nivel del mar con **6,5 °C/km** usando la elevación que Open-Meteo declara
-  para cada punto, se interpolan y se devuelven a la altitud media de la celda (Copernicus DEM, la misma de
-  `elevation`). Gradiente: atmósfera estándar de la OACI (ICAO Doc 7488/3, 1993; ISO 2533:1975). La
-  precipitación **no** se corrige por altitud.
-- La climatología mensual por celda no se publica; la usa el modelo de cultivos.
+- **Points**: the 4 corners and the centre of each zone's grid (5 points). Each point downloads the daily series
+  1991-01-01 → 2020-12-31 of `temperature_2m_mean/max/min` and `precipitation_sum` (`era5_seamless` model). In the free API each point "costs" ~783 calls (10,958 days / 14); with the limit
+  of 5,000/hour and 10,000/day, 5 points per zone were chosen and requests spaced 40 s, with retry
+  after HTTP 429. Cache in `cache/climatology/<zone>/`.
+- **Per point**: mean, minimum and maximum monthly temperatures; monthly rainfall (total of each month,
+  averaged across years); absolute minimum of each month (interannual average); mean of the annual
+  absolute minima.
+- **Per cell**: **inverse distance (power 2)** interpolation in Web Mercator metres. Temperatures are reduced
+  to sea level with **6.5 °C/km** using the elevation Open-Meteo declares for each point, then interpolated
+  and returned to the mean cell altitude (Copernicus DEM, the same as
+  `elevation`). Gradient: ICAO standard atmosphere (ICAO Doc 7488/3, 1993; ISO 2533:1975). Precipitation
+  is **not** corrected for altitude.
+- The monthly climatology per cell is not published; the crop model uses it.
 
-## Aptitud por cultivo (`crops`)
+## Crop suitability (`crops`)
 
-Cultivos: `olivo` (*Olea europaea*), `almendro` (*Prunus dulcis*, en ECOCROP *Prunus amygdalus* Batsch.) y
-`trigo` (trigo de secano, *Triticum aestivum*). Rásteres en
-`analysis/crops/<cultivo>/suitability.png` y `<factor>.png` (0 = no apto, 1 = óptimo; 255 = sin dato).
-**Aptitud = mínimo de los factores** (ley del mínimo). Clases de la interfaz: S1 ≥ 0,85, S2 0,60–0,85,
-S3 0,40–0,60 y N < 0,40 (tramos de LUSET: Yen et al., 2006; Selmy et al., 2024, *Agronomy* 14(11):2601,
-tabla 3, CC BY 4.0); «apta» = S1 + S2.
+Crops: `olivo` (*Olea europaea*), `almendro` (*Prunus dulcis*, in ECOCROP *Prunus amygdalus* Batsch.) and
+`trigo` (rainfed wheat, *Triticum aestivum*). Rasters in
+`analysis/crops/<crop>/suitability.png` and `<factor>.png` (0 = unsuitable, 1 = optimal; 255 = no data).
+**Suitability = minimum of the factors** (law of the minimum). Interface classes: S1 ≥ 0.85, S2 0.60–0.85,
+S3 0.40–0.60 and N < 0.40 (LUSET intervals: Yen et al., 2006; Selmy et al., 2024, *Agronomy* 14(11):2601,
+table 3, CC BY 4.0); "suitable" = S1 + S2.
 
-### Revisión del 2026-11-15 (decisión del owner, AlRos14)
+### Review of 2026-11-15 (owner decision, AlRos14)
 
-El modelo anterior (solo FAO ECOCROP) daba a Jaén menos aptitud para el olivo que a Toledo. El diagnóstico
-fue: (1) el recuadro de Jaén incluye sierra (solo el 43 % de sus celdas son llanas y bajo 900 m); (2) los
-óptimos genéricos de ECOCROP no son los del olivar mediterráneo: temperatura media mensual de 20–34 °C (dejaba
-el clima de las dos zonas en ~0,3), pH óptimo 6–7 (penalizaba los suelos calizos) y textura media/ligera
-(penalizaba las tierras francoarcillosas); (3) la rampa de pendiente hasta 0 en el 30 % era demasiado dura. Se
-aplicó:
+The previous model (FAO ECOCROP only) gave Jaén less suitability for olive than Toledo. The diagnosis
+was: (1) the Jaén box includes mountains (only 43% of its cells are flat and below 900 m); (2) ECOCROP
+generic optima are not those of Mediterranean olive groves: mean monthly temperature 20–34 °C (it left
+the climate of both zones at ~0.3), optimal pH 6–7 (it penalised calcareous soils) and medium/light texture
+(it penalised clay-loam soils); (3) the slope ramp down to 0 at 30% was too harsh. This was
+applied:
 
-| Factor | Olivo y trigo | Almendro | Fuente |
+| Factor | Olive and wheat | Almond | Source |
 |---|---|---|---|
-| Clima | Factor de restricción climática total de **FAO GAEZ v4** (tema 3, secano, insumos bajos, 1981–2010, ~9 km): `oliv200b_fc0`, `whea200b_fc0` | Temperatura, heladas y lluvia de ECOCROP (como antes) | FAO e IIASA (2021); GAEZ no incluye el almendro |
-| pH | Tabla `ph10` de la UGR (olivo: S1 6,0–8,1; S2 5,6–5,9 y 8,2–8,3; S3 5,2–5,5 y 8,4–8,9; N ≤ 5,1 y ≥ 9,0) | Tabla `ph10` de la UGR | Universidad de Granada |
-| Textura | Tabla `text8` de la UGR (S1 «otras»; olivo S2 franco arcillo arenosa; S3 arena, franco arenosa, arena franca y arcillas estructuradas) | `text8` | Universidad de Granada |
-| Pendiente | Tabla `pend1` de la UGR (olivo y almendro S1 ≤ 8 %, S2 ≤ 16 %, S3 ≤ 30 %, N > 30 %; trigo 6/12/30 %) | `pend1` | Universidad de Granada |
-| Carbono orgánico | Tabla `mateorg7` de la UGR (olivo S1 ≥ 1,0 %; almendro y trigo ≥ 0,8 %) | `mateorg7` | Universidad de Granada |
-| Altitud | Máximo absoluto de la ficha ECOCROP (olivo 1200 m; trigo 4500 m): 1 por debajo, 0 por encima | — (sin dato) | FAO ECOCROP |
+| Climate | Total climate constraint factor from **FAO GAEZ v4** (theme 3, rainfed, low inputs, 1981–2010, ~9 km): `oliv200b_fc0`, `whea200b_fc0` | Temperature, frost and rainfall from ECOCROP (as before) | FAO and IIASA (2021); GAEZ does not include almond |
+| pH | UGR `ph10` table (olive: S1 6.0–8.1; S2 5.6–5.9 and 8.2–8.3; S3 5.2–5.5 and 8.4–8.9; N ≤ 5.1 and ≥ 9.0) | UGR `ph10` table | University of Granada |
+| Texture | UGR `text8` table (S1 "other"; olive S2 sandy clay loam; S3 sand, sandy loam, loamy sand and structured clays) | `text8` | University of Granada |
+| Slope | UGR `pend1` table (olive and almond S1 ≤ 8%, S2 ≤ 16%, S3 ≤ 30%, N > 30%; wheat 6/12/30%) | `pend1` | University of Granada |
+| Organic carbon | UGR `mateorg7` table (olive S1 ≥ 1.0%; almond and wheat ≥ 0.8%) | `mateorg7` | University of Granada |
+| Altitude | Absolute maximum of the ECOCROP record (olive 1200 m; wheat 4500 m): 1 below, 0 above | — (no data) | FAO ECOCROP |
 
-Las tablas de la UGR (Dorronsoro et al., «CambioUso», basadas en Sys et al., 1993, y FAO, 1976) se descargan y
-leen tal cual (`otanalysis/sources/ugr.py`, caché en `cache/ugr/`). **Convenciones del proyecto**: puntuación por
-clase S1 = 1, S2 = 0,725, S3 = 0,50 y N = 0,20 (puntos medios de los tramos de LUSET); el pH y el carbono se
-redondean a un decimal como la tabla; la textura supone suelo estructurado (SoilGrids no distingue las arcillas
-«masivas»); «limo arenosa» no tiene equivalencia USDA y no se aplica; si el carbono queda por debajo de todas las
-clases con valor se le asigna la peor declarada. Los carbonatos no se evalúan (no hay capa abierta).
+The UGR tables (Dorronsoro et al., "CambioUso", based on Sys et al., 1993, and FAO, 1976) are downloaded and
+read as they are (`otanalysis/sources/ugr.py`, cache in `cache/ugr/`). **Project conventions**: score per
+class S1 = 1, S2 = 0.725, S3 = 0.50 and N = 0.20 (midpoints of the LUSET intervals); pH and carbon are
+rounded to one decimal as in the table; texture assumes structured soil (SoilGrids does not distinguish
+"massive" clays); "sandy silt" has no USDA equivalent and is not applied; if carbon falls below all
+classes with a value, it is assigned the worst declared one. Carbonates are not evaluated (there is no open layer).
 
-**Resultado y lectura.** Con este modelo, sobre la superficie agrícola, el recuadro de Toledo (llano) tiene más
-aptitud física para el olivo (99 % apta) que el de Jaén (53 %), sobre todo por la pendiente; el propio GAEZ da a
-los dos un clima casi óptimo para el olivo de secano (0,95). Es un resultado de aptitud física de cada recuadro, no
-de su provincia: otro recuadro de Jaén, menos inclinado, saldría distinto. Se valoró contrastarlo con los
-rendimientos provinciales del Anuario del MAPA, pero el owner decidió no usarlos (2026-11-15) porque describen toda
-la provincia y no el recuadro comparado. No se ha encontrado una fuente citable de umbrales de agua útil del suelo
-para el olivo (la UGR solo tiene drenaje; SoilGrids 2.0 no publica retención de agua), así que no se ha añadido ese
-factor.
+**Result and reading.** With this model, over the agricultural area, the Toledo box (flat) has more
+physical suitability for olive (99% suitable) than the Jaén box (53%), mainly because of slope; GAEZ itself gives
+both an almost optimal climate for rainfed olive (0.95). It is a result of the physical suitability of each box, not
+of its province: another, less steep Jaén box would come out different. Contrasting it with the provincial
+yields of the MAPA yearbook was considered, but the owner decided not to use them (2026-11-15) because they describe the whole
+province and not the compared box. No citable source of available soil water thresholds for
+olive has been found (UGR only has drainage; SoilGrids 2.0 does not publish water retention), so that
+factor has not been added.
 
-### Modelo Ecocrop (almendro)
+### Ecocrop model (almond)
 
-El almendro conserva el modelo Ecocrop para el clima (Hijmans et al., 2001; `dismo::ecocrop` 1.3-15;
-Recocrop 0.4-2), con la ficha FAO id 2397 (descargada el 2026-11-15, `cache/ecocrop/fao/`): temperatura media
-mensual óptima 12–35 °C (límites 10–40), temperatura letal −1 °C («early growth») con la rampa de Recocrop sobre
-la mínima extrema mensual, lluvia anual óptima 600–900 mm (límites 250–1500), periodo de 6 meses
-(round((150+240)/60)) con el mejor mes de inicio. Con 12 meses su TMIN de 10 °C daba aptitud 0 en el 100 % de
-las celdas (convención aceptada por el owner); no se evalúan las heladas de floración. Términos de FAO: estudio,
-investigación y fines no comerciales citando a FAO (https://www.fao.org/contact-us/terms/en/).
+Almond keeps the Ecocrop model for climate (Hijmans et al., 2001; `dismo::ecocrop` 1.3-15;
+Recocrop 0.4-2), with FAO record id 2397 (downloaded on 2026-11-15, `cache/ecocrop/fao/`): optimal mean monthly
+temperature 12–35 °C (limits 10–40), lethal temperature −1 °C ("early growth") with the Recocrop ramp over
+the extreme monthly minimum, optimal annual rainfall 600–900 mm (limits 250–1500), 6-month period
+(round((150+240)/60)) with the best starting month. With 12 months its TMIN of 10 °C gave suitability 0 in 100% of
+the cells (convention accepted by the owner); flowering frosts are not evaluated. FAO terms: study,
+research and non-commercial purposes citing FAO (https://www.fao.org/contact-us/terms/en/).
 
-`factor.variables` lista las variables publicadas más próximas a lo que usa cada factor; `parameters` detalla
-la fila de la tabla aplicada, las puntuaciones y la variable de entrada; `classes` da los tramos en texto y
-`reference` la fuente cuando no es la ficha ECOCROP.
+`factor.variables` lists the published variables closest to what each factor uses; `parameters` details
+the applied table row, the scores and the input variable; `classes` gives the intervals in text and
+`reference` the source when it is not the ECOCROP record.
 
-## Usos del suelo (`landcover`)
+## Land cover (`landcover`)
 
-`landcover-agri` y `landcover-olive`: fracción de cada celda con territorios agrícolas (clases CLC 2xx) y con
-olivares (clase 223) según **CORINE Land Cover 2018** (EEA, Copernicus; servicio ArcGIS REST
-`Corine/CLC2018_WM`, capa vectorial). Los polígonos se rasterizan a 25 m y se promedian a 250 m. La pestaña
-Comparar calcula la aptitud solo en celdas con al menos un 50 % de superficie agrícola; `landcover-olive` se puede
-ver como capa en Capas y Análisis. Licencia: acceso libre, completo y abierto con atribución.
+`landcover-agri` and `landcover-olive`: fraction of each cell with agricultural areas (CLC 2xx classes) and with
+olive groves (class 223) according to **CORINE Land Cover 2018** (EEA, Copernicus; ArcGIS REST service
+`Corine/CLC2018_WM`, vector layer). Polygons are rasterised at 25 m and averaged to 250 m. The
+Compare tab computes suitability only in cells with at least 50% agricultural area; `landcover-olive` can be
+viewed as a layer in Layers and Analysis. Licence: free, full and open access with attribution.
 
-## Fuentes no disponibles (`unavailable`)
+## Unavailable sources (`unavailable`)
 
-| id | Motivo |
+| id | Reason |
 |---|---|
-| `yield-validation` | No hay en el repositorio datos de rendimiento por parcela con licencia compatible; las estadísticas provinciales o municipales no permiten validar variables de 250 m en dos zonas. |
-| `los-displacement` | Hay granulos GUNW, pero no se publica: la fase desenrollada es relativa por componente conexa y exige un punto de referencia estable, correcciones ionosférica/troposférica validadas y confirmar la convención de signo. (La frecuencia central del producto, leída del HDF5, es 1,229 GHz → λ ≈ 0,2439 m.) |
+| `yield-validation` | The repository has no parcel-level yield data with a compatible licence; provincial or municipal statistics do not allow validating 250 m variables in two zones. |
+| `los-displacement` | GUNW granules exist, but they are not published: the unwrapped phase is relative per connected component and requires a stable reference point, validated ionospheric/tropospheric corrections and confirming the sign convention. (The product's centre frequency, read from the HDF5, is 1.229 GHz → λ ≈ 0.2439 m.) |
 
-Si una fuente falla en una ejecución, sus ids se añaden a `unavailable` con el error literal, salvo
-que ya existiera una versión anterior válida en el cubo (en ese caso se conserva y se avisa).
+If a source fails in a run, its ids are added to `unavailable` with the literal error, unless
+a previous valid version already existed in the cube (in that case it is kept and a warning is shown).
 
-## Instalación
+## Installation
 
 ```bash
 python3 -m venv pipelines/analysis/.venv
-# si falta ensurepip: python3 -m venv --without-pip … && pipelines/analysis/.venv/bin/python -m ensurepip --upgrade
+# if ensurepip is missing: python3 -m venv --without-pip … && pipelines/analysis/.venv/bin/python -m ensurepip --upgrade
 pipelines/analysis/.venv/bin/pip install -r pipelines/analysis/requirements.txt
 ```
 
-Credenciales de NASA Earthdata: `~/.netrc` (`machine urs.earthdata.nasa.gov`). El código nunca las lee
-ni las registra: `requests`, `harmony-py` y `earthaccess` las toman por su cuenta. Planetary Computer,
-ISRIC y Open-Meteo no requieren credenciales.
+NASA Earthdata credentials: `~/.netrc` (`machine urs.earthdata.nasa.gov`). The code never reads
+or logs them: `requests`, `harmony-py` and `earthaccess` take them on their own. Planetary Computer,
+ISRIC and Open-Meteo do not require credentials.
 
-## Uso
+## Usage
 
 ```bash
-# Todas las fuentes, ambas zonas (escribe en frontend/public y actualiza el manifiesto)
+# All sources, both zones (writes to frontend/public and updates the manifest)
 pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py --zone all --approved-by AlRos14
 
-# Solo algunas fuentes / omitir otras (las demás variables del cubo se conservan)
+# Only some sources / skip others (the other cube variables are kept)
 pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py --zone jaen --only s2,dem --approved-by AlRos14
 pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py --zone all --skip gunw,smap --approved-by AlRos14
 
-# Ensayo fuera de la app (directorio staging/ no versionado), sin tocar el manifiesto
+# Dry run outside the app (unversioned staging/ directory), without touching the manifest
 pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py --zone all --approved-by AlRos14 \
   --public-dir pipelines/analysis/staging/public --no-manifest
 ```
 
-Fuentes: `sme2`, `gcov`, `s2`, `dem`, `soil`, `climate`, `climatology`, `gunw`, `smap`, `crops`
-(`climatology` y `crops` usan las cachés de `dem` y `soil`). Re-ejecutar es idempotente:
-cada fuente reemplaza sus variables/series (y borra sus PNG obsoletos) sin duplicar nada. El cubo se
-valida contra el esquema (Draft 2020-12) y se comprueban los PNG (modo `L`, tamaño de la rejilla, sin
-alfa) antes de actualizar el manifiesto. Después conviene ejecutar `npm run validate:data` en `frontend/`.
+Sources: `sme2`, `gcov`, `s2`, `dem`, `soil`, `climate`, `climatology`, `gunw`, `smap`, `crops`
+(`climatology` and `crops` use the `dem` and `soil` caches). Re-running is idempotent:
+each source replaces its variables/series (and deletes its stale PNGs) without duplicating anything. The cube is
+validated against the schema (Draft 2020-12) and the PNGs are checked (`L` mode, grid size, no
+alpha) before updating the manifest. Afterwards it is advisable to run `npm run validate:data` in `frontend/`.
 
-`sanity_checks.py` (sin red) compara la humedad SME2 de la rejilla con los PNG de visualización ya
-publicados (celda a celda), y comprueba relieve (sierras al sur de Jaén), NDVI en zonas urbanas y la
-correlación NDVI–HV; además, temperatura frente a altitud, distribución de la aptitud y factor limitante
-por cultivo, y la sensibilidad a las variantes descartadas.
+`sanity_checks.py` (offline) compares the SME2 moisture of the grid with the visualisation PNGs already
+published (cell by cell), and checks relief (mountains south of Jaén), NDVI in urban areas and the
+NDVI–HV correlation; in addition, temperature versus altitude, the distribution of suitability and the limiting
+factor per crop, and sensitivity to the discarded variants.
 
-## Caché
+## Translations of data strings
 
-Todo lo descargado se guarda en `pipelines/analysis/cache/` (ignorado por Git): HDF5 SME2 completos
-(~128 MB cada uno), recortes Harmony GCOV/SMAP, mosaicos Sentinel-2 por fecha (`.npz`), DEM
-reproyectado, capas SoilGrids, ventana GUNW, respuestas de Open-Meteo (incluidas las series 1991–2020 de
-`cache/climatology/`) y las fichas ECOCROP y la tabla de Recocrop (`cache/ecocrop/`). Una segunda ejecución no vuelve
-a descargar. Borrar una subcarpeta fuerza su descarga.
+Every free-text field written by the pipeline (variable titles and descriptions, caveats, provenance
+notes, legend labels, crop requirements and the reasons in `unavailable`) is authored in Spanish. The
+English rendering used by the interface lives next to the data in
+`frontend/public/data/real/i18n/en.json` and is applied by `dataText()`.
 
-## Limitaciones
+After regenerating the cube:
 
-- **SME2 y GCOV son PROVISIONAL**: no totalmente calibrados ni validados. La serie SME2 incluye una
-  escena con marca de producción distinta (`…_F_F_J_001`, 2026-07-14), anotada en su paso.
-- **Máscara de calidad SME2**: en Jaén oculta ~2/3 de los píxeles con estimación (casi todos con la
-  clase 1 de `ancillaryData/landCover`, cuya leyenda no documenta el fichero); en Toledo, una fracción
-  mucho menor. La cobertura sin y con máscara figura en cada paso. En la ejecución del 2026-11-15 las
-  celdas ocultas tenían, de media, más NDVI, más HV y más pendiente que las conservadas (es decir, la
-  humedad publicada describe sobre todo las zonas menos arboladas); el criterio de humedad del índice de
-  aptitud solo cubre esas celdas. Por decisión del owner se publica también `soil-moisture-all` (sin
-  máscara): las celdas que solo aparecen en esa variante son el 64 % de la rejilla de Jaén y el 7 % de la
-  de Toledo (con dato en alguna fecha) y tienen de media más NDVI, HV y pendiente (`sanity_checks.py`). El
-  índice de aptitud sigue usando `soil-moisture` (calidad recomendada); los cultivos no usan humedad.
-- La capa de visualización `soil-moisture` del manifiesto **no** se ha ampliado con las fechas nuevas:
-  una prueba con `pipelines/nisar/sme2_to_overlay.py` sobre una copia regeneraba de forma distinta los
-  tres PNG ya publicados y ampliaba el `bbox` de la zona de Jaén, así que se descartó.
-- En Toledo el frame 68 no cubre toda la zona desde agosto (≈ 80 % de celdas con dato).
-- El 2026-09-24 en Jaén se adquirió en modo `SHSH` (sin HV): ese día solo hay `radar-hh`.
-- El radar no mide producción ni vigor; NDVI/NDMI son ópticos (Sentinel-2), no NISAR; la humedad
-  superficial no equivale a necesidad de riego; SoilGrids es un producto modelado.
-- SCL puede dejar nubes/sombras residuales; la selección de fechas usa la nubosidad por tesela.
-- El DEM es un modelo de superficie (incluye copas y edificios).
-- El clima es reanálisis en un único punto (centroide), no una estación local.
+1. List or write the missing entries from the repository root:
+   `npm run i18n:data -- --write --prefix frontend` (or, from `frontend/`,
+   `npm run i18n:data -- --write`).
+2. Translate the new entries in `frontend/public/data/real/i18n/en.json`.
+3. Run `npm run validate:data`, which reports data strings without an English entry.
+
+## Cache
+
+Everything downloaded is stored in `pipelines/analysis/cache/` (ignored by Git): full SME2 HDF5
+(~128 MB each), Harmony GCOV/SMAP clippings, Sentinel-2 mosaics by date (`.npz`), reprojected
+DEM, SoilGrids layers, GUNW window, Open-Meteo responses (including the 1991–2020 series in
+`cache/climatology/`) and the ECOCROP records and the Recocrop table (`cache/ecocrop/`). A second run does not
+download again. Deleting a subfolder forces its download.
+
+## Limitations
+
+- **SME2 and GCOV are PROVISIONAL**: not fully calibrated or validated. The SME2 series includes one
+  scene with a different production baseline (`…_F_F_J_001`, 2026-07-14), annotated in its step.
+- **SME2 quality mask**: in Jaén it hides ~2/3 of the pixels with an estimate (almost all with
+  class 1 of `ancillaryData/landCover`, whose legend the file does not document); in Toledo, a
+  much smaller fraction. Coverage without and with the mask is shown in each step. In the 2026-11-15 run the
+  hidden cells had, on average, more NDVI, more HV and more slope than the kept ones (that is,
+  the published moisture describes mainly the least wooded areas); the moisture criterion of the suitability
+  index only covers those cells. By owner decision `soil-moisture-all` (without the
+  mask) is also published: the cells that only appear in that variant are 64% of the Jaén grid and 7% of
+  the Toledo grid (with data on some date) and have on average more NDVI, HV and slope (`sanity_checks.py`). The
+  suitability index still uses `soil-moisture` (recommended quality); the crops do not use moisture.
+- The manifest's `soil-moisture` visualisation layer **has not** been extended with the new dates:
+  a test with `pipelines/nisar/sme2_to_overlay.py` on a copy regenerated the
+  three already published PNGs differently and extended the Jaén zone `bbox`, so it was discarded.
+- In Toledo frame 68 does not cover the whole zone since August (≈ 80% of cells with data).
+- On 2026-09-24 Jaén was acquired in `SHSH` mode (no HV): that day there is only `radar-hh`.
+- Radar does not measure production or vigour; NDVI/NDMI are optical (Sentinel-2), not NISAR; surface soil
+  moisture is not the same as irrigation needs; SoilGrids is a modelled product.
+- SCL may leave residual clouds/shadows; date selection uses per-tile cloud cover.
+- The DEM is a surface model (it includes canopies and buildings).
+- The climate is a reanalysis at a single point (centroid), not a local station.
 
 ## Tests
 
@@ -237,11 +254,11 @@ a descargar. Borrar una subcarpeta fuerza su descarga.
 cd pipelines/analysis && env -u PYTHONPATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/python -m pytest -q tests
 ```
 
-Sin red. Cubren la rejilla (dimensiones, extensión exacta, lat/lon → celda), codificación (ida y vuelta
-dentro de media escala, recorte, PNG gris sin alfa), estadísticas, promedio en potencia lineal y umbral
-de subpíxeles válidos, fusión idempotente del cubo (sin duplicados, PNG obsoletos, conservación ante
-fallos), actualización del manifiesto (solo `schemaVersion` y `zone.analysis`) y utilidades de cada
-fuente (BOA offset, NDVI, selección de fechas, media por espesor, pendiente, máscara GUNW, media SMAP),
-y del modelo de cultivos: trapecio, regla de temperatura letal, duración del periodo, búsqueda del mes de
-inicio, clase USDA y grupo FAO, puntuación de textura, corrección por altitud, IDW, climatología mensual y
-lectura de la ficha FAO (con «no input» → sin valor).
+Offline. They cover the grid (dimensions, exact extent, lat/lon → cell), encoding (round trip
+within half a scale, clipping, grey PNG without alpha), statistics, linear-power averaging and valid-subpixel
+threshold, idempotent cube merging (no duplicates, stale PNGs, preservation on
+failures), manifest update (only `schemaVersion` and `zone.analysis`) and utilities of each
+source (BOA offset, NDVI, date selection, thickness-weighted mean, slope, GUNW mask, SMAP mean),
+and the crop model: trapezoid, lethal temperature rule, period length, starting-month
+search, USDA class and FAO group, texture score, altitude correction, IDW, monthly climatology and
+reading of the FAO record (with "no input" → no value).

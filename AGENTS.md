@@ -1,83 +1,84 @@
-# AGENTS.md — Reglas para agentes automáticos
+# AGENTS.md — Rules for automated agents
 
-Este documento es obligatorio para cualquier agente que trabaje en el
-repositorio OliveTwin. Las personas siguen además
-[`docs/contributing.md`](docs/contributing.md) y la plantilla de pull request.
+This document is mandatory for any agent working in the OliveTwin
+repository. People additionally follow
+[`docs/contributing.md`](docs/contributing.md) and the pull request template.
 
-Un agente puede implementar, probar, documentar y proponer cambios. **No puede
-fusionar, aprobar su propio trabajo, cambiar permisos ni validar por sí mismo
-afirmaciones científicas.**
+An agent may implement, test, document and propose changes. **It may not
+merge, approve its own work, change permissions or validate scientific claims
+on its own.**
 
-## Idioma
+## Language
 
-Comunícate siempre con el equipo **en español**: respuestas, resúmenes,
-preguntas, reportes de entrega y mensajes de PR. El código y los nombres
-técnicos pueden seguir en inglés cuando sea la convención.
+Communicate with the team in Spanish (replies, summaries, PR messages);
+documentation and UI text are written in English, with Spanish UI translations
+in the `es` catalogs. Code and technical names may stay in English when that is
+the convention.
 
-## Antes de escribir
+## Before writing
 
-1. Lee, en este orden: `README.md`, este archivo, `docs/contributing.md`,
-   `docs/contract-freeze.md` y `contracts/README.md` (si ya existen en tu rama).
-2. Inspecciona el estado real: `git status`, rama actual, worktrees y últimos
-   commits. No asumas que el árbol está limpio.
-3. Revisa los archivos y cambios sin commitear antes de editar. **No
-   sobrescribas trabajo ajeno.**
-4. Identifica tu work packet, tu issue o PR y tu ámbito de escritura. Si no
-   están definidos, detente y pide asignación.
-5. Si el repositorio ya contiene trabajo previo, intégralo o respétalo; no
-   reinicies el proyecto.
+1. Read, in this order: `README.md`, this file, `docs/contributing.md`,
+   `docs/contract-freeze.md` and `contracts/README.md` (if they already exist in
+   your branch).
+2. Inspect the real state: `git status`, current branch, worktrees and recent
+   commits. Do not assume the tree is clean.
+3. Review files and uncommitted changes before editing. **Do not overwrite
+   anyone else's work.**
+4. Identify your work packet, your issue or PR and your write scope. If they
+   are not defined, stop and ask for an assignment.
+5. If the repository already contains previous work, integrate it or respect
+   it; do not restart the project.
 
-## Aislamiento de trabajo
+## Work isolation
 
-- Trabaja en un **worktree propio** con su **rama propia**. No trabajes sobre
-  `main` ni sobre la rama de otra persona.
-- No hagas `git push` directo a `main`, no hagas merge, no cierres PR ajenas y
-  no reescribas historial compartido.
-- No uses credenciales humanas para simular una aprobación. Si compartes
-  credenciales con una persona, GitHub no puede distinguir quién aprobó: deja
-  constancia y complementa la revisión por un canal externo o una cuenta de bot
-  separada.
-- No modifiques la configuración del repositorio (visibilidad, accesos,
-  protecciones) salvo instrucción explícita del propietario.
+- Work in **your own worktree** with **your own branch**. Do not work on
+  `main` or on someone else's branch.
+- Do not `git push` directly to `main`, do not merge, do not close other
+  people's PRs and do not rewrite shared history.
+- Do not use human credentials to simulate an approval. If you share
+  credentials with a person, GitHub cannot tell who approved: record it and
+  complement the review through an external channel or a separate bot account.
+- Do not change the repository configuration (visibility, access, protections)
+  unless the owner explicitly instructs it.
 
-## Ámbitos de escritura
+## Write scopes
 
-Un solo owner por archivo o subpaquete. Los agentes no editan rutas de un
-ámbito ajeno: si necesitan un cambio fuera de su scope, abren una solicitud al
-owner y lo anotan en su reporte.
+A single owner per file or subpackage. Agents do not edit paths in someone
+else's scope: if they need a change outside their scope, they open a request to
+the owner and note it in their report.
 
-### Mapa de ámbitos WP-04 y WP-07
+### WP-04 and WP-07 scope map
 
-| Ámbito | WP-04 | WP-07 |
+| Scope | WP-04 | WP-07 |
 |---|---|---|
-| Datos y contrato | `contracts/`, `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/`, `frontend/public/data/`, `scripts/` de generación y validación de datos | — |
-| Interfaz y mapa | — | `frontend/src/components/`, estilos, código de Leaflet, controles, leyendas y avisos |
-| Integración | `App.vue` solo como punto de composición; los cambios de integración se coordinan entre ambos WPs | Igual: `App.vue` no se usa para introducir lógica de datos ni componentes completos |
+| Data and contract | `contracts/`, `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/`, `frontend/public/data/`, `scripts/` for data generation and validation | — |
+| Interface and map | — | `frontend/src/components/`, styles, Leaflet code, controls, legends and notices |
+| Integration | `App.vue` only as a composition point; integration changes are coordinated between both WPs | Same: `App.vue` is not used to introduce data logic or complete components |
 
-- WP-04 **no implementa** la vista del mapa ni componentes de UI.
-- WP-07 **no genera datos científicos** ni redefine el JSON Schema.
-- `frontend/package.json` y `frontend/package-lock.json` son compartidos:
-  añadir dependencias exige coordinación explícita.
-- `.github/workflows/`, `contracts/` y los documentos de gobierno requieren
-  revisión de integración además del owner.
-- Un cambio de contrato se abre como incidencia y afecta solo a los nodos
-  dependientes; no se cambia unilateralmente.
+- WP-04 **does not implement** the map view or UI components.
+- WP-07 **does not generate scientific data** or redefine the JSON Schema.
+- `frontend/package.json` and `frontend/package-lock.json` are shared: adding
+  dependencies requires explicit coordination.
+- `.github/workflows/`, `contracts/` and the governance documents require
+  integration review in addition to the owner.
+- A contract change is opened as an issue and affects only the dependent
+  nodes; it is not changed unilaterally.
 
-### Fase A
+### Phase A
 
-En Fase A los nodos A01 (bootstrap), A02 (contrato mínimo), A03 (gobierno) y
-A04 (CI) tienen ámbitos separados. A01 no edita `frontend/public/data/`, A02 no
-edita `frontend/src/`, y A04 no edita `package.json` sin coordinación con A01.
-Los agentes de Fase A tampoco implementan WP-04 ni WP-07.
+In Phase A the nodes A01 (bootstrap), A02 (minimum contract), A03 (governance)
+and A04 (CI) have separate scopes. A01 does not edit `frontend/public/data/`,
+A02 does not edit `frontend/src/`, and A04 does not edit `package.json` without
+coordination with A01. Phase A agents also do not implement WP-04 or WP-07.
 
-La Fase A está cerrada. La fase vigente es la **Fase B** (WP-04 ∥ WP-07), regida
-por la tabla de ámbitos anterior y por [`docs/c0-interfaces.md`](docs/c0-interfaces.md).
-El estado de los nodos y los planes archivados están en
+Phase A is closed. The current phase is **Phase B** (WP-04 ∥ WP-07), governed
+by the scope table above and by [`docs/c0-interfaces.md`](docs/c0-interfaces.md).
+Node status and archived plans are in
 [`docs/work-packets/README.md`](docs/work-packets/README.md).
 
-## Comprobaciones obligatorias
+## Mandatory checks
 
-Desde `frontend/`, antes de declarar terminado un cambio:
+From `frontend/`, before declaring a change finished:
 
 ```bash
 npm ci
@@ -85,68 +86,68 @@ npm run validate:data
 npm run build
 ```
 
-- `npm ci` debe partir de un `package-lock.json` versionado.
-- `npm run validate:data` valida los manifiestos contra el esquema del contrato.
-- `npm run build` debe generar `frontend/dist/` sin errores.
+- `npm ci` must start from a versioned `package-lock.json`.
+- `npm run validate:data` validates the manifests against the contract schema.
+- `npm run build` must generate `frontend/dist/` without errors.
 
-Si un comando no existe o no puede ejecutarse en tu rama, **no lo inventes ni
-lo omitas en silencio**: registra el bloqueo y su causa. Para cambios solo de
-documentación, ejecuta al menos una revisión de enlaces y coherencia, e indica
-que no aplican los checks de código.
+If a command does not exist or cannot be run in your branch, **do not invent it
+and do not silently omit it**: record the blocker and its cause. For
+documentation-only changes, run at least a link and coherence review, and state
+that the code checks do not apply.
 
-## Evidencias
+## Evidence
 
-El reporte de entrega debe incluir:
+The delivery report must include:
 
-- comandos exactos ejecutados y su resultado (éxito o error);
-- extractos relevantes de la salida, no solo la afirmación «funciona»;
-- lista de archivos modificados;
-- enlace o referencia al PR/commit cuando exista;
-- captura o descripción verificable si el cambio es de interfaz.
+- exact commands executed and their result (success or error);
+- relevant excerpts of the output, not just the claim "it works";
+- list of modified files;
+- link or reference to the PR/commit when it exists;
+- screenshot or verifiable description if the change is to the interface.
 
-No se acepta «probado» sin evidencia reproducible.
+"Tested" without reproducible evidence is not accepted.
 
-## Datos, ciencia y procedencia
+## Data, science and provenance
 
-- El proyecto responde al reto
-  [«Dancing with the SARs»](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
-  del NASA Space Apps Challenge 2026. Prioriza los recursos listados en
-  [`docs/challenge.md`](docs/challenge.md). Se puede usar cualquier otro
-  recurso open source o con licencia que permita uso en investigación; **no**
-  recursos con licencia comercial.
-- **No inventes** URLs, usuarios, permisos, cifras, fechas, productos ni
-  resultados científicos.
-- No afirmes que el radar mide producción directamente, que el NDVI es NISAR o
-  que la humedad superficial equivale a riego. Las inferencias requieren datos
-  compatibles y validación.
-- No presentes datos sintéticos como observaciones de NASA ni como datos
-  reales. Mantén `status: synthetic` y los avisos visibles.
-- No asignes `processed_real` sin procedencia verificable, fecha, identificador
-  de producto o escena, versión de procesamiento y advertencias de calidad.
-  Ese estado requiere aprobación científica humana.
-- No versiones HDF5, GeoTIFF, NetCDF ni otros binarios científicos grandes.
-  Publica solo assets optimizados en `frontend/public/data/`.
-- No descargues ni incorpores datos sin licencia y procedencia claras. No
-  incluyas secretos, tokens ni credenciales en el repositorio.
+- The project answers the
+  ["Dancing with the SARs"](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
+  challenge of the NASA Space Apps Challenge 2026. Prioritise the resources
+  listed in [`docs/challenge.md`](docs/challenge.md). Any other open source or
+  licensed resource that permits research use may be used; **not**
+  commercially licensed resources.
+- **Do not invent** URLs, users, permissions, figures, dates, products or
+  scientific results.
+- Do not claim that radar measures production directly, that NDVI is NISAR or
+  that surface soil moisture equals irrigation. Inferences require compatible
+  data and validation.
+- Do not present synthetic data as NASA observations or as real data. Keep
+  `status: synthetic` and the notices visible.
+- Do not assign `processed_real` without verifiable provenance, date, product
+  or scene identifier, processing version and quality warnings. That status
+  requires human scientific approval.
+- Do not version HDF5, GeoTIFF, NetCDF or other large scientific binaries.
+  Publish only optimised assets in `frontend/public/data/`.
+- Do not download or incorporate data without clear licence and provenance. Do
+  not include secrets, tokens or credentials in the repository.
 
-## Commits y pull requests
+## Commits and pull requests
 
-- Commits pequeños y con prefijo convencional: `feat:`, `fix:`, `docs:`,
+- Small commits with a conventional prefix: `feat:`, `fix:`, `docs:`,
   `chore:`, `test:`, `ci:`, `refactor:`.
-- Una PR debe tener un propósito, enlazar su issue o work packet y respetar la
-  plantilla.
-- El check requerido se llama **`ci`**. No se fusiona con el check en rojo.
-- La revisión debe ser **independiente**: autor y revisor no pueden ser la
-  misma persona ni la misma sesión de agente.
-- **Un comentario automatizado no es una aprobación humana.** No escribas
-  «aprobado» en nombre de una persona ni uses un agente para cumplir el
-  requisito de revisión.
-- No hagas merge. La fusión la realiza el owner humano tras la revisión.
+- A PR must have a purpose, link its issue or work packet and follow the
+  template.
+- The required check is called **`ci`**. Do not merge with the check red.
+- The review must be **independent**: author and reviewer cannot be the same
+  person or the same agent session.
+- **An automated comment is not a human approval.** Do not write "approved" on
+  behalf of a person and do not use an agent to satisfy the review
+  requirement.
+- Do not merge. The human owner performs the merge after the review.
 
-## Entrega de cada paquete
+## Delivery of each packet
 
-Al terminar, resume resultados, cambios, comandos, pruebas, fallos, capturas y
-cómo se incorporarían datos reales. Usa este formato:
+When finished, summarise results, changes, commands, tests, failures,
+screenshots and how real data would be incorporated. Use this format:
 
 ```yaml
 work_packet: WP07-03
@@ -161,6 +162,6 @@ review_requested: true
 commit_or_pr: null
 ```
 
-Si el trabajo queda bloqueado por permisos, dependencias o una decisión
-científica, usa `BLOCKED` y describe exactamente qué falta; no lo maquilles
-como `PASS`.
+If the work is blocked by permissions, dependencies or a scientific decision,
+use `BLOCKED` and describe exactly what is missing; do not disguise it as
+`PASS`.
