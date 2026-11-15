@@ -5,9 +5,11 @@ import type { AnalysisStatus } from '../composables/useZoneAnalysis'
 import type { UseAnalysisWorkspaceReturn, WorkspaceMode } from '../composables/useAnalysisWorkspace'
 import type { LlmSettings } from '../services/llmClient'
 import { MAX_SAMPLES } from '../services/seriesAnalysis'
-import { formatUsDate } from '../services/dateFormat'
+import { formatDate as formatIsoDate } from '../services/dateFormat'
 import LlmSettingsPanel from './LlmSettingsPanel.vue'
 import { GROUP_LABELS, variableLabel } from './variableLabels'
+import { dataText } from '../i18n/dataText'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /** Controles de la pestaña Análisis (panel derecho). */
@@ -23,13 +25,13 @@ const emit = defineEmits<{ 'update-settings': [patch: Partial<LlmSettings>] }>()
 const uid = useId()
 
 
-const MODES: { value: WorkspaceMode; label: string }[] = [
-  { value: 'series', label: 'Análisis de una variable' },
-  { value: 'crop', label: 'Aptitud por cultivo' },
-]
+const MODES = computed<{ value: WorkspaceMode; label: string }[]>(() => [
+  { value: 'series', label: t('analysis.modes.series') },
+  { value: 'crop', label: t('analysis.modes.crop') },
+])
 
 function formatDate(date: string | null): string {
-  return formatUsDate(date, date || 'Sin fecha')
+  return formatIsoDate(date, date || t('analysis.controls.noDate'))
 }
 
 const ws = computed(() => props.workspace)
@@ -51,10 +53,10 @@ const steps = computed(() => ws.value.variable.value?.steps ?? [])
 const maxSamples = computed(() => Math.max(1, Math.min(MAX_SAMPLES, ws.value.sampling.value.available)))
 const samplingNote = computed(() => {
   const { available, requested, indices, spacingDays } = ws.value.sampling.value
-  if (available === 0) return 'No hay fechas en el intervalo elegido.'
-  const spacing = spacingDays !== null ? ` (una cada ~${Math.round(spacingDays)} días)` : ''
-  if (requested > available) return `Solo hay ${available} ${available === 1 ? 'fecha' : 'fechas'} en el intervalo: se muestran todas${spacing}.`
-  return `Se muestran ${indices.length} de ${available} fechas disponibles${spacing}.`
+  if (available === 0) return t('analysis.controls.samplingNone')
+  const spacing = spacingDays !== null ? t('analysis.controls.spacing', { days: Math.round(spacingDays) }) : ''
+  if (requested > available) return t('analysis.controls.samplingAll', { count: available, spacing })
+  return t('analysis.controls.samplingSome', { shown: indices.length, available, spacing })
 })
 
 function onVariable(event: Event): void {
@@ -79,13 +81,13 @@ function onCrop(event: Event): void {
 </script>
 
 <template>
-  <section class="ot-card ot-analysis" aria-label="Controles del análisis">
-    <p v-if="status === 'idle'" class="ot-hint">Esta zona no tiene cubo de análisis publicado.</p>
-    <p v-else-if="status === 'loading'" class="ot-hint" role="status">Cargando el análisis de la zona…</p>
+  <section class="ot-card ot-analysis" :aria-label="t('analysis.controls.region')">
+    <p v-if="status === 'idle'" class="ot-hint">{{ t('analysis.controls.noCube') }}</p>
+    <p v-else-if="status === 'loading'" class="ot-hint" role="status">{{ t('analysis.controls.loading') }}</p>
     <p v-else-if="status === 'error'" class="ot-analysis__error" role="alert">{{ error }}</p>
 
     <template v-else>
-      <div class="ot-analysis__views ot-analysis__views--two" role="radiogroup" aria-label="Tipo de análisis">
+      <div class="ot-analysis__views ot-analysis__views--two" role="radiogroup" :aria-label="t('analysis.controls.type')">
         <button
           v-for="mode in MODES"
           :key="mode.value"
@@ -103,7 +105,7 @@ function onCrop(event: Event): void {
 
       <template v-if="workspace.state.mode === 'series'">
         <div class="ot-field">
-          <label class="ot-label" :for="`${uid}-variable`">Variable</label>
+          <label class="ot-label" :for="`${uid}-variable`">{{ t('analysis.controls.variable') }}</label>
           <select :id="`${uid}-variable`" class="ot-select" :value="workspace.state.variableId ?? ''" @change="onVariable">
             <optgroup v-for="group in groups" :key="group.group" :label="group.label">
               <option v-for="option in group.variables" :key="option.id" :value="option.id">
@@ -114,18 +116,18 @@ function onCrop(event: Event): void {
         </div>
 
         <p v-if="workspace.isSingle.value" class="ot-hint">
-          Una sola imagen<template v-if="steps[0]?.date"> ({{ formatDate(steps[0].date) }})</template>: se analiza su reparto en la zona.
+          {{ steps[0]?.date ? t('analysis.controls.singleImageDated', { date: formatDate(steps[0].date) }) : t('analysis.controls.singleImage') }}
         </p>
 
         <div v-if="!workspace.isSingle.value" class="ot-analysis__pair">
           <div class="ot-field">
-            <label class="ot-label" :for="`${uid}-from`">Desde</label>
+            <label class="ot-label" :for="`${uid}-from`">{{ t('analysis.controls.from') }}</label>
             <select :id="`${uid}-from`" class="ot-select" :value="workspace.state.fromIndex" @change="onFrom">
               <option v-for="(step, index) in steps" :key="step.data" :value="index">{{ formatDate(step.date) }}</option>
             </select>
           </div>
           <div class="ot-field">
-            <label class="ot-label" :for="`${uid}-to`">Hasta</label>
+            <label class="ot-label" :for="`${uid}-to`">{{ t('analysis.controls.to') }}</label>
             <select :id="`${uid}-to`" class="ot-select" :value="workspace.state.toIndex" @change="onTo">
               <option v-for="(step, index) in steps" :key="step.data" :value="index">{{ formatDate(step.date) }}</option>
             </select>
@@ -134,7 +136,7 @@ function onCrop(event: Event): void {
 
         <div v-if="!workspace.isSingle.value" class="ot-field">
           <label class="ot-label" :for="`${uid}-samples`">
-            Imágenes: {{ Math.min(workspace.state.sampleCount, maxSamples) }}
+            {{ t('analysis.controls.images', { count: Math.min(workspace.state.sampleCount, maxSamples) }) }}
           </label>
           <input
             :id="`${uid}-samples`"
@@ -150,18 +152,18 @@ function onCrop(event: Event): void {
         </div>
 
         <div class="ot-field">
-          <label class="ot-label" :for="`${uid}-crop`">Cultivo para la conclusión</label>
+          <label class="ot-label" :for="`${uid}-crop`">{{ t('analysis.controls.cropConclusion') }}</label>
           <select :id="`${uid}-crop`" class="ot-select" :value="workspace.state.cropId" @change="onCrop">
-            <option value="">Análisis general</option>
-            <option v-for="crop in workspace.crops.value" :key="crop.id" :value="crop.id">{{ crop.name }}</option>
+            <option value="">{{ t('analysis.controls.general') }}</option>
+            <option v-for="crop in workspace.crops.value" :key="crop.id" :value="crop.id">{{ dataText(crop.name) }}</option>
           </select>
         </div>
       </template>
 
       <div v-else class="ot-field">
-        <label class="ot-label" :for="`${uid}-crop-map`">Cultivo</label>
+        <label class="ot-label" :for="`${uid}-crop-map`">{{ t('analysis.controls.crop') }}</label>
         <select :id="`${uid}-crop-map`" class="ot-select" :value="workspace.state.cropId" @change="onCrop">
-          <option v-for="crop in workspace.crops.value" :key="crop.id" :value="crop.id">{{ crop.name }}</option>
+          <option v-for="crop in workspace.crops.value" :key="crop.id" :value="crop.id">{{ dataText(crop.name) }}</option>
         </select>
       </div>
 

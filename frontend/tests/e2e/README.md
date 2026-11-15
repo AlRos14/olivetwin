@@ -1,29 +1,29 @@
-# Pruebas E2E de OliveTwin (INT02)
+# OliveTwin E2E tests (INT02)
 
-Estas pruebas abren la aplicación real en **Chromium headless** con Playwright,
-navegan como una persona y guardan capturas en `docs/qa/`. No se ejecutan con
-Vitest: su patrón es `*.spec.ts` y Vitest solo incluye `*.test.ts` / `*.test.mjs`.
+These tests open the real application in **headless Chromium** with Playwright,
+navigate like a person and save screenshots in `docs/qa/`. They do not run with
+Vitest: their pattern is `*.spec.ts` and Vitest only includes `*.test.ts` / `*.test.mjs`.
 
-La demo publica **solo datos reales**. Desde 2026-11-15 Jaén y Toledo tienen
-cubo de análisis (contrato v1.3.0) y Capas arranca con la humedad del suelo del
-cubo, pintada en el navegador (imagen `data:` con la rejilla del cubo). Los
-specs verifican la autoselección de Jaén, el desplegable único de variables, la
-línea temporal, el cambio de zona, los mapas base, el error de manifiesto, la
-alineación de la capa con la rejilla, la pestaña Análisis (imágenes, cambio,
-gráficas, ampliación con lectura del dato y aptitud por cultivo, sin llamar al
-modelo de IA) y la subruta `/olivetwin/`.
+The demo publishes **real data only**. Since 2026-11-15 Jaén and Toledo have an
+analysis cube (contract v1.3.0) and Layers starts with the cube's soil moisture,
+painted in the browser (`data:` image with the cube grid). The
+specs verify the auto-selection of Jaén, the single variable dropdown, the
+timeline, the zone change, the base maps, the manifest error, the
+alignment of the layer with the grid, the Analysis tab (images, change,
+charts, zoom with data reading and crop suitability, without calling the
+AI model) and the `/olivetwin/` subpath.
 
-## Requisitos
+## Requirements
 
-- Node.js 22 o superior (probado con 24.12.0).
-- Dependencias del frontend instaladas: `npm ci --prefix frontend`.
-- Un harness de Playwright **fuera del repositorio**. Playwright no es una
-  dependencia de `frontend/package.json` (decisión de INT02) y no debe añadirse
-  sin coordinación con R1.
+- Node.js 22 or later (tested with 24.12.0).
+- Frontend dependencies installed: `npm ci --prefix frontend`.
+- A Playwright harness **outside the repository**. Playwright is not a
+  dependency of `frontend/package.json` (INT02 decision) and must not be added
+  without coordinating with R1.
 
-## Crear el harness
+## Creating the harness
 
-En este entorno el harness vive en:
+In this environment the harness lives in:
 
 ```text
 <scratchpad>/qa-harness
@@ -35,61 +35,61 @@ npm init -y
 npm i -D @playwright/test@1.64.0 playwright@1.64.0 pngjs
 ```
 
-`@playwright/test@1.64.0` usa `chromium-1248`, que ya estaba en
-`~/.cache/ms-playwright`; no hizo falta descargar navegadores. Para comprobar la
-versión y el lanzamiento:
+`@playwright/test@1.64.0` uses `chromium-1248`, which was already in
+`~/.cache/ms-playwright`; no browsers had to be downloaded. To check the
+version and launch:
 
 ```bash
 npx playwright --version
-npx playwright install chromium   # solo si el navegador no está cacheado
+npx playwright install chromium   # only if the browser is not cached
 ```
 
-Re-ejecución del 2026-11-15: `@playwright/test@1.65.1` con
-`npx playwright install chromium` (Chrome Headless Shell 159). En ese harness
-los specs se copian a `qa-harness/tests/` antes de cada ejecución (`sync.sh`)
-para que resuelvan `@playwright/test` desde el harness sin enlaces simbólicos.
+Re-run of 2026-11-15: `@playwright/test@1.65.1` with
+`npx playwright install chromium` (Chrome Headless Shell 159). In that harness
+the specs are copied to `qa-harness/tests/` before each run (`sync.sh`)
+so they resolve `@playwright/test` from the harness without symbolic links.
 
-### Resolución de `@playwright/test` desde los specs
+### Resolving `@playwright/test` from the specs
 
-Los specs viven en el repositorio, pero sus dependencias están en el harness.
-Node resuelve módulos subiendo por los directorios padre, así que el harness
-crea un enlace simbólico **fuera del repo**:
+Specs live in the repository, but their dependencies are in the harness.
+Node resolves modules by walking up parent directories, so the harness
+creates a symbolic link **outside the repo**:
 
 ```bash
 cd <scratchpad>
 ln -sfn qa-harness/node_modules node_modules
 ```
 
-El enlace está en `<scratchpad>/node_modules`, nunca dentro de
-`frontend/`, y no se versiona. `qa-harness/setup.mjs` lo crea de forma
-idempotente (`npm run setup` en el harness).
+The link is in `<scratchpad>/node_modules`, never inside
+`frontend/`, and is not versioned. `qa-harness/setup.mjs` creates it
+idempotently (`npm run setup` in the harness).
 
-## Configuración
+## Configuration
 
-`qa-harness/playwright.config.ts` apunta al `frontend/tests/e2e` del worktree de
-trabajo y define `QA_DOCS_DIR` para que las capturas caigan en `docs/qa/` del
-repo. La URL por defecto es `http://localhost:4173` (`vite preview`); se puede
-cambiar con `OLIVE_BASE_URL`. Si cambias de worktree, actualiza `repoDir` en la
-configuración del harness.
+`qa-harness/playwright.config.ts` points to `frontend/tests/e2e` of the working
+worktree and defines `QA_DOCS_DIR` so screenshots land in the repo's
+`docs/qa/`. The default URL is `http://localhost:4173` (`vite preview`); it can be
+changed with `OLIVE_BASE_URL`. If you change worktree, update `repoDir` in the
+harness configuration.
 
-## Ejecutar
+## Running
 
-1. Compilar y servir la build normal:
+1. Build and serve the normal build:
 
    ```bash
    npm ci --prefix frontend
    npm run build --prefix frontend
-   npm run preview --prefix frontend -- --port 4173 --strictPort   # en segundo plano
+   npm run preview --prefix frontend -- --port 4173 --strictPort   # in the background
    ```
 
-2. Lanzar los specs (desde el harness):
+2. Launch the specs (from the harness):
 
    ```bash
    cd <scratchpad>/qa-harness
    npx playwright test --config playwright.config.ts
    ```
 
-   El spec `subpath.spec.ts` necesita además:
+   The `subpath.spec.ts` spec also needs:
 
    ```bash
    npm run build --prefix frontend -- --base /olivetwin/
@@ -98,21 +98,21 @@ configuración del harness.
      npx playwright test --config playwright.config.ts subpath.spec.ts
    ```
 
-   Al terminar, restaurar la build normal con `npm run build --prefix frontend`.
+   When finished, restore the normal build with `npm run build --prefix frontend`.
 
-3. Evidencias: capturas JPEG/PNG en `docs/qa/`, más `docs/qa/consola-red.json`
-   con el recuento de errores de consola y peticiones fallidas. El informe
-   legible está en `docs/qa-results.md`.
+3. Evidence: JPEG/PNG screenshots in `docs/qa/`, plus `docs/qa/consola-red.json`
+   with the console error count and failed requests. The readable report is in
+   `docs/qa-results.md`.
 
-## Notas
+## Notes
 
-- Las teselas PNOA/OSM son servicios externos. `waitForTiles` es *best-effort*:
-  si el proveedor limita peticiones, el escenario no falla; el plan exige que un
-  fallo de teselas no bloquee la aplicación. Las peticiones canceladas
-  (`ERR_ABORTED`) al cambiar de vista se cuentan y se ignoran.
-- Los specs no modifican código de la aplicación. Para AT-19 el harness
-  envuelve `L.Map.prototype.initialize` y expone la instancia real en
-  `window.__oliveMap`; así se compara el `<img>` del overlay real con
+- PNOA/OSM tiles are external services. `waitForTiles` is *best-effort*:
+  if the provider rate-limits requests, the scenario does not fail; the plan requires that a
+  tile failure does not block the application. Requests cancelled
+  (`ERR_ABORTED`) when changing view are counted and ignored.
+- The specs do not modify application code. For AT-19 the harness
+  wraps `L.Map.prototype.initialize` and exposes the real instance in
+  `window.__oliveMap`; this is how the real overlay `<img>` is compared with
   `map.latLngToContainerPoint(layer.bbox)`.
-- Un fallo E2E se documenta en `docs/qa-results.md` con pasos de reproducción y
-  severidad. No se corrige desde este nodo (INT02 solo posee pruebas y QA).
+- An E2E failure is documented in `docs/qa-results.md` with reproduction steps and
+  severity. It is not fixed from this node (INT02 only owns tests and QA).

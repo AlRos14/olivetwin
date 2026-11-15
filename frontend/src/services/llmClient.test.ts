@@ -9,7 +9,8 @@ import {
   saveLlmSettings,
   streamChat,
 } from './llmClient'
-import { buildCropMessages, buildVariableMessages, SYSTEM_PROMPT } from './llmPrompts'
+import { buildCropMessages, buildVariableMessages, systemPrompt, type CropSummary } from './llmPrompts'
+import { setLocale } from '../i18n'
 
 function memoryStorage(): Storage {
   const data = new Map<string, string>()
@@ -101,23 +102,23 @@ describe('streamChat', () => {
 })
 
 describe('prompts', () => {
-  const crop = {
+  const crop: CropSummary = {
     name: 'Olivo',
     scientificName: 'Olea europaea L.',
     assumptions: 'Secano.',
     sourceLabel: 'FAO ECOCROP — requisitos',
     suitabilityMean: 0.62,
-    bins: [{ label: '0,00–0,25', min: 0, max: 0.25, fraction: 0.1 }],
+    bins: [{ id: 'N', min: 0, max: 0.25, fraction: 0.1 }],
     factors: [{ label: 'pH', requirement: 'Óptimo 6,5–8,0', mean: 0.9 }],
     limiting: [{ id: 'ph', label: 'pH', fraction: 0.4 }],
     unlimited: 0.2,
-    byArea: [{ label: 'cuadrante norte', mean: 0.7 }],
+    byArea: [{ id: 'quadrant-nw', mean: 0.7 }],
   }
 
   it('el sistema fija las cautelas científicas y el formato', () => {
-    expect(SYSTEM_PROMPT).toContain('no mide la cosecha')
-    expect(SYSTEM_PROMPT).toContain('PROVISIONAL')
-    expect(SYSTEM_PROMPT).toContain('No inventes cifras')
+    expect(systemPrompt()).toContain('no mide la cosecha')
+    expect(systemPrompt()).toContain('PROVISIONAL')
+    expect(systemPrompt()).toContain('No inventes cifras')
   })
 
   it('la serie incluye estadísticas, tendencia, clima, cultivo e imágenes si se piden', () => {
@@ -136,11 +137,11 @@ describe('prompts', () => {
       },
       ['data:image/png;base64,AAA'],
     )
-    expect(messages[0]).toEqual({ role: 'system', content: SYSTEM_PROMPT })
+    expect(messages[0]).toEqual({ role: 'system', content: systemPrompt() })
     const content = messages[1].content as { type: string; text?: string }[]
     expect(content[0].type).toBe('text')
     expect(content[0].text).toContain('Jaén')
-    expect(content[0].text).toContain('06/20/2026: 0.25')
+    expect(content[0].text).toContain('2026-06-20: 0.25')
     expect(content[0].text).toContain('-0.02')
     expect(content[0].text).toContain('lluvia total 12 mm')
     expect(content[0].text).toContain('## Conclusión para el olivo')
@@ -156,6 +157,23 @@ describe('prompts', () => {
     expect(messages[1].content).toContain('## Por qué: variables responsables')
     expect(messages[1].content).toContain('## Impacto en el olivo')
     expect(messages[1].content).toContain('## Cómo remediarlo')
-    expect(messages[1].content).toContain('cuadrante norte 0.7')
+    expect(messages[1].content).toContain('cuadrante noroeste 0.7')
+  })
+
+  it('en inglés redacta el prompt en inglés y pide la respuesta en inglés', () => {
+    setLocale('en', { persist: false })
+    const prompt = systemPrompt()
+    expect(prompt).toContain('PROVISIONAL')
+    expect(prompt).toContain('Reply in English')
+    expect(prompt).toContain('does not equal irrigation need')
+    expect(prompt).not.toContain('Responde en español')
+
+    const messages = buildCropMessages({ zone: { name: 'Jaén' }, crop, zoneContext: [] })
+    const content = messages[1].content as string
+    expect(messages[0].content).toBe(prompt)
+    expect(content).toContain('Crop: Olivo')
+    expect(content).toContain('Surface by suitability class')
+    expect(content).toContain('## How to remedy it')
+    expect(content).toContain('northwest quadrant 0.7')
   })
 })

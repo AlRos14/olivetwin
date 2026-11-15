@@ -5,6 +5,8 @@ import * as L from 'leaflet'
 import type { BBox, StudyZone } from '../types/manifest'
 import StudyZoneMarkers from './StudyZoneMarkers.vue'
 import { bboxToLatLngBounds } from './map/geo'
+import { setLocale } from '../i18n'
+import { setDataCatalog } from '../i18n/dataText'
 
 const JAEN_BBOX: BBox = [-3.86, 37.69, -3.61, 37.9]
 const TOLEDO_BBOX: BBox = [-4.2, 39.7, -3.9, 39.9]
@@ -66,6 +68,8 @@ afterEach(() => {
   for (const map of maps) map.remove()
   maps.length = 0
   document.body.innerHTML = ''
+  setDataCatalog({})
+  setLocale('es', { persist: false })
 })
 
 describe('StudyZoneMarkers', () => {
@@ -168,5 +172,18 @@ describe('StudyZoneMarkers', () => {
     wrapper.unmount()
     wrappers.splice(wrappers.indexOf(wrapper), 1)
     expect(rectangles(map)).toHaveLength(0)
+  })
+
+  it('actualiza el tooltip al cambiar de idioma con el catálogo de datos', async () => {
+    const map = createMap()
+    mountMarkers(map, [JAEN])
+    const rectangle = rectangleFor(map, JAEN_BBOX)!
+    expect(tooltipText(rectangle)).toBe('Jaén — demostración')
+
+    setDataCatalog({ 'Jaén — demostración': 'Jaén — demonstration' })
+    setLocale('en', { persist: false })
+    await nextTick()
+
+    expect(tooltipText(rectangle)).toBe('Jaén — demonstration')
   })
 })

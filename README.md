@@ -1,230 +1,170 @@
 # OliveTwin
 
-**Radar NISAR, vegetación, suelo y clima para saber qué zonas son mejores para el olivo, el almendro y el trigo.**
+**Radar, vegetation, soil and climate data turned into crop-suitability maps for Mediterranean agriculture.**
 
-[![NASA Space Apps Challenge 2026](https://img.shields.io/badge/NASA%20Space%20Apps%202026-Dancing%20with%20the%20SARs-0B3D91)](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
-[![Licencia: Apache-2.0](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-alros14.github.io%2Folivetwin-2E7D32)](https://alros14.github.io/olivetwin/)
+[![CI](https://github.com/AlRos14/olivetwin/actions/workflows/ci.yml/badge.svg)](https://github.com/AlRos14/olivetwin/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Born at NASA Space Apps 2026](https://img.shields.io/badge/born%20at-NASA%20Space%20Apps%202026-0B3D91)](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
 
-![OliveTwin mostrando la humedad del suelo NISAR sobre Jaén](docs/qa/real-01-jaen.jpg)
+### ▶ [Open the live demo](https://alros14.github.io/olivetwin/)
 
-## El reto
+It runs in the browser: nothing to install, no account needed. The interface is in English, with Spanish available from the
+language switch.
 
-OliveTwin es nuestra respuesta al reto **«[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)»**
-del **NASA Space Apps Challenge 2026**: crear una aplicación interactiva que use
-datos radar de la misión **NISAR** (NASA-ISRO Synthetic Aperture Radar) para
-seguir y visualizar cambios en la superficie terrestre.
+![OliveTwin showing NISAR soil moisture over Jaén, Spain](docs/screenshots/layers.jpg)
 
-Nuestro cambio es la **humedad del suelo en zonas agrícolas**: cómo se seca y se
-recarga el suelo durante el verano de 2026 en dos zonas olivareras de España
-(Jaén y Toledo), puesta en contexto con vegetación, relieve, suelo y clima para
-estimar qué zonas son más aptas para cada cultivo. El enunciado completo, los
-recursos oficiales y la política de licencias están en
-[`docs/challenge.md`](docs/challenge.md).
+## What OliveTwin does
 
-## Qué puedes hacer
+Farmers, cooperatives and agronomists need to know how the soil behaves through the season and which land suits each crop.
+OliveTwin combines radar soil moisture from the **[NISAR](https://nisar.jpl.nasa.gov/)** mission (NASA-ISRO) with optical
+vegetation indices, terrain, soil properties and climate. It shows how the land changes over time and estimates where
+olive, almond and rainfed wheat fit best.
 
-| Pestaña | Para qué sirve |
+Radar is the core of the idea. It observes day and night, through clouds, and its signal is sensitive to the water in the
+soil, so the drying and recharge of the soil can be followed through a whole season.
+
+The current release covers two olive-growing areas in Spain, **Jaén** and **Toledo**, from June to October 2026, on a grid of
+about 200 m.
+
+## Features
+
+| Tab | What it is for |
 |---|---|
-| **Capas** | Ver en el mapa cualquier variable (humedad del suelo, radar, vegetación, relieve, suelo, clima, usos del suelo) con su línea temporal, leyenda y una explicación de para qué sirve en el cultivo. Mapa base: satélite, parcelas agrícolas (SIGPAC) o callejero. |
-| **Análisis** | Estudiar una variable: imágenes por fecha, mapa de cambio, gráficas y valores. Al elegir un cultivo, ver sus **valores de referencia** (óptimo, aceptable, no apto). También, **aptitud por cultivo**: mapa de aptitud, qué factor limita y dónde. |
-| **Comparar** | Elegir **zona A**, **zona B** y un cultivo para saber cuál es mejor y por qué. |
-| **Historia** | El reto, por qué usamos radar e hipótesis que la app permite explorar. |
+| **Layers** | Show any variable on the map (soil moisture, radar, vegetation, terrain, soil, climate, land cover) with its timeline, legend and an explanation of why it matters for the crop. Base maps: satellite, agricultural parcels (SIGPAC) or general map. |
+| **Analysis** | Study one variable: images by date, change map, charts and values. Pick a crop to see its **reference values** (optimal, acceptable, unsuitable) and its **crop suitability**: a suitability map, which factor limits it and where. |
+| **Compare** | Choose **Area A**, **Area B** and a crop to see which area is better, and why. |
+| **Story** | Why radar, and hypotheses the app lets you explore. |
 
-En Análisis y Comparar, **Interpretar con IA** pide a un modelo de lenguaje que
-explique los resultados (opcional, ver más abajo).
+| Analysis | Crop suitability | Compare |
+|---|---|---|
+| ![Analysis tab](docs/screenshots/analysis.jpg) | ![Crop suitability](docs/screenshots/suitability.jpg) | ![Compare tab](docs/screenshots/compare.jpg) |
 
-> ⚠️ **Datos provisionales.** La humedad NISAR SME2 todavía no está totalmente
-> calibrada, mide solo los ~5 cm superficiales del suelo y **no equivale a una
-> necesidad de riego**. La aptitud por cultivo es un modelo físico, no una
-> predicción de cosecha.
+In Analysis and Compare, **Interpret with AI** asks a language model to explain the results in plain words. It is optional,
+see [below](#ai-interpretation-optional).
 
-## Ponerlo en marcha
+> ⚠️ **Provisional data.** NISAR SME2 soil moisture is not yet fully calibrated. It measures only the top ~5 cm of the soil
+> and **is not an irrigation requirement**. Crop suitability is a physical land model, not a yield forecast.
 
-### Requisitos
+## Where it can go next
 
-- **Node.js 22** (la versión está en [`.nvmrc`](.nvmrc)) y npm.
-- **Git** para clonar el repositorio.
-- **Conexión a Internet**, para cargar los mapas base.
-- *(Opcional)* **[Ollama](https://ollama.com)** para la interpretación con IA.
+OliveTwin is meant to grow beyond the two pilot areas. The pipelines work from an area's bounding box and the web app is
+static, so it is cheap to host and extend. Possible next steps:
 
-No hace falta servidor ni base de datos: es una web estática y los datos ya
-vienen preparados en el repositorio.
+- **More areas and crops**: run the pipelines on new regions and add crops from the FAO and university tables already used.
+- **Longer time series**: update the data as new NISAR passes and calibrated product versions are released.
+- **Field validation**: compare soil moisture with in-situ sensors and suitability with real yields, together with growers
+  and research groups.
+- **Decision support**: once the products are calibrated and validated, combine moisture, weather and crop needs into
+  guidance for water management.
 
-### Paso a paso
+Contributions and partnerships are welcome: see [Contributing](#contributing).
+
+## Data
+
+All inputs are open or free for research use.
+
+| Group | Variables | Source |
+|---|---|---|
+| NISAR radar | Soil moisture (SME2), HH, HV and HV/HH backscatter (GCOV), coherence (GUNW) | NASA/JPL–ISRO, via ASF DAAC |
+| Reference soil moisture | SMAP soil moisture | NASA, via NSIDC DAAC |
+| Vegetation | NDVI and NDMI | Copernicus Sentinel-2 |
+| Terrain | Elevation and slope | Copernicus DEM |
+| Soil | Clay, sand, organic carbon and pH | ISRIC SoilGrids 2.0 |
+| Climate | Rainfall, temperature, ET0 (daily) and 1991–2020 climate normals | Open-Meteo (ERA5) |
+| Land cover | Agricultural land and olive groves | CORINE Land Cover 2018 |
+| Crop suitability | Olive, almond and rainfed wheat | Own model using FAO GAEZ v4, FAO ECOCROP and University of Granada tables |
+
+Quantities use SI units (or units accepted for use with the SI) and dates are ISO 8601 in UTC. The full list of sources,
+licences and attributions is in [`docs/data-sources.md`](docs/data-sources.md); the required attributions are in
+[`NOTICE`](NOTICE).
+
+### How suitability is computed
+
+Each factor (climate, pH, texture, slope, organic carbon and elevation) is scored from 0 to 1 against the published
+requirements of the crop, and suitability is the **worst** of the factors. Classes: S1 (high, ≥ 0.85), S2 (moderate),
+S3 (marginal) and N (unsuitable, < 0.40). **Compare** only counts agricultural land, and the area with more suitable land
+(S1 + S2) wins. Details and decisions: [`pipelines/analysis/README.md`](pipelines/analysis/README.md).
+
+## Limitations
+
+- **Provisional NISAR products.** Use them for relative changes, with care. Jaén is observed at dawn (~05:23 UTC) and Toledo
+  at dusk (~19:09 UTC).
+- **Gaps without data.** NISAR does not estimate moisture over urban areas, water or dense vegetation, and from mid-August
+  the Toledo pass covers ~80 % of the area. Gaps are hatched in grey; calculations use only the common area with data.
+- **Suitability is physical, not a yield model.** It does not account for plant-available water, alternate bearing,
+  management or profitability, and it has not been validated against yields. Each area is the chosen box, not its province.
+- **The AI is only a guide.** It summarises the statistics it receives and can be wrong, especially with small models.
+- **Network required** for the base maps. SIGPAC parcels only appear when zoomed in (zoom 15 or more).
+
+## Run it locally
+
+You need **Node.js 22** (version in [`.nvmrc`](.nvmrc)), npm and an Internet connection for the base maps. It is a static
+site: no server or database, and the data are already in the repository.
 
 ```bash
-# 1. Descarga el proyecto
 git clone https://github.com/AlRos14/olivetwin.git
-cd olivetwin
-
-# 2. Instala las dependencias de la web
-cd frontend
+cd olivetwin/frontend
 npm ci
-
-# 3. Arráncala
 npm run dev
 ```
 
-Abre **<http://localhost:5173/>**. La zona de Jaén se selecciona sola; cambia
-de zona arriba a la derecha y prueba las pestañas.
+Open **<http://localhost:5173/>**. If `npm ci` fails, check your Node.js version (`node --version`; with nvm, `nvm use`).
 
-### Interpretación con IA (opcional)
+### AI interpretation (optional)
 
-La app funciona sin IA. Para activarla con un modelo local y gratuito:
+The app works without AI. To enable it with a free local model, install [Ollama](https://ollama.com) and run:
 
 ```bash
-# Instala Ollama (https://ollama.com) y, en otra terminal:
-OLLAMA_ORIGINS="http://127.0.0.1:*,http://localhost:*" ollama serve
+OLLAMA_ORIGINS="http://127.0.0.1:*,http://localhost:*,https://alros14.github.io" ollama serve
 ollama pull gemma3:4b
 ```
 
-Después, en la app, pulsa **Interpretar con IA**. En «Modelo de IA» puedes
-cambiar a cualquier otro servicio compatible con la API de OpenAI (por ejemplo,
-uno en la nube con tu clave). La clave solo se guarda durante la sesión del
-navegador. En un ordenador sin GPU, cada interpretación tarda unos minutos.
+Then press **Interpret with AI**, locally or on the live demo (the browser may ask for permission to access the local
+network). Under **AI model** you can switch to any OpenAI-compatible service, for example a cloud one with your own key; the
+key is kept only for the browser session. On a computer without a GPU, each interpretation takes a few minutes.
 
-### Problemas frecuentes
+## Contributing
 
-| Problema | Solución |
-|---|---|
-| `npm ci` falla | Comprueba que usas Node.js 22 (`node --version`; con nvm, `nvm use`). |
-| El mapa base sale gris | No hay conexión o el servicio del mapa no responde: cambia de mapa base en Capas. |
-| «Interpretar con IA» da error de conexión | Comprueba que `ollama serve` está en marcha con `OLLAMA_ORIGINS` y que descargaste el modelo. Usa «Probar conexión» en «Modelo de IA». |
-| La IA tarda mucho | Es normal en CPU con un modelo de 4B; usa un modelo más pequeño o un servicio en la nube. |
-
-### Versión de producción
-
-```bash
-cd frontend
-npm run build      # genera frontend/dist/
-npm run preview    # la sirve en http://localhost:4173/
-```
-
-Para publicarla en una subruta (por ejemplo, GitHub Pages):
-`npm run build -- --base /olivetwin/`.
-
-## Los datos
-
-Todo procede de fuentes abiertas o de uso libre para investigación. La lista
-completa de datos, fuentes, licencias y atribuciones está en
-**[`docs/data-sources.md`](docs/data-sources.md)** (las atribuciones obligatorias,
-en [`NOTICE`](NOTICE)).
-
-| Grupo | Variables | Fuente |
+| Part | Technology | Documentation |
 |---|---|---|
-| Radar NISAR | Humedad del suelo (SME2), radar HH, HV y HV/HH (GCOV), coherencia (GUNW) | NASA/JPL–ISRO, ASF |
-| Vegetación | NDVI y NDMI | Copernicus Sentinel-2 |
-| Relieve | Altitud y pendiente | Copernicus DEM |
-| Suelo | Arcilla, arena, carbono orgánico y pH | ISRIC SoilGrids 2.0 |
-| Clima | Lluvia, temperaturas, ET0 (diario) y clima medio 1991–2020 | Open-Meteo (ERA5) |
-| Usos del suelo | Superficie agrícola y olivar | CORINE Land Cover 2018 |
-| Aptitud por cultivo | Olivo, almendro y trigo de secano | Cálculo propio con FAO GAEZ v4, FAO ECOCROP y tablas de la Universidad de Granada |
+| Web app (`frontend/`) | Vue 3, Vite, TypeScript and Leaflet; static site, English and Spanish | [`frontend/README.md`](frontend/README.md) |
+| Analysis pipeline (`pipelines/analysis/`) | Python 3.12: downloads and processes every variable | [`pipelines/analysis/README.md`](pipelines/analysis/README.md) |
+| NISAR converter (`pipelines/nisar/`) | Python 3.12: SME2 (HDF5) to georeferenced PNG | [`pipelines/nisar/README.md`](pipelines/nisar/README.md) |
+| Data contract (`contracts/`) | JSON Schema that validates the published data | [`docs/data-contract.md`](docs/data-contract.md) |
 
-Las zonas son dos recuadros de unos 35 × 30 km (Jaén) y 60 × 48 km (Toledo),
-con una rejilla de ~200 m y datos de junio a octubre de 2026.
+Every pull request runs the `ci` check (data validation, web and pipeline tests, build), and every merge to `main` publishes
+the demo on GitHub Pages. Regenerating the data needs a free [NASA Earthdata](https://urs.earthdata.nasa.gov/) account; the
+commands are in [`pipelines/analysis/README.md`](pipelines/analysis/README.md), and publishing a new area is described in
+[`docs/handoff-science.md`](docs/handoff-science.md). Workflow and conventions: [`docs/contributing.md`](docs/contributing.md).
 
-### Cómo se calcula la aptitud
+## Origin and credits
 
-Cada factor (clima, pH, textura, pendiente, carbono orgánico y altitud) se
-puntúa de 0 a 1 según los requisitos publicados del cultivo, y la aptitud es el
-**peor** de los factores. Se clasifica en S1 (alta, ≥ 0,85), S2 (moderada),
-S3 (marginal) y N (no apta, < 0,40). En **Comparar** solo cuenta la superficie
-agrícola, y gana la zona con más superficie apta (S1 + S2). El detalle y las
-decisiones están en [`pipelines/analysis/README.md`](pipelines/analysis/README.md).
+OliveTwin started at the **[NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/)**, NASA's international
+hackathon, as an answer to the challenge
+**[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)**: build an
+interactive application that uses NISAR radar data to track changes on the Earth's surface. The challenge summary is in
+[`docs/challenge.md`](docs/challenge.md).
 
-## Limitaciones
+We thank:
 
-- **Productos NISAR provisionales.** Úsalos para ver cambios relativos, con
-  cautela. Jaén se observa al amanecer (~05:23 UTC) y Toledo al atardecer
-  (~19:09 UTC).
-- **Huecos sin dato.** NISAR no estima humedad en zonas urbanas, agua o
-  vegetación densa, y en Toledo la pasada cubre ~80 % desde mediados de agosto.
-  Se marcan con trama gris; los cálculos usan solo la zona común con dato.
-- **La aptitud es física, no de cosecha.** No mide el agua disponible para el
-  rendimiento, la vecería, el manejo ni la rentabilidad, y no está validada con
-  cosechas. Cada zona es el recuadro elegido, no su provincia.
-- **La IA es orientativa.** Resume las estadísticas que recibe y puede
-  equivocarse, sobre todo con modelos pequeños.
-- **Depende de la red** para los mapas base. Las parcelas SIGPAC solo se ven al
-  acercarse (zoom 15 o más).
+- **NASA** and the **NASA Space Apps Challenge** organisers.
+- The **[NISAR](https://nisar.jpl.nasa.gov/)** mission, by NASA and ISRO (Indian Space Research Organisation), with products
+  distributed by the **[ASF DAAC](https://asf.alaska.edu/)** (Alaska Satellite Facility).
+- **NASA Earthdata** and the **NSIDC DAAC** (SMAP soil moisture).
+- **Copernicus** (European Union and ESA): Sentinel-2, Copernicus DEM and CORINE Land Cover; **ISRIC** (SoilGrids),
+  **Open-Meteo** (ERA5), **FAO** (GAEZ and ECOCROP), the **University of Granada**, **IGN** (PNOA), **FEGA** (SIGPAC) and
+  **OpenStreetMap**.
 
-## Regenerar los datos
+The team is listed under the repository's [contributors](https://github.com/AlRos14/olivetwin/graphs/contributors).
 
-Solo hace falta si quieres actualizar o ampliar los datos. Necesitas Python 3.12
-y una cuenta gratuita de [NASA Earthdata](https://urs.earthdata.nasa.gov/) en
-`~/.netrc` (nunca en el repositorio).
+> NASA does not endorse this project. OliveTwin is an independent work, and the use of NASA data does not imply endorsement.
 
-```bash
-python3 -m venv pipelines/analysis/.venv
-pipelines/analysis/.venv/bin/pip install -r pipelines/analysis/requirements.txt
-pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py \
-  --zone all --approved-by "Nombre del revisor"
-npm run validate:data --prefix frontend
-```
+## License and citation
 
-Las descargas se guardan en una caché fuera de git. La capa de humedad del
-manifiesto se genera con [`pipelines/nisar/`](pipelines/nisar/README.md); el
-paso a paso para publicar una zona está en
-[`docs/handoff-science.md`](docs/handoff-science.md).
+OliveTwin's code is licensed under **[Apache-2.0](LICENSE)**: you may use, modify and redistribute it with attribution
+(keep the [`NOTICE`](NOTICE) file). The data keep the licences of their sources, and some (FAO ECOCROP and FAO GAEZ) allow
+**non-commercial** use only; see [`docs/data-sources.md`](docs/data-sources.md).
 
-## Para desarrolladores
-
-### Estructura
-
-```text
-olivetwin/
-├── frontend/            Web: Vue 3 + Vite + TypeScript + Leaflet
-│   ├── src/             componentes, servicios, composables y tipos
-│   ├── public/data/     datos publicados (manifiesto y cubos de análisis)
-│   └── scripts/         validación de datos
-├── pipelines/analysis/  descarga y procesado del cubo de análisis (Python)
-├── pipelines/nisar/     conversor NISAR SME2 (HDF5) → PNG
-├── contracts/           JSON Schema de los datos (contrato v1.3.0)
-└── docs/                reto, fuentes y licencias, contrato, QA
-```
-
-### Comprobaciones
-
-Desde `frontend/`:
-
-| Comando | Qué hace |
-|---|---|
-| `npm test` | Pruebas unitarias (Vitest). |
-| `npm run validate:data` | Valida los datos publicados contra el contrato. |
-| `npm run typecheck` | Comprueba los tipos. |
-| `npm run build` | Compila la web en `frontend/dist/`. |
-
-Pipelines: `pytest pipelines/analysis/tests` y `pytest pipelines/nisar/tests`
-(sin red). Las pruebas E2E usan Playwright con un harness externo
-([`frontend/tests/e2e/README.md`](frontend/tests/e2e/README.md)). Antes de
-abrir una pull request, ejecuta `npm ci`, `npm run validate:data`, `npm test` y
-`npm run build`. El check de CI se llama `ci`.
-
-### Colaborar
-
-- Ramas, pull requests y revisión: [`docs/contributing.md`](docs/contributing.md).
-- Reglas para agentes automáticos: [`AGENTS.md`](AGENTS.md).
-- `main` está protegida: todo entra por pull request con el check `ci` en
-  verde y revisión humana independiente.
-
-## Documentación
-
-| Documento | Contenido |
-|---|---|
-| [`docs/challenge.md`](docs/challenge.md) | El reto de la NASA, recursos y política de licencias. |
-| [`docs/data-sources.md`](docs/data-sources.md) | Datos, fuentes y licencias (auditoría). |
-| [`pipelines/analysis/README.md`](pipelines/analysis/README.md) | Cómo se calcula cada variable y la aptitud por cultivo. |
-| [`docs/data-contract.md`](docs/data-contract.md) | Formato de los datos y validación. |
-| [`docs/handoff-science.md`](docs/handoff-science.md) | Cómo publicar una zona nueva. |
-| [`docs/c0-interfaces.md`](docs/c0-interfaces.md) | Interfaces entre datos e interfaz. |
-| [`docs/qa-results.md`](docs/qa-results.md) | Resultados de pruebas y capturas. |
-
-## Licencia y cita
-
-El código de OliveTwin es **[Apache-2.0](LICENSE)**: puedes usarlo, modificarlo
-y redistribuirlo citando la autoría (incluye [`NOTICE`](NOTICE)). Los datos
-conservan las licencias de sus fuentes: algunas (FAO ECOCROP y FAO GAEZ) solo
-permiten usos **no comerciales**; ver [`docs/data-sources.md`](docs/data-sources.md).
-
-Si usas OliveTwin en una investigación o presentación, cítalo con
-[`CITATION.cff`](CITATION.cff) («Cite this repository» en GitHub).
+If you use OliveTwin in research or a presentation, please cite it with [`CITATION.cff`](CITATION.cff) ("Cite this
+repository" on GitHub).

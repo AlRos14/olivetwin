@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, watch } from 'vue'
 import * as L from 'leaflet'
 import type { ActiveOverlay } from '../types/manifest'
 import { bboxToLatLngBounds, isUsableBBox } from './map/geo'
+import { locale, t } from '../i18n'
 
 /**
  * Capa científica raster de una zona (WP07-03).
@@ -70,6 +71,7 @@ function attachElement(current: OverlayState): void {
   detachElement(current)
   current.element = element
   current.elementErrorHandler = current.reportError
+  element.alt = t('layers.map.overlayAlt')
   element.addEventListener('error', current.elementErrorHandler)
 }
 
@@ -110,7 +112,7 @@ function createOverlay(overlay: ActiveOverlay): void {
     interactive: false,
     className: 'olive-scientific-overlay',
     pane: 'overlayPane',
-    alt: 'Capa científica georreferenciada de la zona seleccionada',
+    alt: t('layers.map.overlayAlt'),
   })
 
   // Leaflet reemite como 'error' el fallo del <img>; el listener del elemento
@@ -161,6 +163,11 @@ function applyOverlay(next: ActiveOverlay | null): void {
 onMounted(() => applyOverlay(props.overlay))
 
 watch(() => props.overlay, (next) => applyOverlay(next), { deep: true })
+
+/** El texto alternativo de la imagen se actualiza al cambiar de idioma. */
+watch(locale, () => {
+  if (state?.element) state.element.alt = t('layers.map.overlayAlt')
+})
 
 watch(
   () => props.map,

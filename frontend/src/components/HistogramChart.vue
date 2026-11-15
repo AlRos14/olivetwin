@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import type { HistogramBin } from '../services/analysisMath'
 import { paletteColor, type PaletteName } from '../services/palettes'
+import { unitLabel } from '../services/seriesAnalysis'
+import { numberFormatter } from '../i18n/format'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /** Reparto de la superficie con dato por tramos de valor (variables de una sola imagen). */
@@ -21,7 +24,7 @@ const M = { left: 36, right: 10, top: 10, bottom: 30 }
 const plotW = W - M.left - M.right
 const plotH = H - M.top - M.bottom
 
-const format = computed(() => new Intl.NumberFormat('es-ES', { maximumFractionDigits: props.decimals }))
+const format = computed(() => numberFormatter({ maximumFractionDigits: props.decimals }))
 const maxFraction = computed(() => Math.max(0.01, ...props.bins.map((bin) => bin.fraction)))
 const slot = computed(() => plotW / Math.max(1, props.bins.length))
 
@@ -34,7 +37,7 @@ const bars = computed(() =>
       w: Math.max(1, slot.value - 2),
       h,
       color: `rgb(${paletteColor(props.palette, props.bins.length > 1 ? (index + 0.5) / props.bins.length : 0.5).join(', ')})`,
-      title: `${format.value.format(bin.from)}–${format.value.format(bin.to)} ${props.unit}: ${Math.round(bin.fraction * 100)} %`,
+      title: `${format.value.format(bin.from)}–${format.value.format(bin.to)} ${unitLabel(props.unit)}: ${Math.round(bin.fraction * 100)} %`,
     }
   }),
 )
@@ -57,7 +60,7 @@ const xTicks = computed(() => {
 
 <template>
   <figure class="ot-chart">
-    <svg :viewBox="`0 0 ${W} ${H}`" class="ot-chart__svg" role="img" :aria-label="`Reparto de la superficie por tramos en ${unit}`">
+    <svg :viewBox="`0 0 ${W} ${H}`" class="ot-chart__svg" role="img" :aria-label="t('analysis.charts.histogramAria', { unit: unitLabel(unit) })">
       <g class="ot-chart__grid">
         <line v-for="tick in yTicks" :key="tick" :x1="M.left" :x2="W - M.right" :y1="M.top + plotH - (tick / maxFraction) * plotH" :y2="M.top + plotH - (tick / maxFraction) * plotH" />
         <text v-for="tick in yTicks" :key="`l${tick}`" :x="M.left - 4" :y="M.top + plotH - (tick / maxFraction) * plotH + 3" text-anchor="end">
@@ -70,8 +73,8 @@ const xTicks = computed(() => {
       </rect>
     </svg>
     <figcaption class="ot-chart__caption">
-      <span>% de la superficie con dato en cada tramo</span>
-      <span class="ot-chart__unit">{{ unit }}</span>
+      <span>{{ t('analysis.charts.histogramCaption') }}</span>
+      <span class="ot-chart__unit">{{ unitLabel(unit) }}</span>
     </figcaption>
   </figure>
 </template>

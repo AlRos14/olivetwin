@@ -18,7 +18,7 @@
  *
  * Decisión del responsable de proyecto (2026-11-15): la interfaz no muestra el
  * aviso de cabecera, el panel «Procedencia y calidad» ni los textos de
- * advertencia; el subtítulo conserva «datos PROVISIONAL».
+ * advertencia; el subtítulo (general, no solo humedad) conserva «datos NISAR PROVISIONALES».
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { BaseMap, StudyZone, TimeStep } from './types/manifest'
@@ -34,6 +34,7 @@ import AnalysisWorkspace from './components/AnalysisWorkspace.vue'
 import CompareControls from './components/CompareControls.vue'
 import CompareWorkspace from './components/CompareWorkspace.vue'
 import StoryPanel from './components/StoryPanel.vue'
+import LanguageSwitch from './components/LanguageSwitch.vue'
 import { variableLegend, variableOption, type LegendSource } from './components/layerOptions'
 import { layerLabel } from './components/variableLabels'
 import LayerRelevance from './components/LayerRelevance.vue'
@@ -43,9 +44,8 @@ import { useZoneComparison } from './composables/useZoneComparison'
 import { useLlmSettings } from './composables/useLlm'
 import type { LlmSettings } from './services/llmClient'
 import './styles/analysis.css'
+import { t, type MessageKey } from './i18n'
 
-const appTitle = 'OliveTwin'
-const appSubtitle = 'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL'
 
 const {
   vm,
@@ -133,12 +133,18 @@ const legendSource = computed<LegendSource | null>(() => {
 })
 
 type PanelTab = 'layers' | 'analysis' | 'compare' | 'story'
-const PANEL_TABS: { value: PanelTab; label: string }[] = [
-  { value: 'layers', label: 'Capas' },
-  { value: 'analysis', label: 'Análisis' },
-  { value: 'compare', label: 'Comparar' },
-  { value: 'story', label: 'Historia' },
+const PANEL_TABS: { value: PanelTab }[] = [
+  { value: 'layers' },
+  { value: 'analysis' },
+  { value: 'compare' },
+  { value: 'story' },
 ]
+const TAB_LABEL_KEYS: Record<PanelTab, MessageKey> = {
+  layers: 'tabs.layers',
+  analysis: 'tabs.analysis',
+  compare: 'tabs.compare',
+  story: 'tabs.story',
+}
 const activeTab = ref<PanelTab>('layers')
 const hasAnalysis = computed(() => Boolean(selectedZone.value?.analysis))
 
@@ -150,7 +156,7 @@ function isTabDisabled(tab: PanelTab): boolean {
 
 function tabTitle(tab: PanelTab): string | undefined {
   if (!isTabDisabled(tab)) return undefined
-  return tab === 'compare' ? 'Hacen falta dos zonas con análisis publicado' : 'Esta zona no tiene cubo de análisis publicado'
+  return tab === 'compare' ? t('tabs.compareDisabled') : t('tabs.analysisDisabled')
 }
 
 function selectTab(tab: PanelTab): void {
@@ -338,9 +344,9 @@ function onTimeStepChange(index: number): void {
           :zone-name="selectedZone?.name ?? ''"
           :zone-series="analysis?.zoneSeries ?? []"
         />
-        <div v-else class="ot-workspace" role="region" aria-label="Resultados del análisis">
+        <div v-else class="ot-workspace" role="region" :aria-label="t('app.analysisResults')">
           <p class="ot-hint" role="status">
-            {{ analysisState.status === 'error' ? analysisState.error : 'Cargando el análisis de la zona…' }}
+            {{ analysisState.status === 'error' ? analysisState.error : t('app.analysisLoading') }}
           </p>
         </div>
       </template>
@@ -348,10 +354,13 @@ function onTimeStepChange(index: number): void {
       <CompareWorkspace v-if="activeTab === 'compare'" :comparison="comparison" />
     </div>
 
-    <aside class="ot-panel ot-panel--wide" aria-label="Panel de control de OliveTwin">
+    <aside class="ot-panel ot-panel--wide" :aria-label="t('panel.label')">
       <header class="ot-panel__header">
-        <h1 class="ot-panel__title">{{ appTitle }}</h1>
-        <p class="ot-panel__subtitle">{{ appSubtitle }}</p>
+        <div class="ot-panel__heading">
+          <h1 class="ot-panel__title">{{ t('app.title') }}</h1>
+          <LanguageSwitch />
+        </div>
+        <p class="ot-panel__subtitle">{{ t('app.subtitle') }}</p>
       </header>
 
       <StatusBanner
@@ -372,7 +381,7 @@ function onTimeStepChange(index: number): void {
         @update:model-value="selectZone"
       />
 
-      <nav class="ot-tabs" aria-label="Vistas del panel">
+      <nav class="ot-tabs" :aria-label="t('tabs.label')">
         <button
           v-for="tab in PANEL_TABS"
           :key="tab.value"
@@ -384,7 +393,7 @@ function onTimeStepChange(index: number): void {
           :title="tabTitle(tab.value)"
           @click="selectTab(tab.value)"
         >
-          {{ tab.label }}
+          {{ t(TAB_LABEL_KEYS[tab.value]) }}
         </button>
       </nav>
 
@@ -438,3 +447,18 @@ function onTimeStepChange(index: number): void {
     </aside>
   </div>
 </template>
+
+<style scoped>
+/* Título y selector de idioma en la misma línea; en móvil el título manda. */
+.ot-panel__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ot-panel__heading .ot-panel__title {
+  min-width: 0;
+}
+</style>

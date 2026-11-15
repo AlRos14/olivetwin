@@ -124,7 +124,7 @@ def run(ctx: Ctx) -> SourceResult:
     log(f"  coherencia {ref_iso}→{sec_iso}: media {np.nanmean(vals):.3f}, válido {np.isfinite(vals).mean():.3f}")
     res.variables.append(VariableData(meta={
         "id": "insar-coherence", "title": "Coherencia interferométrica 12 días (NISAR GUNW)",
-        "group": "nisar", "unit": "adimensional (0–1)", "scale": 1 / 254, "offset": 0.0, "decimals": 2,
+        "group": "nisar", "unit": "1", "scale": 1 / 254, "offset": 0.0, "decimals": 2,
         "displayRange": [0.0, 1.0], "palette": "radar", "temporal": False,
         "description": (
             "Magnitud de la coherencia interferométrica HH entre dos pasadas NISAR separadas 12 días "

@@ -30,35 +30,35 @@ describe('TimeSlider', () => {
     expect(mountSlider(0, [STEPS[0]!]).find('.ot-time-slider').exists()).toBe(false)
   })
 
-  it('muestra etiqueta, paso actual y fecha MM/DD/YYYY en UTC', () => {
+  it('muestra etiqueta, paso actual y fecha ISO 8601 en UTC', () => {
     const wrapper = mountSlider(0)
     const range = wrapper.get('input[type="range"]')
 
     expect(wrapper.text()).toContain('Fecha de adquisición')
-    expect(wrapper.text()).toContain('Paso 1 de 3 · 01/15/2026')
+    expect(wrapper.text()).toContain('Paso 1 de 3 · 2026-01-15')
     expect(range.attributes('min')).toBe('0')
     expect(range.attributes('max')).toBe('2')
     expect(range.attributes('step')).toBe('1')
-    expect(range.attributes('aria-valuetext')).toBe('01/15/2026')
+    expect(range.attributes('aria-valuetext')).toBe('2026-01-15')
     expect(wrapper.get('label').attributes('for')).toBe(range.attributes('id'))
   })
 
-  it('muestra todas las marcas en MM/DD/YYYY aunque haya label', () => {
+  it('muestra todas las marcas en ISO 8601 aunque haya label', () => {
     const wrapper = mountSlider(1)
     const marks = wrapper.findAll('.ot-time-slider__mark')
 
     expect(marks).toHaveLength(3)
     expect(marks.map((mark) => mark.text())).toEqual([
-      '01/15/2026',
-      '02/14/2026',
-      '03/16/2026',
+      '2026-01-15',
+      '2026-02-14',
+      '2026-03-16',
     ])
     expect(marks[1]!.classes()).toContain('ot-time-slider__mark--active')
   })
 
   it('formatea fechas con hora en UTC e indica la zona', () => {
     const wrapper = mountSlider(2)
-    expect(wrapper.text()).toContain('Paso 3 de 3 · 03/16/2026 10:30 UTC')
+    expect(wrapper.text()).toContain('Paso 3 de 3 · 2026-03-16 10:30 UTC')
     expect(wrapper.get('input[type="range"]').attributes('aria-valuetext')).toContain('UTC')
   })
 

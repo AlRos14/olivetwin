@@ -18,12 +18,13 @@ import type { StudyZone } from '../types/manifest'
 import { AnalysisLoadError, loadRaster, loadZoneAnalysis } from '../services/analysisService'
 import { applyMask, summarize } from '../services/analysisMath'
 import { compareZones, suitableShare, type CropComparison, type ZoneCropSummary } from '../services/cropComparison'
-import { classShares, factorOwnVariables } from '../services/cropRequirements'
+import { classShares, factorOwnVariables, type ObservedValue } from '../services/cropRequirements'
 import { limitingShares, suitabilityBins } from '../services/cropSuitability'
 import type { LlmSettings } from '../services/llmClient'
 import { buildComparisonMessages } from '../services/llmPrompts'
 import { renderRgba, rgbaToDataUrl } from '../services/palettes'
 import { useLlmReport, type LlmReportState } from './useLlm'
+import { t } from '../i18n'
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -87,11 +88,17 @@ function meanOf(values: Float32Array): number | null {
   return count ? sum / count : null
 }
 
-/** Media y p10–p90 de una variable en las celdas comparadas, como texto para la tabla y la IA. */
-function observedText(variable: AnalysisVariable, stats: ReturnType<typeof summarize>): string {
+/** Media y p10–p90 de una variable en las celdas comparadas, sin formatear (se traduce al mostrar). */
+function observedValue(variable: AnalysisVariable, stats: ReturnType<typeof summarize>): ObservedValue {
   const digits = typeof variable.decimals === 'number' ? variable.decimals : variable.scale < 0.01 ? 3 : variable.scale < 0.1 ? 2 : 1
-  const f = (value: number | null) => (value === null ? 's/d' : Number(value.toFixed(digits)).toString())
-  return `${variable.title}: media ${f(stats.mean)} ${variable.unit} (p10–p90 ${f(stats.p10)}–${f(stats.p90)})`
+  return {
+    title: variable.title,
+    unit: variable.unit,
+    mean: stats.mean,
+    p10: stats.p10,
+    p90: stats.p90,
+    decimals: digits,
+  }
 }
 
 export function useZoneComparison(
@@ -153,7 +160,12 @@ export function useZoneComparison(
     if (!promise) {
       promise = (async () => {
         const target = cube.crops?.find((candidate) => candidate.id === cropId)
-        if (!target) throw new AnalysisLoadError('semantic', `La zona «${zone.name}» no tiene el cultivo «${cropId}».`)
+        if (!target) {
+          throw new AnalysisLoadError(
+            'semantic',
+            t('analysis.errors.zoneCropMissing', { zone: zone.name, crop: cropId }),
+          )
+        }
         const fetchOptions = { fetchImpl: options.fetchImpl, base: options.base }
         const stepOf = (variable: AnalysisVariable) =>
           loadRaster(cube.grid, { data: variable.steps[0].data, scale: variable.scale, offset: variable.offset }, fetchOptions)
@@ -174,13 +186,13 @@ export function useZoneComparison(
         )
         const observed = await Promise.all(
           target.factors.map(async (factor) => {
-            const texts: string[] = []
+            const values: ObservedValue[] = []
             for (const id of factorOwnVariables(factor.variables)) {
               const variable = cube.variables.find((candidate) => candidate.id === id)
               if (!variable || variable.temporal || !variable.steps[0]) continue
-              texts.push(observedText(variable, summarize(restrict(await stepOf(variable)))))
+              values.push(observedValue(variable, summarize(restrict(await stepOf(variable)))))
             }
-            return texts
+            return values
           }),
         )
         const summary: ZoneCropSummary = {
@@ -240,7 +252,7 @@ export function useZoneComparison(
         viewA.value = null
         viewB.value = null
         state.status = 'error'
-        state.error = 'Las dos zonas no tienen ningún cultivo en común.'
+        state.error = t('analysis.errors.noCommonCrop')
         return
       }
       const [a, b] = await Promise.all([viewFor(zoneA, cubeA, cropId), viewFor(zoneB, cubeB, cropId)])
@@ -253,7 +265,7 @@ export function useZoneComparison(
       viewA.value = null
       viewB.value = null
       state.status = 'error'
-      state.error = error instanceof AnalysisLoadError ? error.message : 'No se pudieron cargar los mapas de aptitud de las zonas.'
+      state.error = error instanceof AnalysisLoadError ? error.message : t('analysis.errors.compareLoad')
     }
   }
 

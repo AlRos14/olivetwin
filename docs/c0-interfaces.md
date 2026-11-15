@@ -1,280 +1,281 @@
-# C0 — Interfaces congeladas para la Fase B (WP-04 ∥ WP-07)
+# C0 — Frozen interfaces for Phase B (WP-04 ∥ WP-07)
 
-**Estado:** congelado el 2026-11-14 por R1 (orquestación). Complementa `docs/contract-freeze.md`
-(contrato de datos v1.1.0). Cambiar algo de este documento es un **cambio de interfaz**: abrir Issue
-y bloquear solo los nodos afectados.
+**Status:** frozen on 2026-11-14 by R1 (orchestration). It complements `docs/contract-freeze.md`
+(data contract v1.1.0). Changing anything in this document is an **interface change**: open an Issue
+and block only the affected nodes.
 
-## 1. Tipos
+## 1. Types
 
-`frontend/src/types/manifest.ts` — **owner WP-04**. Creado en C0 como stub; WP-04 solo lo amplía de
-forma aditiva. WP-07 lo importa y no lo modifica.
+`frontend/src/types/manifest.ts` — **WP-04 owner**. Created in C0 as a stub; WP-04 only extends it
+additively. WP-07 imports it and does not modify it.
 
-## 2. Proveedor de estado (WP-04)
+## 2. State provider (WP-04)
 
-`frontend/src/composables/useOliveTwinData.ts` exporta:
+`frontend/src/composables/useOliveTwinData.ts` exports:
 
 ```ts
 export function useOliveTwinData(options?: { initialMode?: DataMode; fetchImpl?: typeof fetch }): {
-  vm: DeepReadonly<OliveTwinViewModel>          // reactive, solo lectura para la UI
+  vm: DeepReadonly<OliveTwinViewModel>          // reactive, read-only for the UI
   selectedZone: ComputedRef<StudyZone | null>
   selectedLayer: ComputedRef<StudyLayer | null>
-  overlay: ComputedRef<ActiveOverlay | null>    // URL ya resuelta con BASE_URL
+  overlay: ComputedRef<ActiveOverlay | null>    // URL already resolved with BASE_URL
 } & OliveTwinActions
 ```
 
-Reglas:
+Rules:
 
-- *(Histórico C0: el modo inicial era `sample`; desde §7 es `real`.)* Real vacío → `loadStatus: 'empty'`. JSON roto, 404 o schema inválido →
-  `'error'` + `errorMessage`. **Nunca** se recurre a `sample` como alternativa.
-- Cada `setDataMode`/`reload` invalida la carga anterior (AbortController o contador): una respuesta
-  tardía nunca sobrescribe el modo actual.
-- Al cambiar de modo: `selectedZoneId = null`, `selectedLayerId = null`. Al cambiar de zona: capa = la
-  primera disponible de la zona, o `null`.
-- `overlay` es `null` si no hay zona y capa válidas en el manifiesto **activo**.
-- Los servicios (`frontend/src/services/`) resuelven `image` con `import.meta.env.BASE_URL` y rechazan
-  rutas con `/` inicial, `..`, `:` o `\`.
+- *(C0 historical note: the initial mode was `sample`; since §7 it is `real`.)* Empty real data → `loadStatus: 'empty'`. Broken JSON, 404 or invalid schema →
+  `'error'` + `errorMessage`. `sample` is **never** used as a fallback.
+- Each `setDataMode`/`reload` invalidates the previous load (AbortController or counter): a late
+  response never overwrites the current mode.
+- When the mode changes: `selectedZoneId = null`, `selectedLayerId = null`. When the zone changes: layer = the
+  first one available in the zone, or `null`.
+- `overlay` is `null` if there is no valid zone and layer in the **active** manifest.
+- The services (`frontend/src/services/`) resolve `image` with `import.meta.env.BASE_URL` and reject
+  paths with a leading `/`, `..`, `:` or `\`.
 
-## 3. Componentes (WP-07)
+## 3. Components (WP-07)
 
-Solo props y emits; ningún componente hace `fetch`, construye rutas ni importa servicios o composables.
+Props and emits only; no component performs `fetch`, builds paths or imports services or composables.
 
-| Componente | Props | Emits |
+| Component | Props | Emits |
 |---|---|---|
 | `OliveMap.vue` | `baseMap: BaseMap`, `zones: StudyZone[]`, `selectedZoneId: string \| null`, `overlay: ActiveOverlay \| null` | `select-zone(id: string)`, `basemap-error(baseMap: BaseMap)` |
-| `StudyZoneMarkers.vue` | (hijo de OliveMap) `map: L.Map`, `zones`, `selectedZoneId` | `select-zone(id)` |
-| `ScientificOverlay.vue` | (hijo de OliveMap) `map: L.Map`, `overlay: ActiveOverlay \| null` | `image-error(url: string)` |
-| `DataModeSwitch.vue` | `modelValue: DataMode` | `update:modelValue(mode)` · *eliminado el 2026-11-15 (sin uso)* |
+| `StudyZoneMarkers.vue` | (child of OliveMap) `map: L.Map`, `zones`, `selectedZoneId` | `select-zone(id)` |
+| `ScientificOverlay.vue` | (child of OliveMap) `map: L.Map`, `overlay: ActiveOverlay \| null` | `image-error(url: string)` |
+| `DataModeSwitch.vue` | `modelValue: DataMode` | `update:modelValue(mode)` · *removed on 2026-11-15 (unused)* |
 | `ZoneSelector.vue` | `zones`, `modelValue: string \| null`, `disabled?: boolean` | `update:modelValue(id \| null)` |
 | `LayerPanel.vue` | `zone: StudyZone \| null`, `selectedLayerId`, `opacity: number (0–1)`, `visible: boolean`, `baseMap: BaseMap` | `select-layer(id)`, `update:opacity(n)`, `update:visible(b)`, `update:baseMap(b)` |
 | `LayerLegend.vue` | `layer: StudyLayer \| null` | — |
-| `DataProvenance.vue` | `layer: StudyLayer \| null`, `dataMode: DataMode` · *eliminado el 2026-11-15 (sin uso)* | — |
+| `DataProvenance.vue` | `layer: StudyLayer \| null`, `dataMode: DataMode` · *removed on 2026-11-15 (unused)* | — |
 | `StatusBanner.vue` | `dataMode`, `loadStatus`, `errorMessage`, `hasSyntheticLayer: boolean`, `overlayError: string \| null`, `basemapError: BaseMap \| null` | `retry()`, `switch-basemap(baseMap: BaseMap)`, `dismiss-overlay-error()` |
 
-- Encuadre: vista inicial de la España peninsular + Baleares; `OliveMap` incluye un control propio
-  «Canarias» (y «España») para saltar al archipiélago. `fitBounds` (con padding) solo cuando cambia
-  `selectedZoneId` a una zona existente; si pasa a `null` (p. ej. cambio de modo) vuelve a la vista de
-  España. La zona activa se deriva de `zones` + `selectedZoneId`. Navegación no restringida a España.
-- Fallo de overlay o de mapa base: el mapa sigue usable; `OliveMap` reemite `image-error(url)` de
-  `ScientificOverlay` y emite `basemap-error`. `StatusBanner` muestra «La imagen de la capa no está
-  disponible» y, para PNOA, «La ortofoto PNOA no responde» con botón «Usar OpenStreetMap»
+- Framing: initial view of peninsular Spain + Balearic Islands; `OliveMap` includes its own
+  "Canary Islands" control (and "Spain") to jump to the archipelago. `fitBounds` (with padding) only when
+  `selectedZoneId` changes to an existing zone; if it becomes `null` (e.g. a mode change) the view returns to
+  Spain. The active zone is derived from `zones` + `selectedZoneId`. Navigation is not restricted to Spain.
+- Overlay or base map failure: the map remains usable; `OliveMap` re-emits `image-error(url)` from
+  `ScientificOverlay` and emits `basemap-error`. `StatusBanner` shows "The layer image is not
+  available" and, for PNOA, "The PNOA orthophoto is not responding" with a "Use OpenStreetMap" button
   (`switch-basemap('osm')`).
-- `leaflet/dist/leaflet.css` lo importa `OliveMap.vue`; cada componente importa su hoja (`map.css` /
+- `leaflet/dist/leaflet.css` is imported by `OliveMap.vue`; each component imports its sheet (`map.css` /
   `ui.css`).
-- Estado del mapa base (`pnoa`/`osm`) lo guarda `App.vue`; por defecto `pnoa`. Cambiarlo no toca el
-  overlay ni la opacidad.
-- PNOA: `https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg` con `{-y}` y **sin** `tms: true`.
-  OSM: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Atribuciones visibles siempre.
+- The base map state (`pnoa`/`osm`) is held by `App.vue`; `pnoa` by default. Changing it does not touch the
+  overlay or the opacity.
+- PNOA: `https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg` with `{-y}` and **without** `tms: true`.
+  OSM: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Attributions always visible.
 - Leaflet: `bbox [w,s,e,n]` → `L.latLngBounds([[s,w],[n,e]])`.
-- Aviso «DATOS SIMULADOS» persistente si `hasSyntheticLayer` o `dataMode === 'sample'`. *(Histórico C0; desde §7 la app arranca en `real` y no hay modo muestra.)*
+- Persistent "SIMULATED DATA" notice if `hasSyntheticLayer` or `dataMode === 'sample'`. *(C0 historical note; since §7 the app starts in `real` and there is no sample mode.)*
 
-## 4. Integración (INT01)
+## 4. Integration (INT01)
 
-Solo INT01 edita `frontend/src/App.vue` y `frontend/src/main.ts`: instancia `useOliveTwinData()`,
-mantiene `baseMap`, `overlayError` y `basemapError`, y conecta props/emits.
+Only INT01 edits `frontend/src/App.vue` and `frontend/src/main.ts`: it instantiates `useOliveTwinData()`,
+keeps `baseMap`, `overlayError` and `basemapError`, and wires props/emits.
 
 - `hasSyntheticLayer = selectedLayer?.status === 'synthetic'`.
-- `overlayError` se limpia al cambiar capa, zona o modo; `basemapError` al cambiar de mapa base.
-- El texto «Todavía no hay zonas con datos científicos reales» lo muestra `StatusBanner` con
-  `loadStatus === 'empty'`; `ZoneSelector` queda `disabled` sin zonas.
+- `overlayError` is cleared when the layer, zone or mode changes; `basemapError` when the base map changes.
+- The text "There are no zones with real scientific data yet" is shown by `StatusBanner` with
+  `loadStatus === 'empty'`; `ZoneSelector` is left `disabled` with no zones.
 
-## 5. Ownership de archivos en Fase B
+## 5. File ownership in Phase B
 
-| Nodo | Scope exclusivo |
+| Node | Exclusive scope |
 |---|---|
 | WP04-01 | `contracts/`, `frontend/src/types/`, `frontend/scripts/validate-data.mjs`, `frontend/scripts/fixtures/` |
-| WP04-02 | *(retirado en §7)* ~~`scripts/generate-sample-data.mjs`, `frontend/public/data/sample/`~~; `frontend/public/data/real/` |
+| WP04-02 | *(withdrawn in §7)* ~~`scripts/generate-sample-data.mjs`, `frontend/public/data/sample/`~~; `frontend/public/data/real/` |
 | WP04-03 | `frontend/src/services/` |
 | WP04-04 | `frontend/src/composables/` |
 | WP04-05 | `docs/data-contract.md`, `docs/handoff-science.md` |
-| WP07-01..03 | Un único agente/owner (R4), en secuencia 01 → 02 → 03: `frontend/src/components/OliveMap.vue`, `StudyZoneMarkers.vue`, `ScientificOverlay.vue`, `frontend/src/components/map/`, `frontend/src/styles/map.css` |
+| WP07-01..03 | A single agent/owner (R4), in sequence 01 → 02 → 03: `frontend/src/components/OliveMap.vue`, `StudyZoneMarkers.vue`, `ScientificOverlay.vue`, `frontend/src/components/map/`, `frontend/src/styles/map.css` |
 | WP07-04 | `frontend/src/components/{DataModeSwitch,ZoneSelector,LayerPanel,LayerLegend,DataProvenance,StatusBanner}.vue`, `frontend/src/styles/ui.css` |
 | INT01 | `frontend/src/App.vue`, `frontend/src/main.ts`, `frontend/src/style.css` |
 | INT02 | `frontend/tests/`, `docs/qa-results.md` |
 | G2 | `docs/acceptance.md` |
 
-Los tests unitarios viven junto al código de cada nodo (`*.test.ts` en su propio scope). Vitest incluye
-`src/**`, `tests/**` y `scripts/**` (`*.test.ts` / `*.test.mjs`).
-Dependencias: instaladas una única vez en C0 (`leaflet`, `vitest`, `@vue/test-utils`, `jsdom`, `pngjs`).
-Nadie más edita `frontend/package.json` sin coordinarlo con R1.
+The unit tests live next to each node's code (`*.test.ts` in its own scope). Vitest includes
+`src/**`, `tests/**` and `scripts/**` (`*.test.ts` / `*.test.mjs`).
+Dependencies: installed only once in C0 (`leaflet`, `vitest`, `@vue/test-utils`, `jsdom`, `pngjs`).
+Nobody else edits `frontend/package.json` without coordinating with R1.
 
-## 6. C1 — Línea temporal (contrato v1.2.0, aditivo) — 2026-11-14
+## 6. C1 — Timeline (contract v1.2.0, additive) — 2026-11-14
 
-Decisión del responsable de proyecto: las capas reales pueden traer **varias fechas** y la UI ofrece
-un **slider temporal**. Cambio aditivo: manifiestos v1.1.0 siguen siendo válidos.
+Project owner's decision: real layers may carry **several dates** and the UI offers
+a **time slider**. Additive change: v1.1.0 manifests remain valid.
 
-### 6.1 Contrato (WP-04)
+### 6.1 Contract (WP-04)
 
 - `layer.timeSteps?: TimeStep[]` (≥ 1). `TimeStep = { date, label?, image, bbox, provenance? }`
-  (`frontend/src/types/manifest.ts`). `date` ISO 8601 válida (fecha o fecha-hora); pasos en orden
-  estrictamente creciente de `date`, sin duplicados.
-- `image` de cada paso: mismas reglas de ruta segura y prefijo `data/<datasetMode>/`; PNG existente con
-  alpha. `bbox` de cada paso dentro de `zone.bbox`.
-- `layer.image` y `layer.bbox` = los del **último** paso (compatibilidad v1.1).
-- Unidad, `range`, `legend` y `status` son comunes a todos los pasos (la escala es fija en el tiempo,
-  imprescindible para comparar fechas).
-- `provenance` del paso es parcial y se superpone a la de la capa. En `processed_real`, la procedencia
-  efectiva de **cada** paso debe cumplir los mismos requisitos (`acquisitionDate`, `sceneId`,
+  (`frontend/src/types/manifest.ts`). `date` is a valid ISO 8601 timestamp (date or date-time); steps in
+  strictly increasing `date` order, without duplicates.
+- `image` of each step: same safe-path rules and `data/<datasetMode>/` prefix; an existing PNG with
+  alpha. The `bbox` of each step within `zone.bbox`.
+- `layer.image` and `layer.bbox` = those of the **last** step (v1.1 compatibility).
+- Unit, `range`, `legend` and `status` are common to all steps (the scale is fixed through time,
+  essential to compare dates).
+- The step's `provenance` is partial and overrides the layer's. In `processed_real`, the effective
+  provenance of **each** step must meet the same requirements (`acquisitionDate`, `sceneId`,
   `referenceUrl`).
-- Manifiestos que usen `timeSteps` declaran `schemaVersion: "1.2.0"`.
+- Manifests that use `timeSteps` declare `schemaVersion: "1.2.0"`.
 
-### 6.2 Estado (WP-04, `useOliveTwinData`)
+### 6.2 State (WP-04, `useOliveTwinData`)
 
-- `vm.selectedTimeIndex`; acción `selectTimeStep(index)`; computed adicional `activeTimeStep`.
-- Al seleccionar capa (o zona, que selecciona su primera capa): índice = **último** paso si hay
-  `timeSteps`, si no `null`. Cambiar modo/zona/capa reinicia el índice.
-- `overlay.url`/`overlay.bbox` salen del paso activo; `overlay.timeIndex` y `overlay.timeStep` lo
-  identifican.
+- `vm.selectedTimeIndex`; action `selectTimeStep(index)`; additional computed `activeTimeStep`.
+- When selecting a layer (or a zone, which selects its first layer): index = the **last** step if there are
+  `timeSteps`, otherwise `null`. Changing mode/zone/layer resets the index.
+- `overlay.url`/`overlay.bbox` come from the active step; `overlay.timeIndex` and `overlay.timeStep`
+  identify it.
 
 ### 6.3 UI (WP-07)
 
-| Componente | Props | Emits |
+| Component | Props | Emits |
 |---|---|---|
-| `TimeSlider.vue` (nuevo) | `steps: TimeStep[]`, `modelValue: number \| null` | `update:modelValue(index: number)` |
-| `DataProvenance.vue` | + `timeStep?: TimeStep \| null` (procedencia efectiva del paso). Eliminado el 2026-11-15 (§7). | — |
+| `TimeSlider.vue` (new) | `steps: TimeStep[]`, `modelValue: number \| null` | `update:modelValue(index: number)` |
+| `DataProvenance.vue` | + `timeStep?: TimeStep \| null` (effective provenance of the step). Removed on 2026-11-15 (§7). | — |
 
-- `TimeSlider` solo se renderiza con ≥ 2 pasos. Slider `range` (paso 1) con `aria-valuetext` = fecha,
-  botones anterior/siguiente y reproducir/pausar (avanza ~1,5 s por paso, se detiene en el último,
-  se cancela al desmontar o al cambiar `steps`; respeta `prefers-reduced-motion` sin autoarranque).
-  Marcas con las fechas (formato es-ES, UTC). Nada de controles inertes.
-- `ScientificOverlay`: si solo cambia `url`/`timeIndex` (misma zona, capa y bbox) usa `setUrl` en vez
-  de recrear, para que la animación no parpadee; precarga la imagen del paso siguiente.
-- La leyenda no cambia entre pasos.
+- `TimeSlider` only renders with ≥ 2 steps. `range` slider (step 1) with `aria-valuetext` = date,
+  previous/next and play/pause buttons (advances ~1.5 s per step, stops at the last one,
+  is cancelled on unmount or when `steps` changes; respects `prefers-reduced-motion` without autostart).
+  Ticks with the dates (ISO 8601 format, UTC). No inert controls.
+- `ScientificOverlay`: if only `url`/`timeIndex` changes (same zone, layer and bbox) it uses `setUrl` instead
+  of recreating, so the animation does not flicker; it preloads the next step's image.
+- The legend does not change between steps.
 
-### 6.4 Integración y pipeline
+### 6.4 Integration and pipeline
 
-- INT: `App.vue` coloca `TimeSlider` sobre el mapa (abajo, centrado; en móvil dentro del panel),
-  conectado a `data.selectTimeStep`.
-- `pipelines/nisar/sme2_to_overlay.py --publish` escribe **todas** las fechas como `timeSteps`
-  (`data/real/zones/<zona>/soil-moisture/<fecha>.png`), con escala fija común.
+- INT: `App.vue` places `TimeSlider` over the map (bottom, centred; on mobile inside the panel),
+  connected to `data.selectTimeStep`.
+- `pipelines/nisar/sme2_to_overlay.py --publish` writes **all** dates as `timeSteps`
+  (`data/real/zones/<zone>/soil-moisture/<date>.png`), with a common fixed scale.
 
-## 7. Decisión de producto: la demo usa solo datos reales (2026-11-14)
+## 7. Product decision: the demo uses real data only (2026-11-14)
 
-El responsable de proyecto decidió que la demo **no incluye datos de muestra**.
-Solo se publican y muestran datos reales NISAR L3 SME2 de Jaén y Toledo, con la
-línea temporal de §6. Consecuencias de integración (sin cambiar las interfaces
-congeladas de §1–§3):
+The project owner decided that the demo **does not include sample data**.
+Only real NISAR L3 SME2 data from Jaén and Toledo are published and shown, with the
+timeline from §6. Integration consequences (without changing the frozen interfaces
+of §1–§3):
 
-- `App.vue` instancia `useOliveTwinData({ initialMode: 'real' })`, no renderiza
-  `DataModeSwitch` y no ofrece cambiar a `sample`. El componente se eliminó el
+- `App.vue` instantiates `useOliveTwinData({ initialMode: 'real' })`, does not render
+  `DataModeSwitch` and offers no switch to `sample`. The component was removed on
   2026-11-15.
-- `StatusBanner` recibe siempre `dataMode: 'real'`; nunca muestra «DATOS
-  SIMULADOS». El aviso persistente de cabecera indica que el producto es
-  PROVISIONAL y que la humedad superficial no equivale a riego.
-- Se elimina `frontend/public/data/sample/` y el script `generate:sample`.
-  `validate:data` trata el manifiesto `sample/` como **opcional** y el `real/`
-  como **obligatorio**.
-- El contrato y los fixtures siguen admitiendo `datasetMode: "sample"`; no es un
-  cambio de esquema.
-- La demo autoselecciona la primera zona al cargar para mostrar datos de
-  inmediato; ambas zonas siguen visibles y seleccionables.
+- `StatusBanner` always receives `dataMode: 'real'`; it never shows "SIMULATED
+  DATA". The persistent header notice states that the product is
+  PROVISIONAL and that surface soil moisture is not equivalent to irrigation.
+- `frontend/public/data/sample/` and the `generate:sample` script are removed.
+  `validate:data` treats the `sample/` manifest as **optional** and the `real/` one
+  as **mandatory**.
+- The contract and the fixtures still accept `datasetMode: "sample"`; this is not a
+  schema change.
+- The demo auto-selects the first zone on load to show data immediately;
+  both zones remain visible and selectable.
 
-**Actualización 2026-11-15 (decisión del responsable de proyecto):** la
-interfaz deja de mostrar el aviso persistente de cabecera, el panel
-«Procedencia y calidad» (`DataProvenance.vue`, eliminado después por no usarse) y los textos de advertencia de las pestañas Análisis, Gemelos e
-Historia (notas de la leyenda, aviso y justificación de los criterios de
-aptitud, «Qué es y qué no es», «Fuentes no disponibles» y «Lo que no se puede
-concluir»). El subtítulo conserva «datos PROVISIONAL». La procedencia, las
-licencias y las limitaciones siguen declaradas en el manifiesto, en los cubos
-de análisis y en la documentación, y `validate:data` las sigue exigiendo. Los
-avisos de datos sintéticos (`StatusBanner`, leyenda) se mantienen.
+**Update 2026-11-15 (project owner's decision):** the
+interface no longer shows the persistent header notice, the
+"Provenance and quality" panel (`DataProvenance.vue`, later removed as unused) or the warning texts of the Analysis, Twins and
+Story tabs (legend notes, notice and rationale for the
+suitability criteria, "What it is and what it is not", "Unavailable sources" and "What cannot be
+concluded"). The subtitle keeps "PROVISIONAL NISAR data". The provenance, the
+licences and the limitations remain declared in the manifest, in the analysis
+cubes and in the documentation, and `validate:data` still requires them. The
+synthetic-data notices (`StatusBanner`, legend) are kept.
 
-## 8. Cubo de análisis (contrato v1.3.0, aditivo) — 2026-11-15
+## 8. Analysis cube (contract v1.3.0, additive) — 2026-11-15
 
-Objetivo: medir variables de interés agronómico (humedad NISAR, retrodispersión
-GCOV, NDVI/NDMI, relieve, suelo y clima) y compararlas por celda. Contrato:
-[`contracts/analysis.schema.json`](../contracts/analysis.schema.json) y
+Goal: measure variables of agronomic interest (NISAR moisture, GCOV backscatter,
+NDVI/NDMI, relief, soil and climate) and compare them cell by cell. Contract:
+[`contracts/analysis.schema.json`](../contracts/analysis.schema.json) and
 [`docs/contract-freeze.md`](contract-freeze.md) §2.5.
 
-### 8.1 Datos (WP-04)
+### 8.1 Data (WP-04)
 
-- Tipos: `frontend/src/types/analysis.ts` (incluye `CropSuitability`, `CropFactor`,
+- Types: `frontend/src/types/analysis.ts` (includes `CropSuitability`, `CropFactor`,
   `AnalysisRaster`); `StudyZone.analysis?: string`.
-- Servicios: `analysisService.ts` (carga y valida el cubo; `loadRaster` decodifica
-  cualquier ráster), `pngGray.ts` (PNG gris de 8 bits sin canvas), `analysisMath.ts`
-  (celdas, agregados, diferencia), `seriesAnalysis.ts` (intervalo, muestreo uniforme
-  de fechas con máximo `MAX_SAMPLES = 12`, tendencia, cambio celda a celda, lluvia
-  previa y clima del intervalo), `cropSuitability.ts` (tramos y factor limitante),
-  `cropRequirements.ts` (requisito publicado de cada variable para un cultivo y
-  reparto de la zona en óptimo / aceptable / no apto; nunca inventa umbrales),
-  `dateFormat.ts` (fechas MM/DD/YYYY en UTC),
-  `palettes.ts`, `llmClient.ts` (endpoint compatible con OpenAI con streaming;
-  URL/modelo en `localStorage`, clave solo en `sessionStorage`), `llmPrompts.ts`
-  (mensajes con las estadísticas calculadas y las cautelas en el sistema) y
-  `markdownLite.ts` (respuesta del modelo como bloques de texto, nunca HTML).
-- Estado:
-  - `useZoneAnalysis(selectedZone)`: `state` (solo lectura), `analysis`,
-    `variable`, `overlay` (variable en el paso activo como `data:` URL);
-    acciones `selectVariable` y `selectStep`; cargadores con caché compartida `loadStep` y
+- Services: `analysisService.ts` (loads and validates the cube; `loadRaster` decodes
+  any raster), `pngGray.ts` (8-bit grey PNG without canvas), `analysisMath.ts`
+  (cells, aggregates, difference), `seriesAnalysis.ts` (interval, uniform sampling
+  of dates with a maximum of `MAX_SAMPLES = 12`, trend, cell-by-cell change, previous
+  rainfall and interval climate), `cropSuitability.ts` (bands and limiting factor),
+  `cropRequirements.ts` (published requirement of each variable for a crop and
+  distribution of the zone into optimal / acceptable / unsuitable; it never invents thresholds),
+  `dateFormat.ts` (ISO 8601 dates in UTC),
+  `palettes.ts`, `llmClient.ts` (OpenAI-compatible endpoint with streaming;
+  URL/model in `localStorage`, key only in `sessionStorage`), `llmPrompts.ts`
+  (messages with the computed statistics and the caveats in the system prompt) and
+  `markdownLite.ts` (model response as text blocks, never HTML).
+- State:
+  - `useZoneAnalysis(selectedZone)`: `state` (read-only), `analysis`,
+    `variable`, `overlay` (variable at the active step as a `data:` URL);
+    actions `selectVariable` and `selectStep`; loaders with shared cache `loadStep` and
     `loadRaster`.
-  - `useAnalysisWorkspace(zoneAnalysis, selectedZone, llmSettings)`: modo
-    (`series` | `crop`), variable (todas; `isSingle` para las de una sola
-    imagen, con `spatial`: histograma y media por partes de la zona),
-    `requirementView` (valor de referencia fijo del cultivo para la variable),
-    intervalo, número de imágenes, cultivo,
-    `frames`, `rangeStats` (estadísticas de todas las fechas del intervalo sobre
-    la zona común con dato en todas ellas, y cobertura de cada fecha), `change`
-    (resumen también sobre la zona común), `cropView` e informes
-    `variableReport`/`cropReport` con `runVariableReport`, `runCropReport` y
-    `stop*`. Las celdas sin dato se pintan con trama (`renderRgba` con
-    `hatchNoData`) en el mapa y en las imágenes.
-  - `useLlmSettings()` y `useLlmReport()` en `useLlm.ts`.
-  - `useZoneComparison(zones, llmSettings)`: zona A, zona B y cultivo (común a
-    ambas); carga el cubo de cada zona, resume aptitud y factores (`viewA`,
-    `viewB`), calcula `comparison` con `compareZones` (`cropComparison.ts`) y el
-    informe `report` con `runReport`/`stopReport`.
+  - `useAnalysisWorkspace(zoneAnalysis, selectedZone, llmSettings)`: mode
+    (`series` | `crop`), variable (all of them; `isSingle` for single-image
+    ones, with `spatial`: histogram and mean by parts of the zone),
+    `requirementView` (the crop's fixed reference value for the variable),
+    interval, number of images, crop,
+    `frames`, `rangeStats` (statistics of all the dates of the interval over
+    the common zone with data on all of them, and coverage of each date), `change`
+    (summary also over the common zone), `cropView` and reports
+    `variableReport`/`cropReport` with `runVariableReport`, `runCropReport` and
+    `stop*`. Cells without data are painted with hatching (`renderRgba` with
+    `hatchNoData`) on the map and in the images.
+  - `useLlmSettings()` and `useLlmReport()` in `useLlm.ts`.
+  - `useZoneComparison(zones, llmSettings)`: Area A, Area B and crop (common to
+    both); loads each zone's cube, summarises suitability and factors (`viewA`,
+    `viewB`), computes `comparison` with `compareZones` (`cropComparison.ts`) and the
+    report `report` with `runReport`/`stopReport`.
 - Pipeline: [`pipelines/analysis/`](../pipelines/analysis/README.md).
 
-- Ampliación aditiva del mismo v1.3.0 (aún sin fusionar), 2026-11-15:
-  `cropFactor.classes` (tramos óptimo / aceptable / no apto en texto),
-  `cropFactor.reference` (cita, URL y licencia cuando la fuente no es la ficha
-  ECOCROP) y `crop.otherRequirements` (requisitos citados fuera del mapa). Son
-  opcionales; los cubos sin ellos siguen siendo válidos.
+- Additive extension of the same v1.3.0 (not merged yet), 2026-11-15:
+  `cropFactor.classes` (optimal / acceptable / unsuitable bands in text),
+  `cropFactor.reference` (citation, URL and licence when the source is not the
+  ECOCROP sheet) and `crop.otherRequirements` (requirements cited outside the map). They are
+  optional; cubes without them remain valid.
 
 ### 8.2 UI (WP-07)
 
-| Componente | Props / emits |
+| Component | Props / emits |
 |---|---|
-| `LayerPanel.vue` | Un único desplegable «Variable»: capas del manifiesto (`layer:<id>`) y, con `extraVariables`/`selectedVariableId`, variables del cubo agrupadas (`cube:<id>`) → emite `select-layer(id)` o `select-variable(id)`. |
-| `LayerLegend.vue` | `layer: LegendSource \| null` (capa del manifiesto o variable del cubo adaptada con `variableLegend`). |
-| `LayerRelevance.vue` | `variableId`: recuadro «Relevancia» bajo la leyenda de Capas (qué es la capa y para qué sirve en el cultivo; textos en `variableRelevance.ts`). |
-| `AnalysisControls.vue` | `workspace`, `status`, `error`, `settings` → emite `update-settings`. |
-| `AnalysisWorkspace.vue` | `workspace`, `zoneName`, `zoneSeries`: imágenes, cambio, gráficas, valores, aptitud y ampliación con lectura del dato. |
-| `LlmReport.vue`, `LlmSettingsPanel.vue` | Informe del modelo (`run`/`stop`) y configuración (`update`). |
-| `SeriesChart.vue`, `DistributionChart.vue`, `HistogramChart.vue` | Gráficas SVG sin dependencias. |
-| `CropReferenceCard.vue` | `cropName`, `variableName`, `view`: valores de referencia del cultivo para la variable (tramos, superficie y fuente). |
-| `CropRangesTable.vue` | `crop`, `variables`, `factors`: rangos óptimo / aceptable / no apto de todas las variables y reparto de la zona. |
-| `CompareControls.vue` | `comparison`, `settings` → emite `update-settings`: zona A, zona B y cultivo. |
-| `CompareWorkspace.vue` | `comparison`: veredicto calculado, motivos, mapas de aptitud y tabla de factores de «Zona A» y «Zona B» (sin nombrar la provincia) e informe con IA. |
-| `StoryPanel.vue` | Historia; emite `navigate('analysis' \| 'compare')`. |
-| `AnalysisOverlay.vue` | Hijo de `OliveMap`; `OliveMap` añade `analysisOverlay`, `analysisOpacity` y `analysisVisible`. |
+| `LayerPanel.vue` | A single "Variable" drop-down: manifest layers (`layer:<id>`) and, with `extraVariables`/`selectedVariableId`, grouped cube variables (`cube:<id>`) → emits `select-layer(id)` or `select-variable(id)`. |
+| `LayerLegend.vue` | `layer: LegendSource \| null` (manifest layer or cube variable adapted with `variableLegend`). |
+| `LayerRelevance.vue` | `variableId`: "Relevance" box below the Layers legend (what the layer is and what it is for in the crop; texts in `variableRelevance.ts`). |
+| `AnalysisControls.vue` | `workspace`, `status`, `error`, `settings` → emits `update-settings`. |
+| `AnalysisWorkspace.vue` | `workspace`, `zoneName`, `zoneSeries`: images, change, charts, values, suitability and zoom with cell-value inspection. |
+| `LlmReport.vue`, `LlmSettingsPanel.vue` | Model report (`run`/`stop`) and settings (`update`). |
+| `SeriesChart.vue`, `DistributionChart.vue`, `HistogramChart.vue` | SVG charts with no dependencies. |
+| `CropReferenceCard.vue` | `cropName`, `variableName`, `view`: the crop's reference values for the variable (bands, area and source). |
+| `CropRangesTable.vue` | `crop`, `variables`, `factors`: optimal / acceptable / unsuitable ranges of all variables and distribution of the zone. |
+| `CompareControls.vue` | `comparison`, `settings` → emits `update-settings`: Area A, Area B and crop. |
+| `CompareWorkspace.vue` | `comparison`: computed verdict, reasons, suitability maps and factor table for "Area A" and "Area B" (without naming the province) and the AI report. |
+| `StoryPanel.vue` | Story; emits `navigate('analysis' \| 'compare')`. |
+| `AnalysisOverlay.vue` | Child of `OliveMap`; `OliveMap` adds `analysisOverlay`, `analysisOpacity` and `analysisVisible`. |
 
-### 8.3 Integración (INT01)
+### 8.3 Integration (INT01)
 
-`App.vue` tiene las pestañas **Capas** (por defecto), **Análisis**, **Comparar** e
-**Historia**. Capas pinta lo que se elija en el desplegable «Variable». Si la
-zona tiene cubo de análisis, solo ofrece sus variables (sin número de fechas) y
-arranca con la variable preferida (`soil-moisture-all`); la capa del manifiesto
-se oculta (`LayerPanel` con `showLayers: false`) y solo se usa si la zona no
-tiene cubo o este no carga. Misma opacidad y visibilidad para ambas. Análisis sustituye el mapa por `AnalysisWorkspace` y
-usa `AnalysisControls` en el panel. Comparar (2026-11-15, sustituye a Gemelos)
-también sustituye el mapa: `CompareWorkspace` y `CompareControls` con
-`useZoneComparison(zones, llmSettings)`, que carga el cubo de dos zonas de
-estudio y compara su aptitud para un cultivo. Análisis se deshabilita si la
-zona no declara `analysis`; Comparar, si hay menos de dos zonas con cubo.
+`App.vue` has the **Layers** (default), **Analysis**, **Compare** and
+**Story** tabs. Layers renders whatever is chosen in the "Variable" drop-down. If the
+zone has an analysis cube, it offers only its variables (without the number of dates) and
+starts with the preferred variable (`soil-moisture-all`); the manifest layer
+is hidden (`LayerPanel` with `showLayers: false`) and is only used if the zone has no
+cube or it does not load. Same opacity and visibility for both. Analysis replaces the map with `AnalysisWorkspace` and
+uses `AnalysisControls` in the panel. Compare (2026-11-15, replaces Twins)
+also replaces the map: `CompareWorkspace` and `CompareControls` with
+`useZoneComparison(zones, llmSettings)`, which loads the cube of two study
+zones and compares their suitability for a crop. Analysis is disabled if the
+zone does not declare `analysis`; Compare, if there are fewer than two zones with a cube.
 
-**Comparar.** El veredicto es determinista (`cropComparison.ts`). Cada zona es el
-recuadro elegido, no su provincia: los resultados y el informe con IA hablan solo
-de «Zona A» y «Zona B». Se calcula solo sobre las celdas con al menos un 50 % de
-superficie agrícola (`landcover-agri`, CORINE 2018) si el cubo la trae. Gana la
-zona con más superficie apta (S1 + S2, aptitud ≥ 0,60) si la diferencia llega a
-5 puntos; si no, la de mayor aptitud media si la diferencia llega a 0,05; si
-tampoco, son equivalentes. Los motivos son los factores cuya puntuación media
-difiere al menos 0,05, ordenados por diferencia, con el valor observado de sus
-variables y la parte de la zona en que cada factor limita. La IA
-(`buildComparisonMessages`) recibe ese resultado y solo lo explica. Decisión del
-owner (2026-11-15): no se muestran datos provinciales (rendimientos del MAPA) ni
-el olivar actual en Comparar, porque no describen el recuadro comparado.
+**Compare.** The verdict is deterministic (`cropComparison.ts`). Each zone is the chosen
+box, not its province: the results and the AI report speak only
+of "Area A" and "Area B". It is computed only over the cells with at least 50 %
+of agricultural surface (`landcover-agri`, CORINE 2018) if the cube includes it. The
+zone with more suitable surface wins (S1 + S2, suitability ≥ 0.60) if the difference reaches
+5 points; otherwise, the one with the higher mean suitability if the difference reaches 0.05; if
+neither, they are equivalent. The reasons are the factors whose mean score
+differs by at least 0.05, ordered by difference, with the observed value of their
+variables and the part of the zone in which each factor limits. The AI
+(`buildComparisonMessages`) receives that result and only explains it. Owner
+decision (2026-11-15): no provincial data (MAPA yields) or
+the current olive grove are shown in Compare, because they do not describe the compared box.
 
-**Clases de aptitud (2026-11-15).** `suitabilityBins` reparte en N < 0,40, S3
-0,40–0,60, S2 0,60–0,85 y S1 ≥ 0,85 (LUSET), en Análisis y en Comparar. El índice relativo con pesos se retiró (2026-11-15) en favor
-de la aptitud por cultivo.
+**Suitability classes (2026-11-15).** `suitabilityBins` splits into N < 0.40, S3
+0.40–0.60, S2 0.60–0.85 and S1 ≥ 0.85 (LUSET), in Analysis and in Compare. The weighted
+relative index was withdrawn (2026-11-15) in favour
+of crop suitability.

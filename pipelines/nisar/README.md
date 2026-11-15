@@ -1,136 +1,138 @@
-# pipelines/nisar — NISAR L3 SME2 → capa OliveTwin
+# pipelines/nisar — NISAR L3 SME2 → OliveTwin layer
 
-`sme2_to_overlay.py` convierte productos **NISAR L3 SME2** (HDF5 descargados de ASF, p. ej. con el
-notebook de serie temporal) en la capa `soil-moisture` del contrato **v1.2.0**
-(`docs/c0-interfaces.md` §6, `frontend/src/types/manifest.ts`): PNG RGBA en EPSG:3857 + `bbox` WGS84
-+ leyenda + procedencia, y opcionalmente una **serie temporal** (`timeSteps`) con escala fija común.
+`sme2_to_overlay.py` converts **NISAR L3 SME2** products (HDF5 downloaded from ASF, e.g. with the
+time-series notebook) into the `soil-moisture` layer of contract **v1.2.0**
+(`docs/c0-interfaces.md` §6, `frontend/src/types/manifest.ts`): RGBA PNG in EPSG:3857 + WGS84 `bbox`
++ legend + provenance, and optionally a **time series** (`timeSteps`) with a common fixed scale.
 
-## Instalación
+## Installation
 
 ```bash
-python -m venv .venv && . .venv/bin/activate      # o: uv venv
+python -m venv .venv && . .venv/bin/activate      # or: uv venv
 pip install -r pipelines/nisar/requirements.txt
 ```
 
-## Uso
+## Usage
 
 ```bash
-# 1) Staging: no toca la app. Revisa report.json y los PNG.
+# 1) Staging: does not touch the app. Review report.json and the PNGs.
 python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
   --aoi -90.32 29.90 -90.24 29.96 \
-  --zone-id mississippi-delta --zone-name "Delta del Mississippi" \
+  --zone-id mississippi-delta --zone-name "Mississippi Delta" \
   --staging pipelines/nisar/sme2_staging
 
-# 2) Publicación de la serie completa tras la revisión científica
-#    (escribe en frontend/public/data/real/)
+# 2) Publishing the complete series after scientific review
+#    (writes to frontend/public/data/real/)
 python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
   --aoi -90.32 29.90 -90.24 29.96 \
-  --zone-id mississippi-delta --zone-name "Delta del Mississippi" \
-  --publish --approved-by "Nombre del revisor"
+  --zone-id mississippi-delta --zone-name "Mississippi Delta" \
+  --publish --approved-by "Reviewer name"
 npm run validate:data --prefix frontend
 
-# 3) Republicar desde el staging (sin volver a abrir los HDF5) con otra escala
+# 3) Re-publish from staging (without reopening the HDF5) with another scale
 python pipelines/nisar/sme2_to_overlay.py \
   --from-staging pipelines/nisar/sme2_staging/mississippi-delta \
-  --zone-id mississippi-delta --zone-name "Delta del Mississippi" \
-  --auto-scale --publish  # --publish exige además --approved-by
+  --zone-id mississippi-delta --zone-name "Mississippi Delta" \
+  --auto-scale --publish  # --publish also requires --approved-by
 ```
 
-Opciones útiles:
+Useful options:
 
-| Opción | Efecto |
+| Option | Effect |
 |---|---|
-| `--layer algorithmCandidates/DSG/soilMoisture` | Capa bajo `/science/LSAR/SME2/grids/` (por defecto `soilMoisture`, la variable principal documentada por ASF). |
-| `--auto-scale` | Escala común a **todas** las escenas: percentiles p2–p98 agrupados, redondeados hacia fuera a múltiplos de 0,05 m³/m³. Se registra en `report.json`. |
-| `--vmin/--vmax` | Escala manual fija (por defecto 0–0,6 m³/m³). No se combina con `--auto-scale`. |
-| `--date YYYY-MM-DD` | Publica **solo** esa fecha, sin `timeSteps`. Sin esta opción se publica la serie completa. |
-| `--allow-skipped` | Permite publicar la serie de las escenas restantes aunque se descartaran otras (con aviso). |
-| `--from-staging DIR [DIR ...]` | Re-renderiza desde `layer.staging.json` + GeoTIFF maestro, sin HDF5. |
-| `--upscale` | Sobremuestreo por vecino más próximo (por defecto 8). |
-| `--maturity` | `PROVISIONAL` (por defecto), `BETA` o `VALIDATED`. Con `--from-staging` se conserva la del staging si no se indica. |
+| `--layer algorithmCandidates/DSG/soilMoisture` | Layer under `/science/LSAR/SME2/grids/` (default `soilMoisture`, the main variable documented by ASF). |
+| `--auto-scale` | Scale common to **all** scenes: pooled percentiles p2–p98, rounded outwards to multiples of 0.05 m³/m³. It is recorded in `report.json`. |
+| `--vmin/--vmax` | Fixed manual scale (default 0–0.6 m³/m³). Not combined with `--auto-scale`. |
+| `--date YYYY-MM-DD` | Publishes **only** that date, without `timeSteps`. Without this option the complete series is published. |
+| `--allow-skipped` | Allows publishing the series of the remaining scenes even if others were discarded (with a warning). |
+| `--from-staging DIR [DIR ...]` | Re-renders from `layer.staging.json` + master GeoTIFF, without HDF5. |
+| `--upscale` | Nearest-neighbour upsampling (default 8). |
+| `--maturity` | `PROVISIONAL` (default), `BETA` or `VALIDATED`. With `--from-staging`, the staging value is kept if not given. |
 
-## Qué hace
+## What it does
 
-1. Recorta la capa al AOI sobre la rejilla EASE-Grid 2.0 (EPSG:6933), incluyendo todo píxel que toque el
-   AOI. Enmascara `_FillValue`, no finitos y valores fuera de [0, 1] m³/m³.
-2. Guarda un **GeoTIFF maestro** con los valores reales (`staging/<zona>/geotiff/`, no se versiona).
-3. Reproyecta a EPSG:3857 por **vecino más próximo** (no inventa valores) y sobremuestrea para que
-   Leaflet no difumine los píxeles de 200 m.
-4. Pinta el PNG con **escala fija común a toda la serie** (fechas comparables; la leyenda reproduce la
-   paleta). Sin dato → alpha 0.
-5. Calcula el `bbox` a partir de las esquinas exactas del raster 3857.
-6. **Comprueba la georreferencia**: 25 píxeles de origen, colocados como lo hace Leaflet `ImageOverlay`
-   (interpolación lineal en Mercator dentro del `bbox`), deben caer en un píxel opaco del color esperado.
+1. Clips the layer to the AOI on the EASE-Grid 2.0 grid (EPSG:6933), including every pixel that touches the
+   AOI. It masks `_FillValue`, non-finite values and values outside [0, 1] m³/m³.
+2. Saves a **master GeoTIFF** with the real values (`staging/<zone>/geotiff/`, not versioned).
+3. Reprojects to EPSG:3857 by **nearest neighbour** (it does not invent values) and upsamples so that
+   Leaflet does not blur the 200 m pixels.
+4. Paints the PNG with a **fixed scale common to the whole series** (comparable dates; the legend reproduces the
+   palette). No data → alpha 0.
+5. Computes the `bbox` from the exact corners of the 3857 raster.
+6. **Checks the georeferencing**: 25 source pixels, placed as Leaflet `ImageOverlay` does
+   (linear interpolation in Mercator within the `bbox`), must fall on an opaque pixel of the expected colour.
 
-La paleta de humedad es secuencial seco→húmedo y distinta de la de NDVI:
-`#a6611a · #e9c46a · #d9f0a3 · #41b6c4 · #2c7fb8 · #253494`. La leyenda rotula la primera parada
-«Más seco», la última «Más húmedo» y las intermedias con coma decimal (p. ej. «0,12 m³/m³»).
+The moisture palette is sequential dry→wet and different from the NDVI one:
+`#a6611a · #e9c46a · #d9f0a3 · #41b6c4 · #2c7fb8 · #253494`. The legend labels the first stop
+"Más seco" (driest), the last one "Más húmedo" (wettest) and the intermediate ones with a decimal
+comma (e.g. "0,12 m³/m³"). These Spanish data strings are shown in English by the interface through
+`frontend/public/data/real/i18n/en.json`.
 
-## Serie temporal (`timeSteps`, contrato v1.2.0)
+## Time series (`timeSteps`, contract v1.2.0)
 
-Con `--publish` sin `--date` se publican **todas** las escenas utilizables, ordenadas por fecha:
+With `--publish` without `--date`, **all** usable scenes are published, sorted by date:
 
-- cada paso: `{date: acquisitionStart, image: "data/real/zones/<zona>/soil-moisture/<YYYYMMDDTHHMMSS>.png", bbox, provenance: {acquisitionDate, sceneId, processingVersion, note, crid}}`;
-- `layer.image` y `layer.bbox` son los del **último** paso (compatibilidad v1.1);
-- unidad, `range` y `legend` son comunes; el manifiesto sube a `schemaVersion: "1.2.0"` si era `1.1.0`;
-- el `bbox` de la zona se amplía (con aviso) para contener la capa y **todos** los pasos;
-- se copian todos los PNG y se reemplaza la capa `soil-moisture` sin duplicarla.
+- each step: `{date: acquisitionStart, image: "data/real/zones/<zone>/soil-moisture/<YYYYMMDDTHHMMSS>.png", bbox, provenance: {acquisitionDate, sceneId, processingVersion, note, crid}}`;
+- `layer.image` and `layer.bbox` are those of the **last** step (v1.1 compatibility);
+- unit, `range` and `legend` are common; the manifest is raised to `schemaVersion: "1.2.0"` if it was `1.1.0`;
+- the zone `bbox` is extended (with a warning) to contain the layer and **all** the steps;
+- all PNGs are copied and the `soil-moisture` layer is replaced without duplicating it.
 
-Con `--date` se publica una sola imagen y **no** se escriben `timeSteps` (el manifiesto conserva su
-versión si ya era válida).
+With `--date` a single image is published and `timeSteps` are **not** written (the manifest keeps its
+version if it was already valid).
 
-## Re-render desde staging (`--from-staging`)
+## Re-render from staging (`--from-staging`)
 
-Cada `DIR` debe contener `layer.staging.json` y el GeoTIFF maestro en `geotiff/`. Se admiten dos formas:
+Each `DIR` must contain `layer.staging.json` and the master GeoTIFF in `geotiff/`. Two forms are accepted:
 
-- **DIR por escena** (`layer.staging.json` con `layer` y un único `.tif`), o
-- **DIR por zona** con `series` dentro de `layer.staging.json` (formato que genera este script), que
-  reconstruye la serie completa.
+- **DIR per scene** (`layer.staging.json` with `layer` and a single `.tif`), or
+- **DIR per zone** with `series` inside `layer.staging.json` (format generated by this script), which
+  rebuilds the complete series.
 
-La meta se reconstruye desde la procedencia: se intenta `parse_name(sceneId + ".h5")` y, si el nombre no
-es estándar, se usan `acquisitionDate`, `crid` y `maturity` del staging. Para `verify_georef`, los
-centros de píxel (`x`, `y`) se derivan de la transformada del GeoTIFF. El warp, colorize, verify y
-publish son exactamente los mismos que en modo HDF5; el `bbox` resultante coincide con el del staging.
+The metadata is rebuilt from the provenance: `parse_name(sceneId + ".h5")` is attempted and, if the name is not
+standard, `acquisitionDate`, `crid` and `maturity` from staging are used. For `verify_georef`, the
+pixel centres (`x`, `y`) are derived from the GeoTIFF transform. Warp, colorize, verify and
+publish are exactly the same as in HDF5 mode; the resulting `bbox` matches the staging one.
 
-En este modo no se reescribe `layer.staging.json` de la fuente (solo `report.json` y los PNG nuevos).
+In this mode the source `layer.staging.json` is not rewritten (only `report.json` and the new PNGs).
 
-Salidas en `staging/<zona>/` (modo HDF5): `png/soil-moisture_<fecha>_<órbita>.png`,
-`layer.staging.json` (capa elegida + `series` con metadatos y GeoTIFF de cada escena),
-`timeseries.json` (serie publicable) y `report.json` (escala, estadísticas, cobertura, píxeles
-recortados por `vmax`, comprobaciones).
+Outputs in `staging/<zone>/` (HDF5 mode): `png/soil-moisture_<date>_<orbit>.png`,
+`layer.staging.json` (chosen layer + `series` with metadata and GeoTIFF of each scene),
+`timeseries.json` (publishable series) and `report.json` (scale, statistics, coverage, pixels
+clipped by `vmax`, checks).
 
-## Salvaguardas
+## Safeguards
 
-- `--publish` exige `--approved-by`: el contrato reserva `processed_real` para datos revisados.
-- No publica si falla la verificación de georreferencia o si se mezclan versiones de procesamiento (CRID).
-- Si se descartó alguna escena, no publica la serie incompleta salvo con `--allow-skipped` (y avisa).
-  Con `--date` no se exige, porque se publica una fecha concreta.
-- Valida el manifiesto antes de escribir; PNG y manifiesto se escriben de forma atómica (sin huérfanos).
-- Detecta fechas de adquisición duplicadas y omite las repetidas (aviso + `--allow-skipped` si se publica).
-- Avisa si la escena cubre < 90 % del AOI o si > 5 % de píxeles saturan por encima de `--vmax`.
-- Descarta escenas con menos de `--min-valid` (10 %) de píxeles válidos o con unidades inesperadas.
-- Republicar reemplaza la capa `soil-moisture` de la zona; no duplica.
-- `qualityNote` indica la madurez (PROVISIONAL = no totalmente calibrado), las zonas sin estimación y que
-  la humedad superficial no equivale a necesidad de riego.
+- `--publish` requires `--approved-by`: the contract reserves `processed_real` for reviewed data.
+- It does not publish if the georeferencing verification fails or if processing versions (CRID) are mixed.
+- If any scene was discarded, it does not publish the incomplete series unless `--allow-skipped` is given (and it warns).
+  With `--date` this is not required, because a specific date is published.
+- It validates the manifest before writing; PNG and manifest are written atomically (no orphans).
+- It detects duplicate acquisition dates and skips the repeated ones (warning + `--allow-skipped` if publishing).
+- It warns if the scene covers < 90% of the AOI or if > 5% of pixels saturate above `--vmax`.
+- It discards scenes with less than `--min-valid` (10%) valid pixels or with unexpected units.
+- Re-publishing replaces the zone's `soil-moisture` layer; it does not duplicate it.
+- `qualityNote` states the maturity (PROVISIONAL = not fully calibrated), the areas without an estimate and that
+  surface soil moisture is not the same as irrigation needs.
 
-## Códigos de salida
+## Exit codes
 
-| Código | Significado |
+| Code | Meaning |
 |---|---|
-| 0 | Correcto (puede haber avisos en stderr) |
-| 1 | Error de entrada, ninguna escena utilizable o publicación bloqueada |
-| 2 | Staging generado con problemas: verificación de georreferencia fallida o CRID mezclados |
+| 0 | Success (there may be warnings on stderr) |
+| 1 | Input error, no usable scene or publication blocked |
+| 2 | Staging generated with problems: georeferencing verification failed or mixed CRIDs |
 
-## Limitaciones
+## Limitations
 
-- La máscara descarta valores fuera de [0, 1] m³/m³ (rango físico).
-- Interpreta el nombre de fichero NISAR para fecha, track, órbita y CRID; un nombre no estándar se rechaza
-  al leer HDF5 (en staging se tolera si hay `acquisitionDate`).
-- No aplica todavía las capas de banderas de calidad de SME2 (codificación pendiente de confirmar en la
-  [especificación](https://nisar-docs.asf.alaska.edu/sme2)).
-- La escala automática está pensada para humedad superficial (0–1 m³/m³).
-- Los tests usan HDF5 **sintéticos** con la estructura del producto; conviene una pasada con un fichero real
-  antes de publicar (comparar con el notebook).
+- The mask discards values outside [0, 1] m³/m³ (physical range).
+- It interprets the NISAR filename for date, track, orbit and CRID; a non-standard name is rejected
+  when reading HDF5 (in staging it is tolerated if there is an `acquisitionDate`).
+- It does not yet apply the SME2 quality flag layers (encoding pending confirmation in the
+  [specification](https://nisar-docs.asf.alaska.edu/sme2)).
+- The automatic scale is intended for surface soil moisture (0–1 m³/m³).
+- The tests use **synthetic** HDF5 with the product structure; a pass with a real file is advisable
+  before publishing (compare with the notebook).
 
 ## Tests
 
@@ -138,7 +140,7 @@ recortados por `vmax`, comprobaciones).
 python -m pytest -q pipelines/nisar/tests
 ```
 
-Cubren: staging y georreferencia, aterrizaje real de píxeles, aprobación obligatoria, publicación
-idempotente, serie de 3 escenas (`timeSteps` ordenados, `layer.image` = último), `--date` sin serie,
-`--auto-scale`, re-render desde staging con otra escala (mismo `bbox` y georef), `--allow-skipped` y
-bloqueo por CRID mezclado.
+They cover: staging and georeferencing, real pixel landing, mandatory approval, idempotent
+publication, 3-scene series (`timeSteps` ordered, `layer.image` = last), `--date` without series,
+`--auto-scale`, re-render from staging with another scale (same `bbox` and georef), `--allow-skipped` and
+blocking by mixed CRID.

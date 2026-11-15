@@ -1,6 +1,6 @@
 /**
- * Formato de fechas de toda la interfaz: numérico estadounidense
- * (MM/DD/YYYY), siempre en UTC para no desplazar el día de adquisición.
+ * Date format for the whole UI: ISO 8601 (YYYY-MM-DD), the same in every
+ * language, always in UTC so the acquisition day never shifts.
  */
 
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -27,26 +27,26 @@ function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function usDate(date: Date): string {
-  return `${pad(date.getUTCMonth() + 1)}/${pad(date.getUTCDate())}/${date.getUTCFullYear()}`
+function isoDate(date: Date): string {
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
 }
 
-/** `2026-06-20T05:23:00Z` → `06/20/2026`. Devuelve `fallback` si no es una fecha. */
-export function formatUsDate(value: string | null | undefined, fallback = '—'): string {
+/** `2026-06-20T05:23:00Z` → `2026-06-20`. Devuelve `fallback` si no es una fecha. */
+export function formatDate(value: string | null | undefined, fallback = '—'): string {
   const date = parseIsoDate(value)
-  return date ? usDate(date) : fallback
+  return date ? isoDate(date) : fallback
 }
 
-/** Con hora en el valor: `06/20/2026 05:23 UTC`; sin hora: `06/20/2026`. */
-export function formatUsDateTime(value: string | null | undefined, fallback = '—'): string {
+/** With a time in the value: `2026-06-20 05:23 UTC`; date only: `2026-06-20`. */
+export function formatDateTime(value: string | null | undefined, fallback = '—'): string {
   const date = parseIsoDate(value)
   if (!date || !value) return fallback
-  if (DATE_ONLY.test(value)) return usDate(date)
-  return `${usDate(date)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
+  if (DATE_ONLY.test(value)) return isoDate(date)
+  return `${isoDate(date)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
 }
 
-/** Marca de eje mensual: `06/2026`. */
-export function formatUsMonth(time: number): string {
+/** Monthly axis tick: `2026-06`. */
+export function formatMonth(time: number): string {
   const date = new Date(time)
-  return `${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()}`
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}`
 }

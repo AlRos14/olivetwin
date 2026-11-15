@@ -8,6 +8,7 @@
  * en `localStorage`; la clave de API, si hace falta, solo en `sessionStorage`
  * (se borra al cerrar el navegador) y nunca forma parte del repositorio.
  */
+import { t } from '../i18n'
 
 export interface LlmSettings {
   baseUrl: string
@@ -110,10 +111,7 @@ function isAbort(error: unknown): boolean {
 }
 
 function networkError(settings: LlmSettings): LlmError {
-  return new LlmError(
-    'network',
-    `No se pudo conectar con el modelo en ${settings.baseUrl}. Comprueba que el servidor (p. ej. Ollama) está en marcha y admite peticiones desde esta página.`,
-  )
+  return new LlmError('network', t('analysis.errors.llmNetwork', { url: settings.baseUrl }))
 }
 
 /** Separa las líneas `data:` completas de un buffer SSE y devuelve el resto sin terminar. */
@@ -133,7 +131,12 @@ function deltaOf(payload: string): string {
     choices?: { delta?: { content?: string | null }; message?: { content?: string | null } }[]
     error?: { message?: string }
   }
-  if (parsed.error) throw new LlmError('http', `El modelo devolvió un error: ${parsed.error.message ?? 'sin detalle'}`)
+  if (parsed.error) {
+    throw new LlmError(
+      'http',
+      t('analysis.errors.llmModelError', { message: parsed.error.message ?? t('analysis.errors.llmNoDetail') }),
+    )
+  }
   const choice = parsed.choices?.[0]
   return choice?.delta?.content ?? choice?.message?.content ?? ''
 }
@@ -179,7 +182,11 @@ export async function streamChat(options: StreamChatOptions): Promise<string> {
     } catch {
       detail = ''
     }
-    throw new LlmError('http', `El modelo respondió con HTTP ${response.status}${detail ? `: ${detail}` : ''}`, response.status)
+    throw new LlmError(
+      'http',
+      t('analysis.errors.llmHttp', { status: response.status, detail: detail ? `: ${detail}` : '' }),
+      response.status,
+    )
   }
 
   let text = ''
@@ -214,7 +221,7 @@ export async function streamChat(options: StreamChatOptions): Promise<string> {
           delta = deltaOf(payload)
         } catch (error) {
           if (error instanceof LlmError) throw error
-          throw new LlmError('format', 'La respuesta del modelo no tiene el formato esperado (API compatible con OpenAI).')
+          throw new LlmError('format', t('analysis.errors.llmFormat'))
         }
         if (delta) {
           text += delta
@@ -239,7 +246,7 @@ export async function listModels(settings: LlmSettings, fetchImpl: typeof fetch 
   } catch {
     throw networkError(settings)
   }
-  if (!response.ok) throw new LlmError('http', `El endpoint respondió con HTTP ${response.status}`, response.status)
+  if (!response.ok) throw new LlmError('http', t('analysis.errors.llmEndpointHttp', { status: response.status }), response.status)
   const body = (await response.json()) as { data?: { id?: string }[] }
   return (body.data ?? []).map((entry) => entry.id ?? '').filter(Boolean)
 }

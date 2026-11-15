@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatUsDate, formatUsMonth } from '../services/dateFormat'
+import { formatDate, formatMonth } from '../services/dateFormat'
+import { unitLabel } from '../services/seriesAnalysis'
+import { numberFormatter } from '../i18n/format'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /**
@@ -160,7 +163,7 @@ const barWidth = computed(() => {
   return Math.max(1.5, (plotW * DAY) / (domain[1] - domain[0]) - 0.6)
 })
 
-const numberFormat = computed(() => new Intl.NumberFormat('es-ES', { maximumFractionDigits: props.decimals }))
+const numberFormat = computed(() => numberFormatter({ maximumFractionDigits: props.decimals }))
 
 const yTicks = computed(() => {
   const [min, max] = domainY.value
@@ -175,7 +178,7 @@ const xTicks = computed(() => {
   let cursor = Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)
   while (cursor <= domain[1]) {
     const date = new Date(cursor)
-    ticks.push({ x: x(cursor), label: formatUsMonth(cursor) })
+    ticks.push({ x: x(cursor), label: formatMonth(cursor) })
     cursor = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)
   }
   return ticks
@@ -190,7 +193,12 @@ const activeX = computed(() => {
 const summary = computed(() => {
   const last = [...props.stats].reverse().find((point) => point.mean !== null)
   const count = props.dates.filter(Boolean).length
-  return `${props.title}: ${count} fechas${last?.mean != null ? `; última media de la zona ${numberFormat.value.format(last.mean)} ${props.unit}` : ''}.`
+  return t('analysis.charts.seriesSummary', {
+    title: props.title,
+    count,
+    last: last?.mean != null ? numberFormat.value.format(last.mean) : '',
+    unit: unitLabel(props.unit),
+  })
 })
 </script>
 
@@ -212,7 +220,7 @@ const summary = computed(() => {
           :width="barWidth"
           :height="bar.h"
         >
-          <title>{{ formatUsDate(bar.date, bar.date) }}: {{ numberFormat.format(bar.value) }} {{ barsUnit }}</title>
+          <title>{{ formatDate(bar.date, bar.date) }}: {{ numberFormat.format(bar.value) }} {{ unitLabel(barsUnit) }}</title>
         </rect>
       </g>
       <g class="ot-chart__grid">
@@ -237,21 +245,21 @@ const summary = computed(() => {
         r="4"
         tabindex="0"
         role="button"
-        :aria-label="`Ver fecha ${dates[dot.index]}`"
+        :aria-label="t('analysis.charts.showDate', { date: formatDate(dates[dot.index], '') })"
         @click="emit('select', dot.index)"
         @keydown.enter="emit('select', dot.index)"
       >
-        <title>{{ dates[dot.index] }}: {{ numberFormat.format(dot.value) }} {{ unit }}</title>
+        <title>{{ formatDate(dates[dot.index], '') }}: {{ numberFormat.format(dot.value) }} {{ unitLabel(unit) }}</title>
       </circle>
     </svg>
     <figcaption class="ot-chart__caption">
-      <span v-if="stats.length" class="ot-chart__key ot-chart__key--mean">Media zona (banda p10–p90)</span>
-      <span v-if="seriesA" class="ot-chart__key ot-chart__key--a">Punto A</span>
-      <span v-if="seriesB" class="ot-chart__key ot-chart__key--b">Punto B</span>
+      <span v-if="stats.length" class="ot-chart__key ot-chart__key--mean">{{ t('analysis.charts.zoneMean') }}</span>
+      <span v-if="seriesA" class="ot-chart__key ot-chart__key--a">{{ t('analysis.charts.pointA') }}</span>
+      <span v-if="seriesB" class="ot-chart__key ot-chart__key--b">{{ t('analysis.charts.pointB') }}</span>
       <span v-if="barData.items.length" class="ot-chart__key ot-chart__key--bars">
-        Lluvia diaria (máx. {{ numberFormat.format(barData.max) }} {{ barsUnit }})
+        {{ t('analysis.charts.dailyRain', { value: numberFormat.format(barData.max), unit: unitLabel(barsUnit) }) }}
       </span>
-      <span class="ot-chart__unit">{{ unit }}</span>
+      <span class="ot-chart__unit">{{ unitLabel(unit) }}</span>
     </figcaption>
   </figure>
 </template>

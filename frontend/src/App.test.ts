@@ -3,6 +3,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
 import App from './App.vue'
+import { LOCALE_STORAGE_KEY, setLocale } from './i18n'
 import type {
   ActiveOverlay,
   BBox,
@@ -177,6 +178,7 @@ afterEach(() => {
   wrappers = []
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
+  localStorage.clear()
 })
 
 describe('App — integración con datos reales y línea temporal', () => {
@@ -194,7 +196,7 @@ describe('App — integración con datos reales y línea temporal', () => {
     // cabecera ni panel de procedencia (decisión de producto 2026-11-15).
     expect(wrapper.get('h1').text()).toBe('OliveTwin')
     expect(wrapper.text()).toContain(
-      'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL',
+      'Radar NISAR, vegetación, suelo y clima · datos NISAR PROVISIONALES',
     )
     expect(wrapper.find('.ot-panel__notice').exists()).toBe(false)
     expect(wrapper.find('.ot-provenance').exists()).toBe(false)
@@ -224,7 +226,7 @@ describe('App — integración con datos reales y línea temporal', () => {
     // Slider temporal en el paso activo.
     expect(wrapper.find('.ot-time-slider').exists()).toBe(true)
     expect(wrapper.text()).toContain('Paso 3 de 3')
-    expect(wrapper.text()).toContain('07/14/2026')
+    expect(wrapper.text()).toContain('2026-07-14')
   })
 
   it('el slider cambia overlay.url y la fecha; cambiar de zona reinicia al último paso', async () => {
@@ -240,7 +242,7 @@ describe('App — integración con datos reales y línea temporal', () => {
       timeIndex: 0,
     })
     expect(wrapper.text()).toContain('Paso 1 de 3')
-    expect(wrapper.text()).toContain('06/20/2026')
+    expect(wrapper.text()).toContain('2026-06-20')
 
     // Cambiar de zona vuelve a seleccionar el último paso de la nueva zona.
     await wrapper.get('.ot-zone-selector select').setValue('toledo')
@@ -376,5 +378,72 @@ describe('App — integración con datos reales y línea temporal', () => {
     await settle()
     expect(currentOverlay(wrapper)).not.toBeNull()
     expect(wrapper.get('.ot-layer-panel select option[value="layer:soil-moisture"]').text()).toBe('Humedad del suelo')
+  })
+})
+
+describe('App — idioma de la interfaz', () => {
+  it('arranca en inglés, traduce pestañas y avisos, y el selector cambia a español', async () => {
+    setLocale('en', { persist: false })
+    installFetch()
+    const wrapper = await mountApp()
+
+    // Cabecera y pestañas en inglés (idioma por defecto).
+    expect(wrapper.get('h1').text()).toBe('OliveTwin')
+    expect(wrapper.text()).toContain(
+      'NISAR radar, vegetation, soil and climate · PROVISIONAL NISAR data',
+    )
+    expect(wrapper.findAll('.ot-tabs__tab').map((tab) => tab.text())).toEqual([
+      'Layers',
+      'Analysis',
+      'Compare',
+      'Story',
+    ])
+    expect(wrapper.get('.ot-zone-selector option').text()).toBe('Select an area')
+    expect(wrapper.get('.ot-layer-panel').text()).toContain('Base map')
+    expect(wrapper.text()).toContain('Step 3 of 3')
+    expect(wrapper.text()).not.toContain('Capas')
+
+    // Selector discreto EN | ES accesible.
+    const group = wrapper.get('.ot-lang')
+    expect(group.attributes('role')).toBe('group')
+    expect(group.attributes('aria-label')).toBe('Language')
+    const buttons = group.findAll('button')
+    expect(buttons.map((button) => button.text())).toEqual(['EN', 'ES'])
+    expect(buttons[0]!.attributes('aria-pressed')).toBe('true')
+
+    await buttons[1]!.trigger('click')
+    await nextTick()
+
+    // La interfaz cambia sin recargar y la elección se persiste.
+    expect(wrapper.text()).toContain(
+      'Radar NISAR, vegetación, suelo y clima · datos NISAR PROVISIONALES',
+    )
+    expect(wrapper.findAll('.ot-tabs__tab').map((tab) => tab.text())).toEqual([
+      'Capas',
+      'Análisis',
+      'Comparar',
+      'Historia',
+    ])
+    expect(wrapper.text()).toContain('Paso 3 de 3')
+    expect(wrapper.get('.ot-lang').attributes('aria-label')).toBe('Idioma')
+    expect(wrapper.findAll('.ot-lang button')[0]!.attributes('aria-pressed')).toBe('false')
+    expect(wrapper.findAll('.ot-lang button')[1]!.attributes('aria-pressed')).toBe('true')
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('es')
+  })
+
+  it('traduce los avisos de estado de datos en inglés', async () => {
+    setLocale('en', { persist: false })
+    installFetch()
+    const wrapper = await mountApp()
+
+    mapOf(wrapper).vm.$emit('basemap-error', 'pnoa')
+    await nextTick()
+    expect(wrapper.text()).toContain('The Satellite view is not responding')
+    expect(wrapper.text()).toContain('Use General view')
+
+    mapOf(wrapper).vm.$emit('image-error', currentOverlay(wrapper)!.url)
+    await nextTick()
+    expect(wrapper.text()).toContain('The layer image is not available')
+    expect(wrapper.text()).toContain('Close')
   })
 })

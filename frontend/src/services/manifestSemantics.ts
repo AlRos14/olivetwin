@@ -16,8 +16,12 @@
  * `validate-lib.mjs`: ese módulo arrastra `node:fs`/`node:path` y no debe entrar
  * en el bundle del navegador. Si se cambia una regla semántica, hay que
  * actualizar los dos sitios y sus tests.
+ *
+ * Los mensajes se construyen con el catálogo i18n (`errors.semantics.*`) en el
+ * idioma activo en el momento de la validación.
  */
 import type { BBox, OliveTwinManifest } from '../types/manifest'
+import { t } from '../i18n'
 
 /** Tolerancia en grados, alineada con `BBOX_TOLERANCE_DEG` de validate-lib.mjs. */
 export const RUNTIME_BBOX_TOLERANCE_DEG = 0.01
@@ -54,103 +58,119 @@ function isValidIsoDate(value: unknown): value is string {
   return !Number.isNaN(Date.parse(value.replace(' ', 'T')))
 }
 
+/** Sujeto de un mensaje: «la zona «id» (índice 0)» y equivalentes. */
+function zoneSubject(zoneId: string, index: number): string {
+  return t('errors.semantics.zoneSubject', { id: zoneId, index })
+}
+
+function layerSubject(layerId: string, index: number, zone: string): string {
+  return t('errors.semantics.layerSubject', { id: layerId, index, zone })
+}
+
+function stepSubject(index: number, date: string, layer: string): string {
+  return t('errors.semantics.stepSubject', { index, date, layer })
+}
+
+/** Problemas de bbox comunes a zona, capa y paso temporal. */
+function bboxIssues(subject: string, bbox: BBox, outer: BBox | null): string[] {
+  const issues: string[] = []
+  const [west, south, east, north] = bbox
+
+  if (!(west < east)) {
+    issues.push(t('errors.semantics.invalidWest', { subject, west, east }))
+  }
+  if (!(south < north)) {
+    issues.push(t('errors.semantics.invalidSouth', { subject, south, north }))
+  }
+
+  if (!outer) return issues
+
+  const [outerWest, outerSouth, outerEast, outerNorth] = outer
+  const tolerance = RUNTIME_BBOX_TOLERANCE_DEG
+  if (west < outerWest - tolerance) {
+    issues.push(
+      t('errors.semantics.outsideWest', { subject, value: west, limit: outerWest, tolerance }),
+    )
+  }
+  if (south < outerSouth - tolerance) {
+    issues.push(
+      t('errors.semantics.outsideSouth', { subject, value: south, limit: outerSouth, tolerance }),
+    )
+  }
+  if (east > outerEast + tolerance) {
+    issues.push(
+      t('errors.semantics.outsideEast', { subject, value: east, limit: outerEast, tolerance }),
+    )
+  }
+  if (north > outerNorth + tolerance) {
+    issues.push(
+      t('errors.semantics.outsideNorth', { subject, value: north, limit: outerNorth, tolerance }),
+    )
+  }
+
+  return issues
+}
+
 /**
- * Devuelve una lista de problemas legibles en español (vacía si todo es
- * coherente). El primer mensaje es el que `manifestService` muestra en la UI.
+ * Devuelve una lista de problemas legibles (vacía si todo es coherente). El
+ * primer mensaje es el que `manifestService` muestra en la UI.
  */
 export function manifestSemanticErrors(manifest: OliveTwinManifest): string[] {
   const errors: string[] = []
   const zoneIds = new Set<string>()
 
   manifest.zones.forEach((zone, zoneIndex) => {
-    const zoneLabel = `la zona «${String(zone.id)}» (índice ${zoneIndex})`
+    const subject = zoneSubject(String(zone.id), zoneIndex)
 
     if (zoneIds.has(zone.id)) {
-      errors.push(`id de zona duplicado: «${zone.id}»`)
+      errors.push(t('errors.semantics.duplicateZone', { id: zone.id }))
     }
     zoneIds.add(zone.id)
 
     const zoneBbox = zone.bbox
     if (!isBBox(zoneBbox)) {
-      errors.push(`${zoneLabel} no declara un bbox de cuatro números`)
+      errors.push(t('errors.semantics.noBbox', { subject }))
       return
     }
 
-    if (!(zoneBbox[0] < zoneBbox[2])) {
-      errors.push(
-        `${zoneLabel} tiene un bbox inválido: west (${zoneBbox[0]}) debe ser menor que east (${zoneBbox[2]})`,
-      )
-    }
-    if (!(zoneBbox[1] < zoneBbox[3])) {
-      errors.push(
-        `${zoneLabel} tiene un bbox inválido: south (${zoneBbox[1]}) debe ser menor que north (${zoneBbox[3]})`,
-      )
-    }
+    errors.push(...bboxIssues(subject, zoneBbox, null))
 
     zone.layers.forEach((layer, layerIndex) => {
-      const layerLabel = `la capa «${String(layer.id)}» (índice ${layerIndex}) de ${zoneLabel}`
+      const layerLabel = layerSubject(String(layer.id), layerIndex, subject)
       const layerBbox = layer.bbox
 
       if (!isBBox(layerBbox)) {
-        errors.push(`${layerLabel} no declara un bbox de cuatro números`)
+        errors.push(t('errors.semantics.noBbox', { subject: layerLabel }))
         return
       }
 
-      if (!(layerBbox[0] < layerBbox[2])) {
-        errors.push(
-          `${layerLabel} tiene un bbox inválido: west (${layerBbox[0]}) debe ser menor que east (${layerBbox[2]})`,
-        )
-      }
-      if (!(layerBbox[1] < layerBbox[3])) {
-        errors.push(
-          `${layerLabel} tiene un bbox inválido: south (${layerBbox[1]}) debe ser menor que north (${layerBbox[3]})`,
-        )
-      }
-
-      const [west, south, east, north] = layerBbox
-      const [zoneWest, zoneSouth, zoneEast, zoneNorth] = zoneBbox
-      if (west < zoneWest - RUNTIME_BBOX_TOLERANCE_DEG) {
-        errors.push(
-          `${layerLabel} tiene un bbox fuera de la zona: west (${west}) < ${zoneWest} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-        )
-      }
-      if (south < zoneSouth - RUNTIME_BBOX_TOLERANCE_DEG) {
-        errors.push(
-          `${layerLabel} tiene un bbox fuera de la zona: south (${south}) < ${zoneSouth} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-        )
-      }
-      if (east > zoneEast + RUNTIME_BBOX_TOLERANCE_DEG) {
-        errors.push(
-          `${layerLabel} tiene un bbox fuera de la zona: east (${east}) > ${zoneEast} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-        )
-      }
-      if (north > zoneNorth + RUNTIME_BBOX_TOLERANCE_DEG) {
-        errors.push(
-          `${layerLabel} tiene un bbox fuera de la zona: north (${north}) > ${zoneNorth} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-        )
-      }
+      errors.push(...bboxIssues(layerLabel, layerBbox, zoneBbox))
 
       if (Array.isArray(layer.timeSteps)) {
         let previousTimestamp: number | undefined
         let previousDate: string | undefined
 
         layer.timeSteps.forEach((step, stepIndex) => {
-          const stepLabel = `el paso temporal ${stepIndex} (${String(step.date)}) de ${layerLabel}`
+          const stepLabel = stepSubject(stepIndex, String(step.date), layerLabel)
 
           if (!isValidIsoDate(step.date)) {
-            errors.push(
-              `${stepLabel} no declara una fecha ISO 8601 real (fecha o fecha-hora con zona)`,
-            )
+            errors.push(t('errors.semantics.invalidDate', { subject: stepLabel }))
           } else {
             const timestamp = Date.parse(step.date.replace(' ', 'T'))
             if (previousTimestamp !== undefined) {
               if (timestamp === previousTimestamp) {
                 errors.push(
-                  `${stepLabel} repite la fecha de un paso anterior (${String(previousDate)})`,
+                  t('errors.semantics.duplicateDate', {
+                    subject: stepLabel,
+                    previous: String(previousDate),
+                  }),
                 )
               } else if (!(timestamp > previousTimestamp)) {
                 errors.push(
-                  `${stepLabel} rompe el orden estrictamente creciente: es anterior a ${String(previousDate)}`,
+                  t('errors.semantics.unordered', {
+                    subject: stepLabel,
+                    previous: String(previousDate),
+                  }),
                 )
               }
             }
@@ -160,53 +180,23 @@ export function manifestSemanticErrors(manifest: OliveTwinManifest): string[] {
 
           const stepBbox = step.bbox
           if (!isBBox(stepBbox)) {
-            errors.push(`${stepLabel} no declara un bbox de cuatro números`)
+            errors.push(t('errors.semantics.noBbox', { subject: stepLabel }))
             return
           }
-          if (!(stepBbox[0] < stepBbox[2])) {
-            errors.push(
-              `${stepLabel} tiene un bbox inválido: west (${stepBbox[0]}) debe ser menor que east (${stepBbox[2]})`,
-            )
-          }
-          if (!(stepBbox[1] < stepBbox[3])) {
-            errors.push(
-              `${stepLabel} tiene un bbox inválido: south (${stepBbox[1]}) debe ser menor que north (${stepBbox[3]})`,
-            )
-          }
-
-          const [stepWest, stepSouth, stepEast, stepNorth] = stepBbox
-          if (stepWest < zoneWest - RUNTIME_BBOX_TOLERANCE_DEG) {
-            errors.push(
-              `${stepLabel} tiene un bbox fuera de la zona: west (${stepWest}) < ${zoneWest} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-            )
-          }
-          if (stepSouth < zoneSouth - RUNTIME_BBOX_TOLERANCE_DEG) {
-            errors.push(
-              `${stepLabel} tiene un bbox fuera de la zona: south (${stepSouth}) < ${zoneSouth} - ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-            )
-          }
-          if (stepEast > zoneEast + RUNTIME_BBOX_TOLERANCE_DEG) {
-            errors.push(
-              `${stepLabel} tiene un bbox fuera de la zona: east (${stepEast}) > ${zoneEast} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-            )
-          }
-          if (stepNorth > zoneNorth + RUNTIME_BBOX_TOLERANCE_DEG) {
-            errors.push(
-              `${stepLabel} tiene un bbox fuera de la zona: north (${stepNorth}) > ${zoneNorth} + ${RUNTIME_BBOX_TOLERANCE_DEG}`,
-            )
-          }
+          errors.push(...bboxIssues(stepLabel, stepBbox, zoneBbox))
         })
 
         const lastStep = layer.timeSteps[layer.timeSteps.length - 1]
         if (lastStep && lastStep.image !== layer.image) {
           errors.push(
-            `${layerLabel} tiene un layer.image distinto del último paso temporal (${String(lastStep.image)})`,
+            t('errors.semantics.imageMismatch', {
+              subject: layerLabel,
+              image: String(lastStep.image),
+            }),
           )
         }
         if (lastStep && isBBox(lastStep.bbox) && !sameBBox(lastStep.bbox, layerBbox)) {
-          errors.push(
-            `${layerLabel} tiene un layer.bbox distinto del último paso temporal`,
-          )
+          errors.push(t('errors.semantics.bboxMismatch', { subject: layerLabel }))
         }
       }
     })

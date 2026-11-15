@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     environment: 'jsdom',
+    setupFiles: ['src/i18n/testSetup.ts'],
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts', 'scripts/**/*.test.{ts,mjs}'],
   },
 })

@@ -1,178 +1,191 @@
 # frontend — OliveTwin
 
-Aplicación estática del proyecto OliveTwin (NASA Space Apps Challenge 2026,
-*Dancing with the SARs*), construida con **Vue 3 + Vite + TypeScript** y
+Static application of the OliveTwin project (NASA Space Apps Challenge 2026,
+*Dancing with the SARs*), built with **Vue 3 + Vite + TypeScript** and
 **Leaflet**.
 
-Pestañas: **Capas** (cualquier variable del cubo de análisis en el mapa, con
-línea temporal, leyenda y relevancia), **Análisis** (sin mapa: imágenes de una
-variable, cambio, gráficas, valores, valores de referencia y aptitud por cultivo,
-e interpretación con un modelo de lenguaje compatible con OpenAI), **Comparar**
-(zona A frente a zona B para un cultivo) e **Historia**. La demo publica **solo
-datos reales** de Jaén y Toledo; el subtítulo indica que el producto NISAR es
-PROVISIONAL. No hay backend, router ni gestor de estado externo: el estado vive
-en composables y props/emits. Cómo arrancarla: [README principal](../README.md).
+Tabs: **Layers** (any analysis-cube variable on the map, with timeline, legend
+and relevance), **Analysis** (no map: images of a variable, change, charts,
+values, reference values and crop suitability, plus interpretation with an
+OpenAI-compatible language model), **Compare** (Area A versus Area B for a crop)
+and **Story**. The demo publishes **real data only** from Jaén and Toledo; the
+subtitle states that the NISAR product is PROVISIONAL. There is no backend,
+router or external state manager: state lives in composables and props/emits.
+How to run it: [main README](../README.md).
 
-El mapa base es cartografía real (PNOA/IGN, OpenStreetMap y recintos SIGPAC del
-FEGA) y no forma parte de
-los datos científicos ni de NISAR. La humedad superficial (~5 cm) no equivale a
-necesidad de riego.
+The base map is real cartography (PNOA/IGN, OpenStreetMap and SIGPAC parcels from
+FEGA) and is not part of the scientific data or NISAR. Surface soil moisture
+(~5 cm) is not the same as irrigation needs.
 
-## Arranque local
+## Languages
 
-Requisitos: Node 22 LTS (ver `.nvmrc` en la raíz del repositorio; Vite exige
+The interface is in English by default and offers a discreet EN|ES selector;
+the choice is kept in `localStorage`. UI strings live in
+`src/i18n/messages/` (the English catalog is the source of truth and `es/`
+mirrors its shape) and are resolved through `t()`. Free-text fields that come
+from the published data (titles, descriptions, notices, provenance, legends and
+crops in `manifest.json` and `analysis.json`) are authored in Spanish by the
+pipelines; their English rendering is in `public/data/real/i18n/en.json` and is
+applied by `dataText()`. If an entry is missing, the Spanish source is shown.
+Dates are ISO 8601 in every language (see `src/services/dateFormat.ts`) and
+numbers use the locale decimal separator.
+
+## Local start
+
+Requirements: Node 22 LTS (see `.nvmrc` at the repository root; Vite requires
 `^20.19.0 || >=22.12.0`).
 
 ```bash
 cd frontend
 npm ci
-npm run dev      # servidor de desarrollo
-npm run build    # comprobación de tipos + build de producción en dist/
-npm run preview  # sirve localmente el contenido de dist/
+npm run dev      # development server
+npm run build    # type check + production build in dist/
+npm run preview  # serves dist/ locally
 ```
 
 ## Scripts
 
-| Script | Descripción |
+| Script | Description |
 |---|---|
-| `dev` | Servidor de desarrollo de Vite. |
-| `build` | `vue-tsc -b` + `vite build`; genera `dist/` (ignorado por Git). |
-| `preview` | Sirve el build de producción. |
-| `test` | Vitest en modo `run` (`--passWithNoTests`); incluye `src/**`, `tests/**` y `scripts/**` con patrón `*.test.ts` / `*.test.mjs`. |
-| `typecheck` | Solo comprobación de tipos con `vue-tsc -b`. |
-| `validate:data` | Valida `public/data/real/manifest.json`, sus assets (todos los `timeSteps`) y los fixtures contractuales. `sample/` es opcional. |
+| `dev` | Vite development server. |
+| `build` | `vue-tsc -b` + `vite build`; generates `dist/` (ignored by Git). |
+| `preview` | Serves the production build. |
+| `test` | Vitest in `run` mode (`--passWithNoTests`); includes `src/**`, `tests/**` and `scripts/**` with the `*.test.ts` / `*.test.mjs` pattern. |
+| `typecheck` | Type check only with `vue-tsc -b`. |
+| `validate:data` | Validates `public/data/real/manifest.json`, its assets (all `timeSteps`) and the contract fixtures. `sample/` is optional. |
 
-Build bajo subruta:
+Build under a subpath:
 
 ```bash
 npm run build -- --base /olivetwin/
 npm run preview -- --base /olivetwin/
 ```
 
-Las rutas de manifiestos y PNG se resuelven con `import.meta.env.BASE_URL`, no
-con `/` absoluto.
+Manifest and PNG paths resolve with `import.meta.env.BASE_URL`, not with an
+absolute `/`.
 
-## Estructura
+## Structure
 
 ```text
 frontend/
 ├── index.html
 ├── public/
 │   └── data/
-│       └── real/                  # manifiesto + zones/<id>/soil-moisture/<fecha>.png
+│       └── real/                  # manifest + zones/<id>/soil-moisture/<date>.png
 ├── src/
-│   ├── App.vue                    # composición de la vista (INT01)
-│   ├── main.ts                    # monta la aplicación
-│   ├── style.css                  # estilos globales mínimos
+│   ├── App.vue                    # view composition (INT01)
+│   ├── main.ts                    # mounts the application
+│   ├── style.css                  # minimal global styles
 │   ├── components/
-│   │   ├── OliveMap.vue           # mapa Leaflet, PNOA/OSM y encuadres
-│   │   ├── StudyZoneMarkers.vue   # contornos y selección de zonas
-│   │   ├── ScientificOverlay.vue  # ImageOverlay por bbox y opacidad
-│   │   ├── TimeSlider.vue         # línea temporal (slider, anterior/siguiente, reproducir)
-│   │   ├── ZoneSelector.vue       # selector de zona
-│   │   ├── LayerPanel.vue         # capa, opacidad, visibilidad y mapa base
-│   │   ├── LayerLegend.vue        # leyenda de la capa activa
-│   │   ├── StatusBanner.vue       # avisos y errores de carga
-│   │   ├── AnalysisControls.vue   # controles de Análisis (variable, fechas, imágenes, cultivo, IA)
-│   │   ├── AnalysisWorkspace.vue  # área de Análisis: imágenes, cambio, gráficas, valores, aptitud
-│   │   ├── LlmReport.vue          # interpretación del modelo (texto seguro, streaming)
-│   │   ├── LlmSettingsPanel.vue   # endpoint, modelo y clave del modelo de IA
-│   │   ├── DistributionChart.vue  # distribución por fecha (SVG)
-│   │   ├── layerOptions.ts        # variables del cubo en Capas y su leyenda
-│   │   ├── CompareControls.vue    # Comparar: zona A, zona B y cultivo
-│   │   ├── CompareWorkspace.vue   # Comparar: veredicto, motivos, mapas y factores
-│   │   ├── CropReferenceCard.vue  # valores de referencia del cultivo para una variable
-│   │   ├── CropRangesTable.vue    # rangos del cultivo para todas las variables
-│   │   ├── HistogramChart.vue     # reparto de la superficie por tramos (SVG)
-│   │   ├── LayerRelevance.vue     # recuadro «Relevancia» de Capas
-│   │   ├── SeriesChart.vue        # serie temporal SVG (zona y lluvia)
-│   │   ├── StoryPanel.vue         # relato del reto e hipótesis
-│   │   ├── AnalysisOverlay.vue    # capa calculada del cubo de análisis
-│   │   └── map/                   # helpers de Leaflet (basemaps, geo, teselas)
+│   │   ├── OliveMap.vue           # Leaflet map, PNOA/OSM and framings
+│   │   ├── StudyZoneMarkers.vue   # zone outlines and selection
+│   │   ├── ScientificOverlay.vue  # ImageOverlay by bbox and opacity
+│   │   ├── TimeSlider.vue         # timeline (slider, previous/next, play)
+│   │   ├── ZoneSelector.vue       # zone selector
+│   │   ├── LayerPanel.vue         # layer, opacity, visibility and base map
+│   │   ├── LayerLegend.vue        # legend of the active layer
+│   │   ├── StatusBanner.vue       # load notices and errors
+│   │   ├── AnalysisControls.vue   # Analysis controls (variable, dates, images, crop, AI)
+│   │   ├── AnalysisWorkspace.vue  # Analysis area: images, change, charts, values, suitability
+│   │   ├── LlmReport.vue          # model interpretation (safe text, streaming)
+│   │   ├── LlmSettingsPanel.vue   # endpoint, model and API key of the AI model
+│   │   ├── DistributionChart.vue  # distribution by date (SVG)
+│   │   ├── layerOptions.ts        # cube variables in Layers and their legend
+│   │   ├── CompareControls.vue    # Compare: Area A, Area B and crop
+│   │   ├── CompareWorkspace.vue   # Compare: verdict, reasons, maps and factors
+│   │   ├── CropReferenceCard.vue  # reference values of the crop for one variable
+│   │   ├── CropRangesTable.vue    # crop ranges for all variables
+│   │   ├── HistogramChart.vue     # area share by intervals (SVG)
+│   │   ├── LayerRelevance.vue     # "Relevance" box of Layers
+│   │   ├── SeriesChart.vue        # SVG time series (zone and rain)
+│   │   ├── StoryPanel.vue         # challenge story and hypotheses
+│   │   ├── AnalysisOverlay.vue    # computed layer of the analysis cube
+│   │   └── map/                   # Leaflet helpers (basemaps, geo, tiles)
 │   ├── composables/
-│   │   ├── useOliveTwinData.ts    # estado, selección, paso temporal y overlay
-│   │   ├── useZoneAnalysis.ts     # cubo de análisis: capa del mapa y caché de rásteres
-│   │   ├── useAnalysisWorkspace.ts # pestaña Análisis: serie, aptitud e informes
-│   │   ├── useZoneComparison.ts   # pestaña Comparar: dos zonas y un cultivo
-│   │   └── useLlm.ts              # configuración del modelo e informes en streaming
+│   │   ├── useOliveTwinData.ts    # state, selection, time step and overlay
+│   │   ├── useZoneAnalysis.ts     # analysis cube: map layer and raster cache
+│   │   ├── useAnalysisWorkspace.ts # Analysis tab: series, suitability and reports
+│   │   ├── useZoneComparison.ts   # Compare tab: two zones and one crop
+│   │   └── useLlm.ts              # model configuration and streaming reports
 │   ├── services/
-│   │   ├── manifestService.ts     # carga y valida manifiestos en runtime
-│   │   ├── manifestSemantics.ts   # reglas semánticas del contrato
-│   │   ├── assetUrl.ts            # resuelve rutas con BASE_URL
-│   │   ├── analysisService.ts     # carga y valida el cubo de análisis
-│   │   ├── analysisMath.ts        # decodificación, cambio, zona común, estadísticas e histograma
-│   │   ├── seriesAnalysis.ts      # muestreo de fechas, tendencia, cambio y clima
-│   │   ├── cropSuitability.ts     # clases de aptitud y factor limitante
-│   │   ├── cropRequirements.ts    # requisitos publicados de cada variable por cultivo
-│   │   ├── cropComparison.ts      # veredicto y motivos de Comparar
-│   │   ├── dateFormat.ts          # fechas MM/DD/YYYY en UTC
-│   │   ├── llmClient.ts           # cliente compatible con OpenAI (streaming)
-│   │   ├── llmPrompts.ts          # mensajes para el modelo
-│   │   ├── markdownLite.ts        # Markdown seguro (sin HTML)
-│   │   ├── pngGray.ts             # decodifica PNG gris de 8 bits sin canvas
-│   │   └── palettes.ts            # paletas y render a RGBA
+│   │   ├── manifestService.ts     # loads and validates manifests at runtime
+│   │   ├── manifestSemantics.ts   # semantic rules of the contract
+│   │   ├── assetUrl.ts            # resolves paths with BASE_URL
+│   │   ├── analysisService.ts     # loads and validates the analysis cube
+│   │   ├── analysisMath.ts        # decoding, change, common zone, statistics and histogram
+│   │   ├── seriesAnalysis.ts      # date sampling, trend, change and climate
+│   │   ├── cropSuitability.ts     # suitability classes and limiting factor
+│   │   ├── cropRequirements.ts    # published requirements of each variable per crop
+│   │   ├── cropComparison.ts      # verdict and reasons of Compare
+│   │   ├── dateFormat.ts          # ISO 8601 dates in UTC
+│   │   ├── llmClient.ts           # OpenAI-compatible client (streaming)
+│   │   ├── llmPrompts.ts          # prompts for the model
+│   │   ├── markdownLite.ts        # safe Markdown (no HTML)
+│   │   ├── pngGray.ts             # decodes 8-bit grey PNG without canvas
+│   │   └── palettes.ts            # palettes and RGBA rendering
 │   ├── types/
-│   │   ├── manifest.ts            # tipos del contrato (manifiesto)
-│   │   └── analysis.ts            # tipos del cubo de análisis v1.3.0
+│   │   ├── manifest.ts            # contract types (manifest)
+│   │   └── analysis.ts            # analysis cube types v1.3.0
 │   └── styles/
-│       ├── map.css                # estilos del mapa y controles
-│       ├── ui.css                 # estilos del panel
-│       └── analysis.css           # estilos de análisis, gemelos, gráfica e historia
+│       ├── map.css                # map and control styles
+│       ├── ui.css                 # panel styles
+│       └── analysis.css           # analysis, twins, chart and story styles
 ├── scripts/
-│   ├── validate-data.mjs          # CLI de validate:data
-│   ├── validate-lib.mjs           # esquema, semántica y comprobación de PNG
-│   └── fixtures/                  # manifiestos válidos e inválidos de prueba
+│   ├── validate-data.mjs          # validate:data CLI
+│   ├── validate-lib.mjs           # schema, semantics and PNG check
+│   └── fixtures/                  # valid and invalid test manifests
 ├── tests/
-│   └── e2e/                       # specs Playwright e instrucciones del harness
+│   └── e2e/                       # Playwright specs and harness instructions
 ├── package.json
 ├── package-lock.json
 ├── tsconfig*.json
 └── vite.config.ts
 ```
 
-La propiedad de cada carpeta está congelada en
-[`docs/c0-interfaces.md`](../docs/c0-interfaces.md) §5 y en
-[`AGENTS.md`](../AGENTS.md): WP-04 posee tipos, servicios, composables,
-manifiestos y validación; WP-07 posee componentes y estilos; INT01 solo compone
-`App.vue` y `main.ts`; INT02 posee `tests/` y la documentación de QA.
+Ownership of each folder is frozen in
+[`docs/c0-interfaces.md`](../docs/c0-interfaces.md) §5 and in
+[`AGENTS.md`](../AGENTS.md): WP-04 owns types, services, composables,
+manifests and validation; WP-07 owns components and styles; INT01 only composes
+`App.vue` and `main.ts`; INT02 owns `tests/` and the QA documentation.
 
-## Datos y contrato
+## Data and contract
 
-- `public/data/real/manifest.json` declara `datasetMode: "real"`, Jaén y Toledo,
-  y tres `timeSteps` de humedad superficial NISAR L3 SME2 por zona.
-- El manifiesto real es obligatorio para `validate:data`; el de muestra es
-  opcional y no lo carga la aplicación.
-- Las rutas `image` son relativas a `public/` y se resuelven con
+- `public/data/real/manifest.json` declares `datasetMode: "real"`, Jaén and
+  Toledo, and three `timeSteps` of NISAR L3 SME2 surface soil moisture per zone.
+- The real manifest is mandatory for `validate:data`; the sample one is optional
+  and is not loaded by the application.
+- `image` paths are relative to `public/` and resolve with
   `import.meta.env.BASE_URL`.
-- Cada zona enlaza su cubo de análisis (`zone.analysis`, contrato v1.3.0,
+- Each zone links its analysis cube (`zone.analysis`, contract v1.3.0,
   [`contracts/analysis.schema.json`](../contracts/analysis.schema.json)),
-  generado por [`pipelines/analysis/`](../pipelines/analysis/README.md).
-- El contrato completo (v1.3.0) está en
-  [`docs/data-contract.md`](../docs/data-contract.md) y
+  generated by [`pipelines/analysis/`](../pipelines/analysis/README.md).
+- The full contract (v1.3.0) is in
+  [`docs/data-contract.md`](../docs/data-contract.md) and
   [`contracts/manifest.schema.json`](../contracts/manifest.schema.json).
-- Para añadir fechas o zonas reales, usa el pipeline NISAR
-  (`--publish` y `--from-staging`) y sigue
-  [`docs/handoff-science.md`](../docs/handoff-science.md); no se editan
-  componentes Vue.
+- To add real dates or zones, use the NISAR pipeline
+  (`--publish` and `--from-staging`) and follow
+  [`docs/handoff-science.md`](../docs/handoff-science.md); Vue components are
+  not edited.
 
-## Pruebas
+## Tests
 
 ```bash
-npm test                 # Vitest: contrato, servicios, composable y componentes
-npm run validate:data    # manifiestos, assets y fixtures
-npm run build            # vue-tsc + build estático
+npm test                 # Vitest: contract, services, composables and components
+npm run validate:data    # manifests, assets and fixtures
+npm run build            # vue-tsc + static build
 ```
 
-Los tests unitarios viven junto al código (`*.test.ts`). Los escenarios E2E en
-navegador real usan Playwright con un harness **externo** al repositorio y no se
-ejecutan en CI; instrucciones y limitaciones en
-[`tests/e2e/README.md`](tests/e2e/README.md). El informe de QA con evidencias
-está en [`docs/qa-results.md`](../docs/qa-results.md).
+Unit tests live next to the code (`*.test.ts`). Browser E2E scenarios use
+Playwright with a harness **external** to the repository and do not run in CI;
+instructions and limitations in
+[`tests/e2e/README.md`](tests/e2e/README.md). The QA report with evidence is in
+[`docs/qa-results.md`](../docs/qa-results.md).
 
-## Despliegue
+## Deployment
 
-El resultado es una SPA estática en `dist/`. Puede servirse en la raíz o en una
-subruta (por ejemplo `/olivetwin/`) siempre que la build se genere con el
-`--base` correspondiente. PNOA y OpenStreetMap son servicios externos: sin
-Internet las teselas no cargan, aunque la aplicación y sus mensajes siguen
-funcionando.
+The result is a static SPA in `dist/`. It can be served at the root or under a
+subpath (for example `/olivetwin/`) as long as the build is generated with the
+corresponding `--base`. PNOA and OpenStreetMap are external services: without
+Internet the tiles do not load, although the application and its messages keep
+working. The demo is published on GitHub Pages at
+<https://alros14.github.io/olivetwin/> on every merge to `main`.

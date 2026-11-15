@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
+import { setLocale } from '../i18n'
+import { setDataCatalog } from '../i18n/dataText'
 
 import type { ZoneAnalysis } from '../types/analysis'
 import type { StudyZone } from '../types/manifest'
@@ -208,6 +210,51 @@ describe('SeriesChart', () => {
     expect(wrapper.findAll('.ot-chart__bars rect')).toHaveLength(1)
     await wrapper.findAll('.ot-chart__dot')[0].trigger('click')
     expect(wrapper.emitted('select')?.[0]).toEqual([0])
+  })
+})
+
+describe('AnalysisWorkspace — inglés', () => {
+  it('muestra la pestaña de análisis en inglés al cambiar de idioma', async () => {
+    const { workspace } = await workspaceFixture()
+    const wrapper = mount(AnalysisWorkspace, {
+      props: { workspace, zoneName: 'Jaén', zoneSeries: analysisFixture('jaen').zoneSeries ?? [] },
+    })
+    expect(wrapper.text()).toContain('Valores')
+    setLocale('en', { persist: false })
+    await nextTick()
+    const text = wrapper.text()
+    expect(text).toContain('Distribution over the zone')
+    expect(text).toContain('Values')
+    expect(text).toContain('With data')
+    expect(text).toContain('Mean change')
+    expect(text).toContain('Rising')
+    expect(text).not.toContain('Cambio medio')
+    expect(text).not.toContain('Sin dato')
+    expect(wrapper.text()).toContain('m³/m³')
+    wrapper.unmount()
+  })
+
+  it('los controles y la aptitud se muestran en inglés', async () => {
+    setDataCatalog({ Olivo: 'Olive', 'Secano.': 'Rainfed.' })
+    setLocale('en', { persist: false })
+    const { workspace, settings } = await workspaceFixture()
+    const controls = mount(AnalysisControls, { props: { workspace, status: 'ready', error: null, settings } })
+    expect(controls.text()).toContain('Single-variable analysis')
+    expect(controls.text()).toContain('Crop suitability')
+    expect(controls.text()).toContain('Images:')
+    expect(controls.text()).toContain('Olive')
+    expect(controls.text()).not.toContain('Cultivo')
+    controls.unmount()
+
+    workspace.setMode('crop')
+    await settle()
+    const wrapper = mount(AnalysisWorkspace, { props: { workspace, zoneName: 'Jaén', zoneSeries: [] } })
+    expect(wrapper.text()).toContain('Suitability for olive')
+    expect(wrapper.text()).toContain('What limits')
+    expect(wrapper.text()).toContain('No limitation')
+    expect(wrapper.text()).toContain('S1 · high (≥ 0.85)')
+    expect(wrapper.text()).not.toContain('Qué limita')
+    wrapper.unmount()
   })
 })
 

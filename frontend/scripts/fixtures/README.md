@@ -1,57 +1,57 @@
-# Fixtures del validador de datos (A04 + WP04-01)
+# Data validator fixtures (A04 + WP04-01)
 
-Casos de auto-test que ejecutan `npm run validate:data` y
-`frontend/src/types/contract.test.ts`. El script los descubre por carpeta y por
-extensión `.json`; no hay una lista codificada de nombres.
+Self-test cases run by `npm run validate:data` and
+`frontend/src/types/contract.test.ts`. The script discovers them by folder and by
+`.json` extension; there is no hard-coded list of names.
 
-Los fixtures son material contractual de prueba: **no son observaciones** ni se
-sirven desde `frontend/public/data/`. La comprobación de existencia/alfa del PNG
-se desactiva para ellos; el esquema y la validación semántica sí se aplican.
+Fixtures are contractual test material: **they are not observations** and are
+not served from `frontend/public/data/`. The PNG existence/alpha check
+is disabled for them; the schema and semantic validation do apply.
 
 ## `valid/`
 
-Deben validar contra `contracts/manifest.schema.json` y las reglas semánticas.
+They must validate against `contracts/manifest.schema.json` and the semantic rules.
 
-| Fixture | Qué cubre |
+| Fixture | What it covers |
 |---|---|
-| `sample-empty.json` | Manifiesto `sample` con `zones: []` (estado real de Fase A). |
-| `real-empty.json` | Manifiesto `real` con `zones: []`; el modo vacío es válido. |
-| `sample-plan-4.3.json` | Ejemplo completo de la sección 4.3 del plan v2 (zona, capa NDVI, leyenda de tres clases, procedencia sintética). |
-| `real-with-processed-real.json` | Zona `real` con una capa `processed_real` y `provenance` completa (fecha, escena y URL). Es un **fixture contractual** para AT-16: no debe publicarse en `data/real/` ni presentarse como dato científico. |
-| `sample-with-timesteps.json` | Manifiesto `sample` v1.2.0 con tres pasos temporales ordenados, el último igual a `layer.image`/`bbox` y `provenance` parcial en un paso. |
-| `real-with-timesteps.json` | Manifiesto `real` v1.2.0 con `processed_real` y procedencia efectiva completa en cada paso. Fixture contractual; no es una observación real. |
+| `sample-empty.json` | `sample` manifest with `zones: []` (real Phase A state). |
+| `real-empty.json` | `real` manifest with `zones: []`; the empty mode is valid. |
+| `sample-plan-4.3.json` | Full example from section 4.3 of plan v2 (zone, NDVI layer, three-class legend, synthetic provenance). |
+| `real-with-processed-real.json` | `real` zone with a `processed_real` layer and complete `provenance` (date, scene and URL). It is a **contractual fixture** for AT-16: it must not be published in `data/real/` or presented as scientific data. |
+| `sample-with-timesteps.json` | `sample` manifest v1.2.0 with three ordered time steps, the last one equal to `layer.image`/`bbox`, and partial `provenance` in one step. |
+| `real-with-timesteps.json` | `real` manifest v1.2.0 with `processed_real` and complete effective provenance in every step. Contractual fixture; it is not a real observation. |
 
 ## `invalid/`
 
-Deben ser rechazados por el esquema o por la validación semántica. El JSON tiene
-que parsear: si un fixture estuviera mal formado, el script lo reporta como
-error del propio fixture.
+They must be rejected by the schema or by semantic validation. The JSON has
+to parse: if a fixture were malformed, the script reports it as an
+error in the fixture itself.
 
-| Fixture | Error que representa |
+| Fixture | Error it represents |
 |---|---|
-| `unknown-dataset-mode.json` | `datasetMode: "unknown"` fuera del enum `sample`/`real`. |
-| `zones-null.json` | `zones` no es un array. |
-| `missing-schema-version.json` | Falta `schemaVersion`, que es obligatorio. |
-| `layer-legend-object.json` | `legend` es un objeto en vez de la lista ordenada `{value, color, label}`. |
-| `status-processed-real-in-sample.json` | Modo `sample` con una capa `processed_real`. |
-| `status-synthetic-in-real.json` | Modo `real` con una capa `synthetic`. |
-| `bbox-inverted.json` | `zone.bbox` con west ≥ east; también invalida la contención de la capa. |
-| `layer-outside-zone.json` | `layer.bbox` fuera de `zone.bbox` más allá de la tolerancia de 0.01°. |
-| `image-absolute-path.json` | Ruta `image` con `/` inicial (`/x.png`). |
-| `image-parent-traversal.json` | Ruta `image` con `..` (`../x.png`). |
-| `image-percent-encoded.json` | Ruta `image` con codificación porcentual (`%2e%2e`, que el navegador normaliza como `..`). |
-| `image-external-url.json` | URL externa en `image` (`https://x/y.png`). |
-| `acquisition-date-impossible.json` | `provenance.acquisitionDate` con una fecha imposible (`2026-13-45`). |
-| `image-crs-unsupported.json` | `imageCrs` distinto de `EPSG:3857`. |
-| `image-wrong-mode-directory.json` | `image` de `real` referenciada desde un manifiesto `sample`. |
-| `duplicate-zone-ids.json` | Dos zonas con el mismo `id`. |
-| `legend-unordered.json` | Paradas de leyenda no ordenadas por `value`. |
-| `legend-single-stop.json` | Leyenda con una sola parada (mínimo: dos). |
-| `range-inverted.json` | `range` con `min` ≥ `max`. |
-| `zone-id-not-kebab.json` | `id` de zona que no cumple kebab-case (`Jaen_Demo`). |
-| `timesteps-unordered.json` | `timeSteps` con fechas no crecientes. |
-| `timesteps-duplicate-date.json` | Dos pasos con la misma `date`. |
-| `timesteps-last-step-mismatch.json` | `layer.image` no coincide con el `image` del último paso. |
-| `timestep-outside-zone.json` | Un paso intermedio con `bbox` fuera de `zone.bbox`. |
-| `timesteps-processed-real-step-missing-scene.json` | `processed_real` con un paso cuya procedencia efectiva deja `sceneId` a `null`. |
-| `timesteps-schema-version-1.1.0.json` | `timeSteps` declarados con `schemaVersion: "1.1.0"` en vez de `"1.2.0"`. |
+| `unknown-dataset-mode.json` | `datasetMode: "unknown"` outside the `sample`/`real` enum. |
+| `zones-null.json` | `zones` is not an array. |
+| `missing-schema-version.json` | `schemaVersion` is missing, which is mandatory. |
+| `layer-legend-object.json` | `legend` is an object instead of the ordered `{value, color, label}` list. |
+| `status-processed-real-in-sample.json` | `sample` mode with a `processed_real` layer. |
+| `status-synthetic-in-real.json` | `real` mode with a `synthetic` layer. |
+| `bbox-inverted.json` | `zone.bbox` with west ≥ east; it also invalidates layer containment. |
+| `layer-outside-zone.json` | `layer.bbox` outside `zone.bbox` beyond the 0.01° tolerance. |
+| `image-absolute-path.json` | `image` path with a leading `/` (`/x.png`). |
+| `image-parent-traversal.json` | `image` path with `..` (`../x.png`). |
+| `image-percent-encoded.json` | `image` path with percent-encoding (`%2e%2e`, which the browser normalises as `..`). |
+| `image-external-url.json` | External URL in `image` (`https://x/y.png`). |
+| `acquisition-date-impossible.json` | `provenance.acquisitionDate` with an impossible date (`2026-13-45`). |
+| `image-crs-unsupported.json` | `imageCrs` other than `EPSG:3857`. |
+| `image-wrong-mode-directory.json` | `image` from `real` referenced from a `sample` manifest. |
+| `duplicate-zone-ids.json` | Two zones with the same `id`. |
+| `legend-unordered.json` | Legend stops not sorted by `value`. |
+| `legend-single-stop.json` | Legend with a single stop (minimum: two). |
+| `range-inverted.json` | `range` with `min` ≥ `max`. |
+| `zone-id-not-kebab.json` | Zone `id` that does not satisfy kebab-case (`Jaen_Demo`). |
+| `timesteps-unordered.json` | `timeSteps` with non-increasing dates. |
+| `timesteps-duplicate-date.json` | Two steps with the same `date`. |
+| `timesteps-last-step-mismatch.json` | `layer.image` does not match the `image` of the last step. |
+| `timestep-outside-zone.json` | An intermediate step with `bbox` outside `zone.bbox`. |
+| `timesteps-processed-real-step-missing-scene.json` | `processed_real` with a step whose effective provenance leaves `sceneId` as `null`. |
+| `timesteps-schema-version-1.1.0.json` | `timeSteps` declared with `schemaVersion: "1.1.0"` instead of `"1.2.0"`. |

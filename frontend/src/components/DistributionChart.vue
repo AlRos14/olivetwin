@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AnalysisStats } from '../types/analysis'
-import { formatUsDate } from '../services/dateFormat'
+import { formatDate } from '../services/dateFormat'
+import { unitLabel } from '../services/seriesAnalysis'
+import { numberFormatter } from '../i18n/format'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /**
@@ -51,9 +54,24 @@ function x(index: number): number {
   return M.left + slot.value * (index + 0.5)
 }
 
-const format = computed(() => new Intl.NumberFormat('es-ES', { maximumFractionDigits: props.decimals }))
+const format = computed(() => numberFormatter({ maximumFractionDigits: props.decimals }))
 function label(date: string): string {
-  return formatUsDate(date, date)
+  return formatDate(date, date)
+}
+
+function statText(value: number | null): string {
+  return value === null ? t('analysis.charts.noValue') : format.value.format(value)
+}
+
+function pointTitle(stat: AnalysisStats, index: number): string {
+  return t('analysis.charts.pointTitle', {
+    date: label(props.dates[index]),
+    mean: statText(stat.mean),
+    median: statText(stat.median),
+    p10: statText(stat.p10),
+    p90: statText(stat.p90),
+    unit: unitLabel(props.unit),
+  })
 }
 
 const ticks = computed(() => {
@@ -66,7 +84,7 @@ const barWidth = computed(() => Math.max(4, Math.min(18, slot.value * 0.45)))
 
 <template>
   <figure class="ot-chart">
-    <svg :viewBox="`0 0 ${W} ${H}`" class="ot-chart__svg" role="img" :aria-label="`Distribución por fecha en ${unit}`">
+    <svg :viewBox="`0 0 ${W} ${H}`" class="ot-chart__svg" role="img" :aria-label="t('analysis.charts.distributionAria', { unit: unitLabel(unit) })">
       <g class="ot-chart__grid">
         <line v-for="tick in ticks" :key="tick" :x1="M.left" :x2="W - M.right" :y1="y(tick)" :y2="y(tick)" />
         <text v-for="tick in ticks" :key="`t${tick}`" :x="M.left - 4" :y="y(tick) + 3" text-anchor="end">
@@ -84,11 +102,7 @@ const barWidth = computed(() => Math.max(4, Math.min(18, slot.value * 0.45)))
         </text>
       </g>
       <g v-for="(stat, index) in stats" :key="index" class="ot-dist">
-        <title>
-          {{ label(dates[index]) }}: media {{ stat.mean === null ? 's/d' : format.format(stat.mean) }}, mediana
-          {{ stat.median === null ? 's/d' : format.format(stat.median) }}, p10–p90
-          {{ stat.p10 === null ? 's/d' : format.format(stat.p10) }}–{{ stat.p90 === null ? 's/d' : format.format(stat.p90) }} {{ unit }}
-        </title>
+        <title>{{ pointTitle(stat, index) }}</title>
         <line v-if="stat.min !== null && stat.max !== null" class="ot-dist__range" :x1="x(index)" :x2="x(index)" :y1="y(stat.min)" :y2="y(stat.max)" />
         <rect
           v-if="stat.p10 !== null && stat.p90 !== null"
@@ -110,8 +124,8 @@ const barWidth = computed(() => Math.max(4, Math.min(18, slot.value * 0.45)))
       </g>
     </svg>
     <figcaption class="ot-chart__caption">
-      <span>Barra p10–p90 · línea mín–máx · trazo mediana · punto media</span>
-      <span class="ot-chart__unit">{{ unit }}</span>
+      <span>{{ t('analysis.charts.distributionCaption') }}</span>
+      <span class="ot-chart__unit">{{ unitLabel(unit) }}</span>
     </figcaption>
   </figure>
 </template>

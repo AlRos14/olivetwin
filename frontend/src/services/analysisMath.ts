@@ -105,6 +105,79 @@ export interface HistogramBin {
   fraction: number
 }
 
+/** Partes de la zona con un identificador estable (el texto se traduce al pintarlo). */
+export type AreaId =
+  | 'quadrant-nw'
+  | 'quadrant-ne'
+  | 'quadrant-sw'
+  | 'quadrant-se'
+  | 'elevation-low'
+  | 'elevation-mid'
+  | 'elevation-high'
+
+export interface AreaMean {
+  id: AreaId
+  mean: number | null
+  /** Límites en metros de las franjas de altitud (solo `elevation-*`). */
+  min?: number
+  max?: number
+}
+
+function meanOf(values: number[]): number | null {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
+}
+
+/**
+ * Media por cuadrantes y por tercios de altitud (para describir dónde es mayor
+ * o menor). Solo devuelve identificadores y números: el texto lo resuelve la
+ * interfaz en el idioma activo, de modo que cambiar de idioma no exige recalcular.
+ */
+export function areaBreakdown(
+  width: number,
+  height: number,
+  values: Float32Array,
+  elevation: Float32Array | null,
+): AreaMean[] {
+  const quadrants: Record<string, number[]> = {
+    'quadrant-nw': [],
+    'quadrant-ne': [],
+    'quadrant-sw': [],
+    'quadrant-se': [],
+  }
+  for (let row = 0; row < height; row += 1) {
+    for (let col = 0; col < width; col += 1) {
+      const value = values[row * width + col]
+      if (Number.isNaN(value)) continue
+      const key = `quadrant-${row < height / 2 ? 'n' : 's'}${col < width / 2 ? 'w' : 'e'}`
+      quadrants[key].push(value)
+    }
+  }
+  const result: AreaMean[] = (Object.keys(quadrants) as AreaId[]).map((id) => ({
+    id,
+    mean: meanOf(quadrants[id]),
+  }))
+  if (elevation) {
+    const pairs: [number, number][] = []
+    for (let index = 0; index < values.length; index += 1) {
+      if (!Number.isNaN(values[index]) && !Number.isNaN(elevation[index])) pairs.push([elevation[index], values[index]])
+    }
+    if (pairs.length >= 3) {
+      const sorted = pairs.map(([z]) => z).sort((a, b) => a - b)
+      const t1 = sorted[Math.floor(sorted.length / 3)]
+      const t2 = sorted[Math.floor((2 * sorted.length) / 3)]
+      const low = pairs.filter(([z]) => z < t1).map(([, s]) => s)
+      const mid = pairs.filter(([z]) => z >= t1 && z < t2).map(([, s]) => s)
+      const high = pairs.filter(([z]) => z >= t2).map(([, s]) => s)
+      result.push(
+        { id: 'elevation-low', max: Math.round(t1), mean: meanOf(low) },
+        { id: 'elevation-mid', min: Math.round(t1), max: Math.round(t2), mean: meanOf(mid) },
+        { id: 'elevation-high', min: Math.round(t2), mean: meanOf(high) },
+      )
+    }
+  }
+  return result
+}
+
 /**
  * Reparto de las celdas con dato en `bins` tramos iguales del rango de la
  * escala. Los valores fuera del rango se suman al primer o último tramo.

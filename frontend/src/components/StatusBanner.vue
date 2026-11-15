@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { BaseMap, DataMode, ManifestLoadStatus } from '../types/manifest'
+import { t } from '../i18n'
 import '../styles/ui.css'
 
 /**
@@ -39,13 +40,17 @@ const pnoaFailed = computed(
 )
 
 const basemapMessage = computed(() =>
-  pnoaFailed.value ? 'La Vista Satelital no responde' : 'La Vista General no responde',
+  pnoaFailed.value ? t('status.basemapSatelliteDown') : t('status.basemapGeneralDown'),
 )
 
 const basemapAction = computed<BaseMap>(() => (pnoaFailed.value ? 'osm' : 'pnoa'))
 
 const basemapActionLabel = computed(() =>
-  pnoaFailed.value ? 'Usar Vista General' : 'Usar Vista Satelital',
+  pnoaFailed.value ? t('status.useGeneralView') : t('status.useSatelliteView'),
+)
+
+const emptyMessage = computed(() =>
+  props.dataMode === 'real' ? t('status.emptyReal') : t('status.emptySample'),
 )
 
 function onSwitchBasemap(): void {
@@ -54,37 +59,33 @@ function onSwitchBasemap(): void {
 </script>
 
 <template>
-  <section class="ot-status" aria-label="Estado de los datos">
+  <section class="ot-status" :aria-label="t('status.label')">
     <div class="ot-status__live" role="status" aria-live="polite" aria-atomic="true">
       <div v-if="isError" class="ot-status__block ot-status__block--error">
-        <p class="ot-status__title">No se han podido cargar los datos</p>
+        <p class="ot-status__title">{{ t('status.errorTitle') }}</p>
         <p v-if="errorMessage" class="ot-status__detail">{{ errorMessage }}</p>
         <div class="ot-status__actions">
           <button type="button" class="ot-button" @click="emit('retry')">
-            Reintentar
+            {{ t('status.retry') }}
           </button>
         </div>
       </div>
 
       <template v-else>
         <div v-if="showSynthetic" class="ot-status__block ot-status__block--sample">
-          <p class="ot-badge">DATOS SIMULADOS</p>
+          <p class="ot-badge">{{ t('status.syntheticBadge') }}</p>
           <p class="ot-status__text">
-            Capas científicas inventadas para demostración; el mapa base es real
+            {{ t('status.syntheticText') }}
           </p>
         </div>
 
         <div v-if="isLoading" class="ot-status__block ot-status__block--loading">
-          <p class="ot-status__title">Cargando datos…</p>
+          <p class="ot-status__title">{{ t('status.loading') }}</p>
         </div>
 
         <div v-else-if="isEmpty" class="ot-status__block ot-status__block--empty">
           <p class="ot-status__text">
-            {{
-              dataMode === 'real'
-                ? 'Todavía no hay zonas con datos científicos reales'
-                : 'No hay zonas disponibles en este modo de datos'
-            }}
+            {{ emptyMessage }}
           </p>
         </div>
       </template>
@@ -97,7 +98,7 @@ function onSwitchBasemap(): void {
     >
       <p class="ot-status__title">{{ basemapMessage }}</p>
       <p class="ot-status__text">
-        Puedes continuar con el otro mapa base mientras se restablece el servicio.
+        {{ t('status.basemapHint') }}
       </p>
       <div class="ot-status__actions">
         <button type="button" class="ot-button" @click="onSwitchBasemap">
@@ -111,18 +112,18 @@ function onSwitchBasemap(): void {
       class="ot-status__block ot-status__block--warning"
       role="alert"
     >
-      <p class="ot-status__title">La imagen de la capa no está disponible</p>
+      <p class="ot-status__title">{{ t('status.overlayTitle') }}</p>
       <p class="ot-status__text">
-        El mapa sigue funcionando; puedes cambiar de capa o volver a intentarlo.
+        {{ t('status.overlayHint') }}
       </p>
       <div class="ot-status__actions">
         <button
           type="button"
           class="ot-button ot-button--quiet ot-button--small"
-          aria-label="Cerrar aviso de imagen no disponible"
+          :aria-label="t('status.closeOverlayAria')"
           @click="emit('dismiss-overlay-error')"
         >
-          Cerrar
+          {{ t('status.close') }}
         </button>
       </div>
     </div>

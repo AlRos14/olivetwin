@@ -1,89 +1,88 @@
-# QA de la demo OliveTwin — resultados E2E
+# OliveTwin demo QA — E2E results
 
-Resultados de las pruebas de extremo a extremo (Playwright) de la demo con
-datos reales NISAR de Jaén y Toledo, y capturas de evidencia en
-[`qa/`](qa/). Las instrucciones para reproducirlas están en
+Results of the end-to-end tests (Playwright) of the demo with
+real NISAR data from Jaén and Toledo, and evidence screenshots in
+[`qa/`](qa/). The instructions to reproduce them are in
 [`frontend/tests/e2e/README.md`](../frontend/tests/e2e/README.md).
 
-> La ejecución histórica de la Fase A (modo muestra con datos sintéticos,
-> escenarios AT-01…AT-20 y SAMPLE-01…08) se retiró del informe y sus capturas
-> se eliminaron el 2026-11-15: describían una interfaz que ya no existe. Sigue
-> disponible en el historial de git.
+> The historical Phase A run (sample mode with synthetic data,
+> scenarios AT-01…AT-20 and SAMPLE-01…08) was removed from the report and its screenshots
+> were deleted on 2026-11-15: they described an interface that no longer exists. It is still
+> available in the git history.
 
-## Estado vigente (2026-11-15)
+## Current status (2026-11-15)
 
-| Spec | Resultado |
+| Spec | Result |
 |---|---|
-| `app.spec.ts` (10 escenarios: apertura, slider, Toledo, Vista Satelital ↔ Vista General, manifiesto roto, alineación con la rejilla del cubo, Análisis y aptitud, Comparar, móvil, consola y red) | 10 / 10 superados |
-| `subpath.spec.ts` (manifiesto, cubo y PNG de datos bajo `/olivetwin/`) | 1 / 1 superado |
+| `app.spec.ts` (10 scenarios: opening, slider, Toledo, Satellite view ↔ General view, broken manifest, alignment with the cube grid, Analysis and suitability, Compare, mobile, console and network) | 10 / 10 passed |
+| `subpath.spec.ts` (manifest, cube and data PNGs under `/olivetwin/`) | 1 / 1 passed |
 
-Capturas vigentes: `qa/real-01…12` (la `real-12-comparar.jpg` corresponde a la
-pestaña Comparar) y `qa/consola-red.json` (sin errores de la aplicación). La
-interpretación con IA no forma parte de los E2E porque depende de un modelo
-externo; se probó manualmente con Ollama y `gemma3:4b`.
+Current screenshots: `qa/real-01…12` (`real-12-comparar.jpg` corresponds to the
+Compare tab) and `qa/consola-red.json` (no application errors). The
+AI interpretation is not part of the E2E because it depends on an external
+model; it was tested manually with Ollama and `gemma3:4b`.
 
-## 1. Re-ejecución 2026-11-14 — demo solo con datos reales (INT-R)
+## 1. Re-run 2026-11-14 — real-data-only demo (INT-R)
 
-**Nodo:** INT-R (rol R1, integración) · **Rama/worktree:** `b/intreal`
-**Alcance:** retirada de los datos de muestra, autoselección de Jaén, línea
-temporal de 3 fechas y aviso PROVISIONAL. Los E2E se adaptaron a la capa real.
+**Node:** INT-R (R1 role, integration) · **Branch/worktree:** `b/intreal`
+**Scope:** removal of the sample data, Jaén auto-selection, 3-date
+timeline and PROVISIONAL notice. The E2E were adapted to the real layer.
 
-### 1.1 Comandos y resultados
+### 1.1 Commands and results
 
-| Comando | Resultado |
+| Command | Result |
 |---|---|
-| `npm ci --prefix frontend` | OK (140 paquetes; avisos `EBADENGINE` de dependencias, sin error). |
-| `npm run validate:data --prefix frontend` | **OK — 35 comprobaciones, 0 fallos**: `sample/manifest.json` omitido por opcional y `real/manifest.json` válido con sus 6 PNG. |
-| `npm test --prefix frontend` | **OK — 18 archivos, 259 tests**. |
-| `npm run build --prefix frontend` | OK; `vue-tsc -b` + `vite build` (JS 409,00 kB, CSS 27,78 kB). |
-| `npm run build --prefix frontend -- --base /olivetwin/` | OK; build bajo subruta generada. |
-| `npx playwright test app.spec.ts` | **OK — 8/8** con el harness externo (`scratchpad/qa-harness`, Playwright 1.64.0). |
-| `npx playwright test subpath.spec.ts` | **OK — 1/1** con `OLIVE_SUB_URL=http://localhost:4174/olivetwin/`. |
-| Restauración `npm run build --prefix frontend` | OK; `dist/` vuelve a la base normal. |
+| `npm ci --prefix frontend` | OK (140 packages; `EBADENGINE` warnings from dependencies, no error). |
+| `npm run validate:data --prefix frontend` | **OK — 35 checks, 0 failures**: `sample/manifest.json` skipped as optional and `real/manifest.json` valid with its 6 PNGs. |
+| `npm test --prefix frontend` | **OK — 18 files, 259 tests**. |
+| `npm run build --prefix frontend` | OK; `vue-tsc -b` + `vite build` (JS 409.00 kB, CSS 27.78 kB). |
+| `npm run build --prefix frontend -- --base /olivetwin/` | OK; build under subpath generated. |
+| `npx playwright test app.spec.ts` | **OK — 8/8** with the external harness (`scratchpad/qa-harness`, Playwright 1.64.0). |
+| `npx playwright test subpath.spec.ts` | **OK — 1/1** with `OLIVE_SUB_URL=http://localhost:4174/olivetwin/`. |
+| Restoring with `npm run build --prefix frontend` | OK; `dist/` returns to the normal base. |
 
-### 1.2 Escenarios E2E
+### 1.2 E2E scenarios
 
-| Escenario | Resultado | Evidencia |
+| Scenario | Result | Evidence |
 |---|---|---|
-| Abrir → Jaén autoseleccionada, overlay y slider de 3 fechas; sin «DATOS SIMULADOS» | **PASS** | `docs/qa/real-01-jaen.jpg` |
-| Mover el slider cambia `src` sin recrear el `<img>` (mismo elemento); reproducir avanza | **PASS** | `docs/qa/real-02-slider-primer-paso.jpg`, `real-03-reproduccion.jpg` |
-| Cambiar a Toledo reinicia al último paso y mantiene un solo overlay | **PASS** | `docs/qa/real-04-toledo.jpg` |
-| PNOA ↔ OSM conserva overlay, opacidad y la misma imagen | **PASS** | `docs/qa/real-05-osm-overlay.jpg` |
-| Manifiesto real roto ⇒ error visible, sin zonas ni overlay | **PASS** | `docs/qa/real-06-json-roto.jpg` |
-| AT-19 · overlay alineado con el `bbox` real y PNG con transparencia | **PASS** | `docs/qa/real-07-overlay-bbox.jpg` |
-| Móvil 390×844: la línea temporal vive dentro del panel y no hay desbordamiento | **PASS** | `docs/qa/real-08-movil.jpg` |
-| AT-17 · build bajo `/olivetwin/`: manifiesto, PNG, overlay y slider bajo la subruta | **PASS** | `docs/qa/real-09-subruta.jpg` |
-| Consola y red: sin errores JS ni respuestas 4xx/5xx de la aplicación | **PASS** | `docs/qa/consola-red.json` |
+| Open → Jaén auto-selected, overlay and 3-date slider; no "SIMULATED DATA" | **PASS** | `docs/qa/real-01-jaen.jpg` |
+| Moving the slider changes `src` without recreating the `<img>` (same element); play advances | **PASS** | `docs/qa/real-02-slider-primer-paso.jpg`, `real-03-reproduccion.jpg` |
+| Switching to Toledo resets to the last step and keeps a single overlay | **PASS** | `docs/qa/real-04-toledo.jpg` |
+| PNOA ↔ OSM keeps the overlay, the opacity and the same image | **PASS** | `docs/qa/real-05-osm-overlay.jpg` |
+| Broken real manifest ⇒ visible error, no zones or overlay | **PASS** | `docs/qa/real-06-json-roto.jpg` |
+| AT-19 · overlay aligned with the real `bbox` and PNG with transparency | **PASS** | `docs/qa/real-07-overlay-bbox.jpg` |
+| Mobile 390×844: the timeline lives inside the panel and there is no overflow | **PASS** | `docs/qa/real-08-movil.jpg` |
+| AT-17 · build under `/olivetwin/`: manifest, PNG, overlay and slider under the subpath | **PASS** | `docs/qa/real-09-subruta.jpg` |
+| Console and network: no JS errors or 4xx/5xx responses from the application | **PASS** | `docs/qa/consola-red.json` |
 
-Las capturas están en JPEG calidad 70 y pesan menos de 500 KB. Las teselas PNOA
-y OSM son externas: la espera de teselas es *best-effort* y un fallo de red no
-convierte en fallo de la aplicación. El informe de consola registra solo
-peticiones de teselas canceladas, no errores de la app.
+The screenshots are JPEG quality 70 and weigh less than 500 KB. The PNOA
+and OSM tiles are external: waiting for tiles is *best-effort* and a network failure does not
+turn into an application failure. The console report records only
+cancelled tile requests, not application errors.
 
-### 1.3 Limitaciones de esta reejecución
+### 1.3 Limitations of this re-run
 
-- El producto mostrado es NISAR L3 SME2 **PROVISIONAL**; no se valida su
-  calibración científica en QA, solo la integración y la georreferenciación.
-- Jaén se observa en pasada ascendente (~05:23 UTC) y Toledo en descendente
-  (~19:09 UTC); la comparación entre zonas incluye la hora del día.
-- Los E2E siguen fuera de CI y requieren el harness externo de Playwright.
-- La captura móvil es emulación de viewport, no un dispositivo físico.
+- The product shown is NISAR L3 SME2 **PROVISIONAL**; its
+  scientific calibration is not validated in QA, only the integration and georeferencing.
+- Jaén is observed on an ascending pass (~05:23 UTC) and Toledo on a descending
+  one (~19:09 UTC); the comparison between zones includes the time of day.
+- The E2E remain outside CI and require the external Playwright harness.
+- The mobile screenshot is viewport emulation, not a physical device.
 
-## 2. Re-ejecución E2E del 2026-11-15 (cubo de análisis v1.3.0)
+## 2. E2E re-run of 2026-11-15 (analysis cube v1.3.0)
 
-Harness externo con `@playwright/test@1.65.1` y Chrome Headless Shell 159,
-contra `vite preview` (build normal en `:4173` y build con `--base /olivetwin/`
-en `:4174`). Specs adaptados al comportamiento actual: Capas arranca con la
-humedad del suelo del cubo (10 fechas, imagen calculada en el navegador), un
-único desplegable de variables y la pestaña Análisis sin mapa.
+External harness with `@playwright/test@1.65.1` and Chrome Headless Shell 159,
+against `vite preview` (normal build on `:4173` and build with `--base /olivetwin/`
+on `:4174`). Specs adapted to the current behaviour: Layers starts with the
+cube's soil moisture (10 dates, image computed in the browser), a
+single variable drop-down and the Analysis tab without a map.
 
-| Spec | Resultado |
+| Spec | Result |
 |---|---|
-| `app.spec.ts` (9 escenarios: apertura, slider, Toledo, PNOA↔OSM, manifiesto roto, AT-19 alineación con la rejilla del cubo, Análisis y aptitud, móvil, consola y red) | 9 / 9 superados |
-| `subpath.spec.ts` (AT-17, manifiesto, cubo y PNG de datos bajo `/olivetwin/`) | 1 / 1 superado |
+| `app.spec.ts` (9 scenarios: opening, slider, Toledo, PNOA↔OSM, broken manifest, AT-19 alignment with the cube grid, Analysis and suitability, mobile, console and network) | 9 / 9 passed |
+| `subpath.spec.ts` (AT-17, manifest, cube and data PNGs under `/olivetwin/`) | 1 / 1 passed |
 
-Capturas regeneradas en `docs/qa/real-01…09` y nuevas `real-10-analisis.jpg` y
-`real-11-aptitud.jpg`; `docs/qa/consola-red.json` sin errores de la aplicación.
-La interpretación con IA no forma parte de los E2E (depende de un modelo
-externo); se probó manualmente con Ollama y `gemma3:4b`.
-
+Screenshots regenerated in `docs/qa/real-01…09` and new `real-10-analisis.jpg` and
+`real-11-aptitud.jpg`; `docs/qa/consola-red.json` without application errors.
+The AI interpretation is not part of the E2E (it depends on an external
+model); it was tested manually with Ollama and `gemma3:4b`.

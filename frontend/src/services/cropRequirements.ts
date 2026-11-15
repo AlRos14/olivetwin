@@ -4,6 +4,10 @@
  * él). No se calculan ni se inventan umbrales en el navegador: aquí solo se
  * localizan y se resume el reparto de la zona por tramos.
  */
+import { dataText } from '../i18n/dataText'
+import { numberFormatter } from '../i18n/format'
+import { t } from '../i18n'
+import { unitLabel } from './seriesAnalysis'
 import type {
   AnalysisVariable,
   CropFactor,
@@ -22,6 +26,13 @@ export interface VariableRequirement {
   /** Fuente propia; si es null, la fuente es la del cultivo (ficha ECOCROP). */
   reference: RequirementReference | null
   reason: string | null
+}
+
+/** Fuente legible de un requisito, sin componer el texto (los datos se traducen al pintar). */
+export interface RequirementSource {
+  citation: string | null
+  /** Producto del cultivo cuando la fuente es su ficha ECOCROP. */
+  product: string | null
 }
 
 export interface ClassShares {
@@ -72,10 +83,16 @@ export function requirementForVariable(crop: CropSuitability, variableId: string
   }
 }
 
-/** Fuente legible del requisito: la propia o la ficha ECOCROP del cultivo. */
-export function requirementSource(crop: CropSuitability, requirement: VariableRequirement): string {
-  if (requirement.reference) return requirement.reference.citation
-  return `FAO ECOCROP — ${crop.source.product}`
+/** Fuente del requisito: la propia o la ficha ECOCROP del cultivo (datos sin traducir). */
+export function requirementSource(crop: CropSuitability, requirement: VariableRequirement): RequirementSource {
+  if (requirement.reference) return { citation: requirement.reference.citation, product: null }
+  return { citation: null, product: crop.source.product }
+}
+
+/** Fuente en el idioma activo, con los textos de los datos traducidos. */
+export function requirementSourceText(source: RequirementSource): string {
+  if (source.citation) return dataText(source.citation)
+  return t('analysis.crops.ecocrop', { product: dataText(source.product ?? '') })
 }
 
 const EPSILON = 1e-3
@@ -101,16 +118,53 @@ export function classShares(scores: Float32Array): ClassShares {
   }
 }
 
-/** Media y p10–p90 en la zona de variables estáticas (las que usan los factores de aptitud), como texto. */
-export function observedValues(variables: AnalysisVariable[], ids: string[]): string[] {
-  const out: string[] = []
+/**
+ * Valor observado en la zona de una variable estática (media y p10–p90), sin
+ * formatear: el texto se compone en el idioma activo al mostrarlo.
+ */
+export interface ObservedValue {
+  title: string
+  unit: string
+  mean: number | null
+  p10: number | null
+  p90: number | null
+  decimals: number
+}
+
+function decimalsOf(variable: AnalysisVariable): number {
+  if (typeof variable.decimals === 'number') return variable.decimals
+  return variable.scale < 0.01 ? 3 : variable.scale < 0.1 ? 2 : 1
+}
+
+/** Media y p10–p90 en la zona de las variables estáticas que usa un factor. */
+export function observedValues(variables: AnalysisVariable[], ids: string[]): ObservedValue[] {
+  const out: ObservedValue[] = []
   for (const id of ids) {
     const target = variables.find((candidate) => candidate.id === id)
     const stats = target?.steps[0]?.stats
     if (!target || !stats || target.temporal) continue
-    const digits = typeof target.decimals === 'number' ? target.decimals : target.scale < 0.01 ? 3 : target.scale < 0.1 ? 2 : 1
-    const f = (value: number | null) => (value === null ? 's/d' : Number(value.toFixed(digits)).toString())
-    out.push(`${target.title}: media ${f(stats.mean)} ${target.unit} (p10–p90 ${f(stats.p10)}–${f(stats.p90)})`)
+    out.push({
+      title: target.title,
+      unit: target.unit,
+      mean: stats.mean,
+      p10: stats.p10,
+      p90: stats.p90,
+      decimals: decimalsOf(target),
+    })
   }
   return out
+}
+
+/** Valor observado como texto, en el idioma activo (título del dato incluido). */
+export function observedText(value: ObservedValue): string {
+  const digits = value.decimals
+  const number = (candidate: number | null) =>
+    candidate === null ? t('analysis.charts.noValue') : numberFormatter({ maximumFractionDigits: digits }).format(candidate)
+  return t('analysis.crops.observed', {
+    title: dataText(value.title),
+    mean: number(value.mean),
+    unit: unitLabel(value.unit),
+    p10: number(value.p10),
+    p90: number(value.p90),
+  })
 }
