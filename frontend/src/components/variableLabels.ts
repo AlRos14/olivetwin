@@ -45,6 +45,10 @@ const LAYER_LABEL_KEYS: Record<string, MessageKey> = {
  * que los componentes que ya lo consumen —incluidos los de Análisis— se
  * actualicen al cambiar de idioma sin tocar su código.
  */
+/**
+ * Getters call t() on each read, so reads inside computed/templates react to the
+ * locale. Do NOT spread, copy or cache this object: a copy freezes one language.
+ */
 export const GROUP_LABELS: Record<string, string> = {
   get nisar() {
     return t('layers.groups.nisar')

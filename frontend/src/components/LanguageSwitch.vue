@@ -92,6 +92,7 @@ function choose(value: Locale): void {
   .ot-lang__button {
     min-width: 2.25rem;
     padding: 0.15rem 0.45rem;
+    min-height: 1.5rem;
   }
 }
 </style>

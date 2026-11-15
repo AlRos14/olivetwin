@@ -178,7 +178,7 @@ export const analysis = {
     compare: {
       region: 'Zone comparison',
       controlsRegion: 'Comparison controls',
-      title: 'Compare zones',
+      title: 'Compare areas',
       subtitle: 'Area A vs Area B',
       farmlandOnly: ' · farmland only',
       loading: 'Loading the suitability maps…',

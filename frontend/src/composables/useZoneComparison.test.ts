@@ -102,7 +102,7 @@ describe('useZoneComparison', () => {
     const workspace = mount(CompareWorkspace, { props: { comparison } })
     await nextTick()
     const text = workspace.text()
-    expect(text).toContain('Compare zones')
+    expect(text).toContain('Compare areas')
     expect(text).toContain('Area B is better for olivo')
     expect(text).toContain('Pendiente: favours Area B')
     expect(workspace.find('[aria-label="Verdict"]').exists()).toBe(true)
