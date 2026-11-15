@@ -140,7 +140,7 @@ describe('prompts', () => {
     const content = messages[1].content as { type: string; text?: string }[]
     expect(content[0].type).toBe('text')
     expect(content[0].text).toContain('Jaén')
-    expect(content[0].text).toContain('06/20/2026: 0.25')
+    expect(content[0].text).toContain('2026-06-20: 0.25')
     expect(content[0].text).toContain('-0.02')
     expect(content[0].text).toContain('lluvia total 12 mm')
     expect(content[0].text).toContain('## Conclusión para el olivo')

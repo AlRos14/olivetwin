@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatUsDate } from '../services/dateFormat'
+import { formatDate as formatIsoDate } from '../services/dateFormat'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { UseAnalysisWorkspaceReturn } from '../composables/useAnalysisWorkspace'
 import type { ZoneSeries } from '../types/analysis'
@@ -34,7 +34,7 @@ const grid = computed(() => ws.value.grid.value)
 const decimals = computed(() => ws.value.decimals.value)
 
 function formatDate(date: string | null | undefined): string {
-  return formatUsDate(date, date || '—')
+  return formatIsoDate(date, date || '—')
 }
 
 function formatValue(value: number | null | undefined, digits = decimals.value): string {

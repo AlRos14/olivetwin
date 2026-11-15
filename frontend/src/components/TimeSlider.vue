@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import type { TimeStep } from '../types/manifest'
 import '../styles/ui.css'
-import { formatUsDate, formatUsDateTime } from '../services/dateFormat'
+import { formatDate, formatDateTime } from '../services/dateFormat'
 
 /**
  * Línea temporal de la capa activa (WP-07, contrato v1.2.0).
@@ -52,12 +52,12 @@ let cursor = 0
 
 /** Etiqueta de las marcas: la fecha en MM/DD/YYYY; `label` solo si la fecha no es válida. */
 function markLabel(step: TimeStep): string {
-  return formatUsDate(step.date, step.label?.trim() || 'Fecha no disponible')
+  return formatDate(step.date, step.label?.trim() || 'Fecha no disponible')
 }
 
 /** Fecha completa para el estado visible y `aria-valuetext`. */
 function formatLongDate(step: TimeStep): string {
-  return formatUsDateTime(step.date, 'Fecha no disponible')
+  return formatDateTime(step.date, 'Fecha no disponible')
 }
 
 function emitIndex(index: number): void {

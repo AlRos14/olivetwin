@@ -18,7 +18,7 @@
  *
  * Decisión del responsable de proyecto (2026-11-15): la interfaz no muestra el
  * aviso de cabecera, el panel «Procedencia y calidad» ni los textos de
- * advertencia; el subtítulo conserva «datos PROVISIONAL».
+ * advertencia; el subtítulo (general, no solo humedad) conserva «datos NISAR PROVISIONALES».
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { BaseMap, StudyZone, TimeStep } from './types/manifest'
@@ -43,9 +43,8 @@ import { useZoneComparison } from './composables/useZoneComparison'
 import { useLlmSettings } from './composables/useLlm'
 import type { LlmSettings } from './services/llmClient'
 import './styles/analysis.css'
+import { t } from './i18n'
 
-const appTitle = 'OliveTwin'
-const appSubtitle = 'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL'
 
 const {
   vm,
@@ -350,8 +349,8 @@ function onTimeStepChange(index: number): void {
 
     <aside class="ot-panel ot-panel--wide" aria-label="Panel de control de OliveTwin">
       <header class="ot-panel__header">
-        <h1 class="ot-panel__title">{{ appTitle }}</h1>
-        <p class="ot-panel__subtitle">{{ appSubtitle }}</p>
+        <h1 class="ot-panel__title">{{ t('app.title') }}</h1>
+        <p class="ot-panel__subtitle">{{ t('app.subtitle') }}</p>
       </header>
 
       <StatusBanner

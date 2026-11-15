@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AnalysisStats } from '../types/analysis'
-import { formatUsDate } from '../services/dateFormat'
+import { formatDate } from '../services/dateFormat'
 import '../styles/analysis.css'
 
 /**
@@ -53,7 +53,7 @@ function x(index: number): number {
 
 const format = computed(() => new Intl.NumberFormat('es-ES', { maximumFractionDigits: props.decimals }))
 function label(date: string): string {
-  return formatUsDate(date, date)
+  return formatDate(date, date)
 }
 
 const ticks = computed(() => {

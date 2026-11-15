@@ -10,7 +10,7 @@ import type { AnalysisPalette } from '../types/analysis'
 import type { ChatMessage, ChatPart } from './llmClient'
 import type { SuitabilityBin, LimitingShare } from './cropSuitability'
 import type { ChangeSummary, ClimateSummary, TrendResult } from './seriesAnalysis'
-import { formatUsDate } from './dateFormat'
+import { formatDate } from './dateFormat'
 import type { HistogramBin } from './analysisMath'
 import type { RequirementClasses } from '../types/analysis'
 import type { ClassShares } from './cropRequirements'
@@ -47,7 +47,7 @@ export function fmt(value: number | null | undefined, decimals = 3): string {
 }
 
 function usDate(value: string): string {
-  return formatUsDate(value, value)
+  return formatDate(value, value)
 }
 
 function pct(value: number | null | undefined): string {
@@ -356,7 +356,7 @@ export function buildSpatialMessages(context: SpatialReportContext, image?: stri
     `Qué mide: ${variable.description}`,
     `Cautelas del dato: ${variable.caveat}`,
     context.date
-      ? `Una sola imagen, del ${formatUsDate(context.date, context.date)}: no hay serie temporal; analiza el reparto en el espacio.`
+      ? `Una sola imagen, del ${formatDate(context.date, context.date)}: no hay serie temporal; analiza el reparto en el espacio.`
       : 'Capa sin fecha (valor de referencia del terreno, del suelo o del clima medio): analiza el reparto en el espacio.',
     '',
     `Estadísticas de la zona: media ${fmt(stats.mean, decimals)}; mediana ${fmt(stats.median, decimals)}; p10–p90 ${fmt(

@@ -5,7 +5,7 @@ import type { AnalysisStatus } from '../composables/useZoneAnalysis'
 import type { UseAnalysisWorkspaceReturn, WorkspaceMode } from '../composables/useAnalysisWorkspace'
 import type { LlmSettings } from '../services/llmClient'
 import { MAX_SAMPLES } from '../services/seriesAnalysis'
-import { formatUsDate } from '../services/dateFormat'
+import { formatDate as formatIsoDate } from '../services/dateFormat'
 import LlmSettingsPanel from './LlmSettingsPanel.vue'
 import { GROUP_LABELS, variableLabel } from './variableLabels'
 import '../styles/analysis.css'
@@ -29,7 +29,7 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 ]
 
 function formatDate(date: string | null): string {
-  return formatUsDate(date, date || 'Sin fecha')
+  return formatIsoDate(date, date || 'Sin fecha')
 }
 
 const ws = computed(() => props.workspace)

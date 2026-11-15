@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatUsDate, formatUsMonth } from '../services/dateFormat'
+import { formatDate, formatMonth } from '../services/dateFormat'
 import '../styles/analysis.css'
 
 /**
@@ -175,7 +175,7 @@ const xTicks = computed(() => {
   let cursor = Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)
   while (cursor <= domain[1]) {
     const date = new Date(cursor)
-    ticks.push({ x: x(cursor), label: formatUsMonth(cursor) })
+    ticks.push({ x: x(cursor), label: formatMonth(cursor) })
     cursor = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)
   }
   return ticks
@@ -212,7 +212,7 @@ const summary = computed(() => {
           :width="barWidth"
           :height="bar.h"
         >
-          <title>{{ formatUsDate(bar.date, bar.date) }}: {{ numberFormat.format(bar.value) }} {{ barsUnit }}</title>
+          <title>{{ formatDate(bar.date, bar.date) }}: {{ numberFormat.format(bar.value) }} {{ barsUnit }}</title>
         </rect>
       </g>
       <g class="ot-chart__grid">

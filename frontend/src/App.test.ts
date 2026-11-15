@@ -194,7 +194,7 @@ describe('App — integración con datos reales y línea temporal', () => {
     // cabecera ni panel de procedencia (decisión de producto 2026-11-15).
     expect(wrapper.get('h1').text()).toBe('OliveTwin')
     expect(wrapper.text()).toContain(
-      'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL',
+      'Radar NISAR, vegetación, suelo y clima · datos NISAR PROVISIONALES',
     )
     expect(wrapper.find('.ot-panel__notice').exists()).toBe(false)
     expect(wrapper.find('.ot-provenance').exists()).toBe(false)
@@ -224,7 +224,7 @@ describe('App — integración con datos reales y línea temporal', () => {
     // Slider temporal en el paso activo.
     expect(wrapper.find('.ot-time-slider').exists()).toBe(true)
     expect(wrapper.text()).toContain('Paso 3 de 3')
-    expect(wrapper.text()).toContain('07/14/2026')
+    expect(wrapper.text()).toContain('2026-07-14')
   })
 
   it('el slider cambia overlay.url y la fecha; cambiar de zona reinicia al último paso', async () => {
@@ -240,7 +240,7 @@ describe('App — integración con datos reales y línea temporal', () => {
       timeIndex: 0,
     })
     expect(wrapper.text()).toContain('Paso 1 de 3')
-    expect(wrapper.text()).toContain('06/20/2026')
+    expect(wrapper.text()).toContain('2026-06-20')
 
     // Cambiar de zona vuelve a seleccionar el último paso de la nueva zona.
     await wrapper.get('.ot-zone-selector select').setValue('toledo')
