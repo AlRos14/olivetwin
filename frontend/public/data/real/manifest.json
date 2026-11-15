@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2.0",
+  "schemaVersion": "1.3.0",
   "datasetMode": "real",
   "appTitle": "OliveTwin",
   "zones": [
@@ -132,7 +132,8 @@
           ]
         }
       ],
-      "description": "Zona de estudio olivarera en Jaén: humedad superficial NISAR L3 SME2 (pasadas ascendentes, ~05:23 UTC)."
+      "description": "Zona de estudio olivarera en Jaén: humedad superficial NISAR L3 SME2 (pasadas ascendentes, ~05:23 UTC).",
+      "analysis": "data/real/zones/jaen/analysis/analysis.json"
     },
     {
       "id": "toledo",
@@ -263,7 +264,8 @@
           ]
         }
       ],
-      "description": "Zona de estudio en Toledo: humedad superficial NISAR L3 SME2 (pasadas descendentes, ~19:09 UTC)."
+      "description": "Zona de estudio en Toledo: humedad superficial NISAR L3 SME2 (pasadas descendentes, ~19:09 UTC).",
+      "analysis": "data/real/zones/toledo/analysis/analysis.json"
     }
   ]
 }

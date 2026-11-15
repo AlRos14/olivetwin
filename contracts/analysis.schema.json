@@ -1,0 +1,766 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:olivetwin:contract:analysis:1.3.0",
+  "title": "OliveTwin analysis cube — contrato v1.3.0",
+  "description": "Cubo de análisis de una zona (ampliación aditiva v1.3.0). Lo enlaza zone.analysis del manifiesto. Contiene variables rasterizadas sobre una rejilla común de la zona (EPSG:3857, misma extensión que zone.bbox) codificadas como PNG en escala de grises de 8 bits (valor = offset + scale * código; el código `nodata` significa sin dato), estadísticas precalculadas por paso, series a nivel de zona (clima, SMAP…), fuentes no disponibles con su motivo y los criterios por defecto del índice exploratorio de aptitud relativa. La validación semántica (rutas bajo data/<modo>/zones/<zoneId>/analysis/, orden de fechas, tamaño de los PNG igual a la rejilla, ids únicos, criterios que apuntan a variables existentes) corresponde a frontend/scripts/validate-lib.mjs. Opcionalmente incluye `crops`: aptitud por cultivo (puntuación 0–1 global y por factor, como PNG de datos con la misma codificación) calculada por el pipeline a partir de requisitos de cultivo de fuentes verificables.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "zoneId",
+    "generatedAt",
+    "pipeline",
+    "grid",
+    "variables"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.3.0"
+    },
+    "zoneId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pipeline": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "grid": {
+      "$ref": "#/$defs/grid"
+    },
+    "variables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/variable"
+      }
+    },
+    "zoneSeries": {
+      "type": "array",
+      "description": "Series temporales a nivel de zona (un valor por fecha), p. ej. precipitación diaria o humedad SMAP media de la zona.",
+      "items": {
+        "$ref": "#/$defs/zoneSeries"
+      }
+    },
+    "unavailable": {
+      "type": "array",
+      "description": "Fuentes previstas que no se pudieron incorporar, con el motivo verificable. Nunca se sustituyen por datos inventados.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "suitability": {
+      "$ref": "#/$defs/suitability"
+    },
+    "crops": {
+      "type": "array",
+      "description": "Aptitud por cultivo calculada por el pipeline. Cada cultivo declara su método, sus supuestos, la fuente de los requisitos y una puntuación 0–1 global y por factor (0 = no apto, 1 = óptimo).",
+      "items": {
+        "$ref": "#/$defs/crop"
+      }
+    }
+  },
+  "$defs": {
+    "bbox": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        }
+      ],
+      "description": "[west, south, east, north] en WGS84."
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "crs",
+        "bbox",
+        "width",
+        "height",
+        "cellSizeM",
+        "encoding",
+        "nodata"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "crs": {
+          "const": "EPSG:3857",
+          "description": "Las celdas son cuadradas en Web Mercator, alineadas con la extensión de bbox (norte arriba, fila 0 = norte)."
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "cellSizeM": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Tamaño nominal de celda en metros Web Mercator (no en metros de terreno)."
+        },
+        "encoding": {
+          "const": "png-uint8-linear"
+        },
+        "nodata": {
+          "type": "integer",
+          "const": 255
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "mean",
+        "median",
+        "p10",
+        "p90",
+        "min",
+        "max",
+        "validFraction"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mean": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "median": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "p10": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "p90": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "min": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "validFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "provider",
+        "product",
+        "processingVersion",
+        "license"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "processingVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Licencia o política de uso del dato de origen, con la atribución exigida."
+        },
+        "referenceUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maturity": {
+          "type": "string"
+        },
+        "approvedBy": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "date",
+        "data",
+        "stats"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ISO 8601 de adquisición; null solo para productos estáticos sin fecha de observación (p. ej. mapas de suelo modelados)."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "string",
+          "pattern": "^data/(real|sample)/zones/[a-z0-9-]+/analysis/.+\\.png$"
+        },
+        "stats": {
+          "$ref": "#/$defs/stats"
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "group",
+        "unit",
+        "scale",
+        "offset",
+        "displayRange",
+        "palette",
+        "temporal",
+        "description",
+        "caveat",
+        "status",
+        "provenance",
+        "steps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "group": {
+          "enum": [
+            "nisar",
+            "optical",
+            "terrain",
+            "soil",
+            "climate",
+            "landcover"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "offset": {
+          "type": "number"
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "displayRange": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "palette": {
+          "enum": [
+            "moisture",
+            "vegetation",
+            "radar",
+            "terrain",
+            "soil",
+            "heat"
+          ]
+        },
+        "temporal": {
+          "type": "boolean",
+          "description": "true si los pasos forman una serie temporal comparable; false si es un producto estático (un solo paso)."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Qué representa la variable, en lenguaje claro."
+        },
+        "caveat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Qué NO permite concluir."
+        },
+        "status": {
+          "enum": [
+            "processed_real",
+            "synthetic"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        }
+      }
+    },
+    "zoneSeries": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "unit",
+        "chart",
+        "provenance",
+        "points"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chart": {
+          "enum": [
+            "bar",
+            "line"
+          ]
+        },
+        "caveat": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "date",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "type": "string",
+                "minLength": 10
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "suitability": {
+      "type": "object",
+      "required": [
+        "title",
+        "note",
+        "criteria"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Advertencia visible: índice exploratorio, relativo a la zona y no validado."
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "variable",
+              "aggregate",
+              "direction",
+              "weight",
+              "rationale"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "variable": {
+                "type": "string",
+                "minLength": 1
+              },
+              "aggregate": {
+                "enum": [
+                  "mean",
+                  "latest",
+                  "std",
+                  "static"
+                ],
+                "description": "Cómo se reduce la serie por celda antes de normalizar."
+              },
+              "direction": {
+                "enum": [
+                  "higher-better",
+                  "lower-better"
+                ]
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Hipótesis agronómica que justifica el sentido; se muestra en la UI."
+              }
+            }
+          }
+        }
+      }
+    },
+    "raster": {
+      "type": "object",
+      "required": [
+        "data",
+        "scale",
+        "offset",
+        "stats"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": "string",
+          "pattern": "^data/(real|sample)/zones/[a-z0-9-]+/analysis/.+\\.png$"
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "offset": {
+          "type": "number"
+        },
+        "stats": {
+          "$ref": "#/$defs/stats"
+        }
+      }
+    },
+    "cropFactor": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "variables",
+        "requirement",
+        "raster"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variables": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ids de variables del cubo que usa el factor."
+        },
+        "requirement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Requisito del cultivo en lenguaje claro, con su fuente (p. ej. «pH óptimo 6,5–8,0; tolera 5,5–8,5 (ECOCROP)»)."
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Parámetros numéricos o categóricos del requisito, tal como los aplica el pipeline."
+        },
+        "classes": {
+          "$ref": "#/$defs/requirementClasses"
+        },
+        "reference": {
+          "$ref": "#/$defs/requirementReference"
+        },
+        "raster": {
+          "$ref": "#/$defs/raster"
+        }
+      }
+    },
+    "crop": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "scientificName",
+        "assumptions",
+        "method",
+        "source",
+        "suitability",
+        "factors"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scientificName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assumptions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Supuestos de manejo (p. ej. secano) y de ciclo."
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cómo se combinan los factores (p. ej. mínimo de las puntuaciones)."
+        },
+        "source": {
+          "$ref": "#/$defs/provenance"
+        },
+        "suitability": {
+          "$ref": "#/$defs/raster"
+        },
+        "factors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/cropFactor"
+          }
+        },
+        "otherRequirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/otherRequirement"
+          }
+        }
+      }
+    },
+    "requirementClasses": {
+      "type": "object",
+      "required": [
+        "optimal",
+        "acceptable",
+        "unsuitable"
+      ],
+      "additionalProperties": false,
+      "description": "Tramos legibles del requisito de un cultivo: óptimo, aceptable (entre el óptimo y el límite absoluto) y no apto.",
+      "properties": {
+        "optimal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptable": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unsuitable": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "requirementReference": {
+      "type": "object",
+      "required": [
+        "citation"
+      ],
+      "additionalProperties": false,
+      "description": "Fuente del requisito cuando no es la ficha ECOCROP del cultivo (crop.source).",
+      "properties": {
+        "citation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "otherRequirement": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "variables",
+        "requirement"
+      ],
+      "additionalProperties": false,
+      "description": "Requisito publicado y citado que no entra en el mapa de aptitud (p. ej. solo cualitativo o sin dato espacial compatible).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variables": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requirement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classes": {
+          "$ref": "#/$defs/requirementClasses"
+        },
+        "reference": {
+          "$ref": "#/$defs/requirementReference"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Por qué no entra en el mapa de aptitud."
+        }
+      }
+    }
+  }
+}

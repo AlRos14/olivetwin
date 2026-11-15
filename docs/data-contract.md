@@ -1,4 +1,4 @@
-# Contrato de datos OliveTwin v1.2.0 — referencia práctica
+# Contrato de datos OliveTwin v1.3.0 — referencia práctica
 
 Este documento describe el contrato **tal como está implementado** en el
 repositorio: el JSON Schema, el validador de datos, el cargador de manifiestos y
@@ -18,11 +18,12 @@ evita tener que leer el código para saber qué se puede publicar y qué se rech
 | [`docs/c0-interfaces.md`](c0-interfaces.md) | Interfaces congeladas entre WP-04 y WP-07. |
 | [`docs/handoff-science.md`](handoff-science.md) | Guía para publicar una zona real sin tocar Vue. |
 
-Versión vigente: **1.2.0**. El valor se declara en `schemaVersion`; el
-validador solo admite la major `1` y, en esta rama, las versiones exactas
-`1.1.0` (manifiestos sin serie temporal) y `1.2.0` (con o sin `timeSteps`).
-La v1.2.0 es **aditiva**: un manifiesto v1.1.0 sin `timeSteps` sigue siendo
-válido y se muestra con su `layer.image`/`layer.bbox`.
+Versión vigente: **1.3.0**. El valor se declara en `schemaVersion`; el
+validador solo admite la major `1` y las versiones exactas `1.1.0`
+(manifiestos sin serie temporal), `1.2.0` (con o sin `timeSteps`) y `1.3.0`
+(obligatoria si alguna zona declara `analysis`). Ambas ampliaciones son
+**aditivas**: un manifiesto v1.1.0 o v1.2.0 sigue siendo válido y se muestra
+igual que antes.
 
 ## 1. Dónde vive cada cosa
 
@@ -265,6 +266,53 @@ En runtime, `useOliveTwinData` selecciona por defecto el último paso al elegir
 la capa. `selectTimeStep(index)` cambia el paso activo y `ActiveOverlay` expone
 `url`/`bbox` del paso junto con `timeIndex` y `timeStep`. Cambiar de modo, zona
 o capa reinicia el índice; un índice fuera de rango se ignora.
+
+### 2.8 Cubo de análisis por zona (`zone.analysis`, v1.3.0)
+
+`zone.analysis` apunta a `data/<modo>/zones/<id>/analysis/analysis.json`, que
+valida contra [`contracts/analysis.schema.json`](../contracts/analysis.schema.json).
+Lo genera [`pipelines/analysis/`](../pipelines/analysis/README.md) y lo usan las
+pestañas «Análisis» y «Gemelos» de la aplicación.
+
+| Bloque | Contenido |
+|---|---|
+| `grid` | Rejilla común EPSG:3857: `bbox` WGS84 exacto, `width`, `height`, `cellSizeM` (m Web Mercator), `encoding: "png-uint8-linear"`, `nodata: 255`. |
+| `variables[]` | `id`, `title`, `group` (`nisar`, `optical`, `terrain`, `soil`, `climate`), `unit`, `scale`, `offset`, `displayRange`, `palette`, `temporal`, `description`, `caveat`, `status`, `provenance` (con `license`) y `steps[]`. |
+| `steps[]` | `date` (ISO; `null` solo en productos estáticos), `data` (PNG gris de 8 bits), `stats` (`mean`, `median`, `p10`, `p90`, `min`, `max`, `validFraction`) y `provenance` del paso. |
+| `zoneSeries[]` | Series de zona `{id, title, unit, chart: bar|line, provenance, points[{date, value}]}`. |
+| `unavailable[]` | Fuentes previstas no incorporadas, con el motivo verificable. |
+| `suitability` | `title`, `note` y `criteria[{variable, aggregate, direction, weight, rationale}]` (índice relativo; la interfaz ya no lo usa). |
+| `crops[]` | Aptitud por cultivo: `id`, `name`, `scientificName`, `assumptions`, `method`, `source` (procedencia con licencia), `suitability` (ráster 0–1) y `factors[{id, label, variables, requirement, parameters, raster}]`. Cada ráster es `{data, scale, offset, stats}` con la misma codificación que los pasos. |
+
+**Decodificación.** Cada píxel del PNG es un código 0–254: valor =
+`offset + scale × código`; 255 es «sin dato» y nunca se rellena. La app
+decodifica el PNG en JavaScript (sin canvas) para que la gestión de color del
+navegador no altere los códigos, y consulta el **dato** de la celda al hacer
+clic, no el color.
+
+**Índice de aptitud (retirado el 2026-11-15).** El campo opcional `suitability`
+(criterios con pesos y rangos percentiles) sigue en el esquema por
+compatibilidad, pero el pipeline ya no lo genera y la interfaz no lo usa: lo
+sustituye la aptitud por cultivo.
+
+**Aptitud por cultivo.** El pipeline calcula, con requisitos de cultivo de
+fuentes verificables (FAO GAEZ v4 y FAO ECOCROP; pH, textura, pendiente y carbono orgánico de las tablas de
+aptitud de la Universidad de Granada basadas en Sys et al., 1993), una puntuación
+0–1 por factor y la global (mínimo de los factores, como en Ecocrop). Cada factor
+puede declarar `classes` (tramos óptimo / aceptable / no apto en lenguaje claro) y
+`reference` (cita y URL cuando la fuente no es la ficha ECOCROP); el cultivo puede
+declarar `otherRequirements` (requisitos citados que no entran en el mapa). La
+interfaz no recalcula nada ni inventa umbrales: muestra los rásteres, los tramos
+publicados, reparte la superficie en tramos y marca en cada celda el factor de
+menor puntuación. Las variables sin requisito publicado se muestran como «Sin valor
+de referencia verificado».
+
+**Validación.** `npm run validate:data` comprueba esquema, rutas bajo la zona,
+orden de fechas, coherencia de `stats`, criterios y factores de cultivo que
+apuntan a variables existentes, ids únicos de cultivos y factores, y que cada
+PNG (pasos y rásteres de aptitud) exista, sea gris de 8 bits, tenga el tamaño de
+la rejilla y no supere 2 MB. Los fixtures están en
+`frontend/scripts/fixtures/analysis/{valid,invalid}/`.
 
 ## 3. Convenciones geoespaciales y de assets
 

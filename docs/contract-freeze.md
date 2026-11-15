@@ -1,4 +1,4 @@
-# Congelación del contrato mínimo OliveTwin — v1.1.0, ampliación aditiva v1.2.0
+# Congelación del contrato mínimo OliveTwin — v1.1.0, ampliaciones aditivas v1.2.0 y v1.3.0
 
 **Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02; corregido en A02-fix).
 **Estado:** congelado para el arranque de Fase B; alineado con el ejemplo §4.3 del plan v2.
@@ -139,6 +139,31 @@ campos existentes, no altera el orden de `bbox` ni el significado de
 `timeSteps`/`selectedTimeIndex`/`selectTimeStep` congelados en C1; esta
 ampliación no los reinterpreta. El estado (`useOliveTwinData`) elige el último
 paso por defecto y reinicia el índice al cambiar de modo, zona o capa.
+
+### 2.5 Ampliación v1.3.0 (aditiva): cubo de análisis por zona
+
+Para medir variables de interés agronómico (humedad, retrodispersión radar,
+vegetación, relieve, suelo y clima) y compararlas por celda, una zona puede
+enlazar **opcionalmente** un cubo de análisis con `zone.analysis`. Es un cambio
+de minor conforme a §4.1: no cambia campos existentes ni el orden de `bbox`, y
+los manifiestos v1.1.0/v1.2.0 siguen validando.
+
+| Regla | Dónde se aplica | Efecto |
+|---|---|---|
+| `zone.analysis` = `data/<datasetMode>/zones/<zone.id>/analysis/analysis.json` | Esquema (patrón) y semántica | El cubo vive junto a la zona y en el modo correcto. |
+| `schemaVersion: "1.3.0"` obligatorio si alguna zona declara `analysis`; `timeSteps` admite `"1.2.0"` o `"1.3.0"` | Esquema (`if/then`) y semántica | Un consumidor v1.2 no recibe campos que no conoce sin aviso de versión. |
+| El cubo cumple [`contracts/analysis.schema.json`](../contracts/analysis.schema.json) | Esquema propio | Rejilla EPSG:3857 común, variables con `scale`/`offset`, pasos con estadísticas, series de zona, fuentes no disponibles y criterios del índice. |
+| Datos como PNG **gris de 8 bits** (valor = `offset` + `scale` · código; 255 = sin dato) con el tamaño exacto de la rejilla y ≤ 2 MB | Semántica y assets (`validate:data`) | Solo se publican PNG y JSON; nunca GeoTIFF/HDF5. |
+| Pasos de variables temporales con fecha ISO real y orden estrictamente creciente; variables estáticas con un único paso | Semántica | Las series y los mapas de cambio comparan fechas reales. |
+| `status` coherente con el modo y `provenance.license` obligatoria | Esquema y semántica | Cada variable declara licencia y atribución de su fuente. |
+| Criterios del índice de aptitud que apuntan a variables existentes | Semántica | El índice no referencia datos ausentes. |
+| `crops[]` opcional: aptitud por cultivo con ráster global y por factor (0–1), fuente con licencia, supuestos y método; factores que usan variables existentes; ids únicos | Esquema, semántica y assets | Los mapas de aptitud son trazables y se validan como el resto del cubo. |
+| `cropFactor.classes` y `cropFactor.reference` opcionales; `crop.otherRequirements[]` opcional con variables existentes | Esquema y semántica | Los tramos óptimo / aceptable / no apto y la fuente de cada requisito se publican con los datos; la UI no los inventa. |
+| `variable.group` admite `landcover` (usos del suelo, p. ej. CORINE) | Esquema | Ampliación aditiva del enum; los cubos anteriores siguen siendo válidos. |
+
+El índice de aptitud es **exploratorio y relativo a la zona** (rangos
+percentiles ponderados): no es un umbral agronómico ni una predicción de
+cosecha, y la UI lo indica siempre.
 
 ## 3. Tipos TypeScript de referencia
 

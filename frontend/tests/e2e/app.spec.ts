@@ -1,10 +1,12 @@
 /**
  * Pruebas E2E de la demo OliveTwin sobre `vite preview` (INT02/INT-R).
  *
- * Decisión de producto (2026-11-14): la demo publica solo datos reales NISAR
- * SME2 de Jaén y Toledo. No hay escenarios de datos de muestra ni selector de
- * modo; se verifica la línea temporal (3 fechas), el cambio de zona, los mapas
- * base, los errores y la georreferenciación de la capa real.
+ * Decisión de producto (2026-11-14): la demo publica solo datos reales. Desde
+ * el 2026-11-15 Jaén y Toledo tienen cubo de análisis (contrato v1.3.0): Capas
+ * arranca con la humedad del suelo del cubo (todas las estimaciones, 10 fechas)
+ * pintada en el navegador como imagen `data:` sobre la rejilla del cubo. Se
+ * verifica la línea temporal, el desplegable de variables, el cambio de zona,
+ * los mapas base, los errores, la georreferenciación y la pestaña Análisis.
  *
  * AT-01, AT-02 y AT-14 son comandos de consola y se documentan en
  * `docs/qa-results.md`; AT-17 tiene su propio spec porque requiere una build
@@ -16,16 +18,17 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { PNG } from 'pngjs'
 import {
   BASE_URL,
   capture,
   clickLabel,
+  defaultVariable,
   docsQaDir,
   getMap,
+  longDate,
   openApp,
+  readAnalysis,
   readRealManifest,
-  repoDir,
   selectZone,
   setOpacity,
   setTimeStep,
@@ -34,24 +37,26 @@ import {
 } from './support'
 
 const REAL = readRealManifest()
-const JAEN = REAL.zones.find((zone) => zone.id === 'jaen')!
 const TOLEDO = REAL.zones.find((zone) => zone.id === 'toledo')!
-const JAEN_LAYER = JAEN.layers.find((layer) => layer.id === 'soil-moisture')!
-const TOLEDO_LAYER = TOLEDO.layers.find((layer) => layer.id === 'soil-moisture')!
-const JAEN_STEPS = JAEN_LAYER.timeSteps ?? []
-const TOLEDO_STEPS = TOLEDO_LAYER.timeSteps ?? []
+const JAEN_CUBE = readAnalysis('jaen')
+const TOLEDO_CUBE = readAnalysis('toledo')
+const JAEN_VARIABLE = defaultVariable(JAEN_CUBE)
+const TOLEDO_VARIABLE = defaultVariable(TOLEDO_CUBE)
+const JAEN_STEPS = JAEN_VARIABLE.steps
+const TOLEDO_STEPS = TOLEDO_VARIABLE.steps
 
 function overlay(page: import('@playwright/test').Page) {
   return page.locator('img.olive-scientific-overlay')
 }
 
 test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
-  test('abrir → Jaén con overlay y slider de 3 fechas, sin datos simulados', async ({ page }) => {
+  test('abrir → Jaén con la humedad del cubo, su línea temporal y su leyenda', async ({ page }) => {
     const pnoaTile = page.waitForRequest(/tms-pnoa-ma\.idee\.es/, { timeout: 30_000 })
     await openApp(page)
     await pnoaTile
 
-    expect(JAEN_STEPS).toHaveLength(3)
+    const last = JAEN_STEPS.length - 1
+    expect(JAEN_STEPS.length).toBeGreaterThanOrEqual(2)
 
     // Mapa y zonas: Jaén autoseleccionada, Toledo disponible.
     await expect(page.locator('.ot-zone-selector option')).toHaveText([
@@ -62,33 +67,35 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     await expect(page.locator('.ot-zone-selector select')).toHaveValue('jaen')
     await expect(page.locator('.leaflet-overlay-pane svg path')).toHaveCount(2)
 
-    // Capa real visible y slider en el último paso.
-    await waitForOverlay(page)
-    await expect(overlay(page)).toHaveAttribute('src', new RegExp(`${JAEN_STEPS[2]!.image.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))
-    await expect(page.locator('.ot-time-slider')).toBeVisible()
-    await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue('2')
-    await expect(page.locator('.ot-time-slider__status')).toContainText('Paso 3 de 3')
-    await expect(page.locator('.ot-time-slider__marks li')).toHaveCount(3)
+    // Desplegable único de variables del cubo, sin la capa del manifiesto ni número de fechas.
+    const variableSelect = page.locator('.ot-layer-panel select')
+    await expect(variableSelect).toHaveValue(`cube:${JAEN_VARIABLE.id}`)
+    await expect(page.locator('.ot-layer-panel option[value^="layer:"]')).toHaveCount(0)
+    const labels = await page.locator('.ot-layer-panel option').allInnerTexts()
+    expect(labels.some((label) => /fechas|estático/.test(label))).toBe(false)
+    // Humedad y radar, Vegetación, Relieve, Suelo, Clima y Usos del suelo.
+    await expect(page.locator('.ot-layer-panel optgroup')).toHaveCount(6)
 
-    // Cabecera y aviso científico; nunca «DATOS SIMULADOS».
+    // Capa del cubo pintada en el navegador y slider en el último paso.
+    await waitForOverlay(page)
+    await expect(overlay(page)).toHaveAttribute('src', /^data:image\/png/)
+    await expect(page.locator('.ot-time-slider')).toBeVisible()
+    await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue(String(last))
+    await expect(page.locator('.ot-time-slider__status')).toContainText(`Paso ${JAEN_STEPS.length} de ${JAEN_STEPS.length}`)
+    await expect(page.locator('.ot-time-slider__marks li')).toHaveCount(JAEN_STEPS.length)
+    await expect(page.locator('.ot-time-slider__status')).toContainText(longDate(JAEN_STEPS[last]!.date!))
+    await expect(page.locator('.ot-legend')).toContainText('Humedad del suelo')
+    await expect(page.locator('.ot-legend')).toContainText('Sin dato')
+
+    // Cabecera con la madurez del producto; sin aviso ni panel de procedencia; nunca «DATOS SIMULADOS».
     await expect(page.locator('.ot-panel__subtitle')).toHaveText(
       'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL',
     )
-    await expect(page.locator('.ot-panel__notice')).toContainText(
-      'Producto NISAR SME2 PROVISIONAL',
-    )
-    await expect(page.locator('.ot-panel__notice')).toContainText(
-      'humedad superficial ≠ necesidad de riego',
-    )
+    await expect(page.locator('.ot-panel__notice')).toHaveCount(0)
+    await expect(page.locator('.ot-provenance')).toHaveCount(0)
     await expect(page.locator('.ot-badge')).toHaveCount(0)
     await expect(page.locator('.ot-mode-switch')).toHaveCount(0)
     await expect(page.locator('.ot-status')).not.toContainText('DATOS SIMULADOS')
-
-    // Procedencia del paso activo (fecha y escena reales del manifiesto).
-    const provenance = page.locator('.ot-provenance')
-    await expect(provenance).toContainText('Datos reales')
-    await expect(provenance).toContainText('NASA/JPL–ISRO NISAR')
-    await expect(provenance).toContainText('14 de julio de 2026')
 
     await capture(page, 'real-01-jaen.jpg')
   })
@@ -100,14 +107,11 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     expect(handle).not.toBeNull()
 
     const lastSrc = await img.getAttribute('src')
-    expect(lastSrc).toContain(JAEN_STEPS[2]!.image.split('/').pop()!)
+    expect(lastSrc).toMatch(/^data:image\/png/)
 
     await setTimeStep(page, 0)
-    await expect(img).toHaveAttribute(
-      'src',
-      new RegExp(`${JAEN_STEPS[0]!.image.split('/').pop()!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
-    )
-    await expect(page.locator('.ot-time-slider__status')).toContainText('Paso 1 de 3')
+    await expect.poll(() => img.getAttribute('src')).not.toBe(lastSrc)
+    await expect(page.locator('.ot-time-slider__status')).toContainText(`Paso 1 de ${JAEN_STEPS.length}`)
 
     // Mismo elemento <img>: ScientificOverlay usa setUrl, no recrea la capa.
     expect(await handle!.evaluate((element) => element.isConnected)).toBe(true)
@@ -128,20 +132,20 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     await openApp(page)
     await setTimeStep(page, 0)
     const osmTile = page.waitForRequest(/tile\.openstreetmap\.org/, { timeout: 30_000 })
-    await clickLabel(page, '.ot-layer-panel', 'OpenStreetMap')
+    await clickLabel(page, '.ot-layer-panel', 'Vista General')
     await osmTile
 
     await page.selectOption('.ot-zone-selector select', 'toledo')
     await waitForOverlay(page)
 
     await expect(page.locator('img.olive-scientific-overlay')).toHaveCount(1)
-    await expect(overlay(page)).toHaveAttribute(
-      'src',
-      new RegExp(`${TOLEDO_STEPS[2]!.image.split('/').pop()!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
-    )
+    await expect(overlay(page)).toHaveAttribute('src', /^data:image\/png/)
     await expect(page.locator('.ot-zone-selector select')).toHaveValue('toledo')
-    await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue('2')
-    await expect(page.locator('.ot-time-slider__status')).toContainText('Paso 3 de 3')
+    await expect(page.locator('.ot-layer-panel select')).toHaveValue(`cube:${TOLEDO_VARIABLE.id}`)
+    await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue(String(TOLEDO_STEPS.length - 1))
+    await expect(page.locator('.ot-time-slider__status')).toContainText(
+      `Paso ${TOLEDO_STEPS.length} de ${TOLEDO_STEPS.length}`,
+    )
 
     // El encuadre corresponde al bbox de Toledo.
     const map = await getMap(page)
@@ -161,7 +165,7 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     const handle = await img.elementHandle()
 
     const osmTile = page.waitForRequest(/tile\.openstreetmap\.org/, { timeout: 30_000 })
-    await clickLabel(page, '.ot-layer-panel', 'OpenStreetMap')
+    await clickLabel(page, '.ot-layer-panel', 'Vista General')
     await osmTile
 
     await expect(page.locator('.ot-layer-panel input[value="osm"]')).toBeChecked()
@@ -172,7 +176,7 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     await capture(page, 'real-05-osm-overlay.jpg')
 
     // Volver a PNOA puede servirse desde caché; no se exige nueva petición.
-    await clickLabel(page, '.ot-layer-panel', 'Ortofoto PNOA')
+    await clickLabel(page, '.ot-layer-panel', 'Vista Satelital')
     await expect(page.locator('.ot-layer-panel input[value="pnoa"]')).toBeChecked()
     await expect(overlay(page)).toHaveAttribute('src', src ?? '')
     await expect(overlay(page)).toHaveCSS('opacity', '0.5')
@@ -198,12 +202,12 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     await capture(page, 'real-06-json-roto.jpg')
   })
 
-  test('AT-19 · alineación del overlay con el bbox real y PNG con transparencia', async ({ page }) => {
+  test('AT-19 · la capa del cubo se alinea con la rejilla y tiene una celda por píxel', async ({ page }) => {
     await openApp(page)
     await selectZone(page, 'jaen')
     await waitForTiles(page)
 
-    const map = await getMap(page, JAEN_LAYER.bbox)
+    const map = await getMap(page, JAEN_CUBE.grid.bbox)
     const expected = map.projected
     const actual = await overlay(page).evaluate((element) => {
       const img = element.getBoundingClientRect()
@@ -225,21 +229,80 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
     expect(Math.abs(actual.width - (expected.right - expected.left))).toBeLessThanOrEqual(2)
     expect(Math.abs(actual.height - (expected.bottom - expected.top))).toBeLessThanOrEqual(2)
 
-    // Transparencia real del PNG publicado (no del screenshot).
-    const pngPath = path.join(repoDir(), 'frontend/public', JAEN_STEPS[2]!.image)
-    const png = PNG.sync.read(fs.readFileSync(pngPath))
-    expect(png.data.length).toBe(png.width * png.height * 4)
-    let transparentPixels = 0
-    let opaquePixels = 0
-    for (let index = 3; index < png.data.length; index += 4) {
-      if (png.data[index] === 0) transparentPixels += 1
-      else if (png.data[index] === 255) opaquePixels += 1
-    }
-    expect(transparentPixels).toBeGreaterThan(0)
-    expect(opaquePixels).toBeGreaterThan(0)
-    expect(transparentPixels + opaquePixels).toBeLessThanOrEqual(png.width * png.height)
+    // La imagen calculada tiene exactamente el tamaño de la rejilla del cubo.
+    const natural = await overlay(page).evaluate((element) => {
+      const img = element as HTMLImageElement
+      return { width: img.naturalWidth, height: img.naturalHeight }
+    })
+    expect(natural).toEqual({ width: JAEN_CUBE.grid.width, height: JAEN_CUBE.grid.height })
 
     await capture(page, 'real-07-overlay-bbox.jpg')
+  })
+
+  test('Análisis: sin mapa, imágenes de la serie, cambio, gráficas y aptitud por cultivo', async ({ page }) => {
+    await openApp(page)
+    await page.locator('.ot-tabs__tab', { hasText: 'Análisis' }).click()
+
+    const workspace = page.locator('.ot-workspace')
+    await expect(workspace).toBeVisible()
+    await expect(workspace.locator('.ot-workspace__title')).toHaveText('Humedad del suelo')
+    await expect(workspace.locator('.ot-gallery__item')).toHaveCount(Math.min(6, JAEN_STEPS.length))
+    await expect(workspace).toContainText('Cambio')
+    await expect(workspace).toContainText('zona común')
+    // Evolución, distribución por fecha y reparto en la zona (media del intervalo).
+    await expect(workspace.locator('.ot-chart__svg')).toHaveCount(3)
+    await expect(workspace.locator('.ot-values tbody tr')).toHaveCount(JAEN_STEPS.length)
+    await expect(page.locator('.ot-llm__run').first()).toBeEnabled()
+    await capture(page, 'real-10-analisis.jpg')
+
+    // Menos imágenes que fechas: se reparten y se indica cuántas hay.
+    await page.locator('.ot-analysis input[type="range"]').evaluate((element) => {
+      const input = element as HTMLInputElement
+      input.value = '3'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await expect(workspace.locator('.ot-gallery__item')).toHaveCount(3)
+    await expect(page.locator('.ot-analysis')).toContainText(`Se muestran 3 de ${JAEN_STEPS.length} fechas`)
+
+    // Ampliar una imagen permite leer el dato bajo el cursor.
+    await workspace.locator('.ot-gallery__button').first().click()
+    const zoom = page.locator('.ot-lightbox__image')
+    await expect(zoom).toBeVisible()
+    const box = (await zoom.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator('.ot-lightbox')).toContainText(/m³\/m³|Sin dato en esta celda/)
+    await page.locator('.ot-lightbox .ot-button').click()
+
+    // Aptitud por cultivo con los cultivos del cubo.
+    await page.getByRole('radio', { name: 'Aptitud por cultivo' }).click()
+    await expect(workspace.locator('.ot-crop__map img')).toBeVisible()
+    await expect(page.locator('.ot-analysis select').first().locator('option')).toHaveCount(JAEN_CUBE.crops?.length ?? 0)
+    await expect(workspace).toContainText('Qué limita')
+    await capture(page, 'real-11-aptitud.jpg')
+  })
+
+  test('Comparar: zona A, zona B y cultivo con veredicto, motivos y mapas', async ({ page }) => {
+    await openApp(page)
+    await page.locator('.ot-tabs__tab', { hasText: 'Comparar' }).click()
+
+    const workspace = page.locator('.ot-compare')
+    await expect(workspace).toBeVisible()
+    const selects = page.locator('.ot-compare-controls select')
+    await expect(selects).toHaveCount(3)
+    await expect(selects.nth(0)).toHaveValue('jaen')
+    await expect(selects.nth(1)).toHaveValue('toledo')
+    await expect(workspace.locator('.ot-compare__verdict-title')).toContainText(/La zona [AB] es mejor para el olivo|aptitud parecida/)
+    await expect(workspace.locator('.ot-compare__maps img')).toHaveCount(2)
+    await expect(workspace.locator('.ot-compare__table tbody tr').first()).toBeVisible()
+    // Solo «Zona A» y «Zona B»: sin provincias ni datos de producción.
+    await expect(workspace).not.toContainText(/Jaén|Toledo|MAPA/)
+    await expect(page.locator('.ot-llm__run')).toBeEnabled()
+    await capture(page, 'real-12-comparar.jpg')
+
+    // Misma zona en A y B: no hay veredicto.
+    await selects.nth(1).selectOption('jaen')
+    await expect(page.locator('.ot-compare-controls')).toContainText('Elige dos zonas distintas')
+    await expect(workspace.locator('.ot-compare__verdict')).toHaveCount(0)
   })
 
   test('móvil 390×844: la línea temporal vive dentro del panel', async ({ page }) => {
@@ -287,7 +350,7 @@ test.describe('OliveTwin · demo con datos reales NISAR SME2', () => {
 
     await openApp(page)
     await setTimeStep(page, 0)
-    await clickLabel(page, '.ot-layer-panel', 'OpenStreetMap')
+    await clickLabel(page, '.ot-layer-panel', 'Vista General')
     await expect(page.locator('.ot-layer-panel input[value="osm"]')).toBeChecked()
 
     const appFailures = failedRequests.filter(

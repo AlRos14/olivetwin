@@ -1,0 +1,54 @@
+OliveTwin
+Copyright 2026 AlRos14 and the OliveTwin contributors
+https://github.com/AlRos14/olivetwin
+
+This product includes software developed for the NASA Space Apps Challenge
+2026 challenge "Dancing with the SARs" by the OliveTwin team.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE). Any
+redistribution or derivative work must keep this NOTICE file and give visible
+credit to OliveTwin, as required by section 4(d) of the license.
+
+If you use OliveTwin in research, publications or presentations, please cite
+it as described in CITATION.cff.
+
+Third-party content keeps its own terms and is not relicensed by this project.
+The exact licence text recorded for each dataset is in the `provenance.license`
+field of frontend/public/data/real/zones/*/analysis/analysis.json and in
+pipelines/analysis/README.md:
+- NISAR data products (NASA/JPL-ISRO, distributed by ASF DAAC): SME2, GCOV and
+  GUNW, used to build the overlays and analysis grids in frontend/public/data/.
+- SMAP soil moisture (NASA, NSIDC DAAC), zone-level series.
+- Sentinel-2 L2A: contains modified Copernicus Sentinel data 2026.
+- Copernicus DEM GLO-30: produced using Copernicus WorldDEM-30 (c) DLR e.V.
+  2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under
+  COPERNICUS by the European Union and ESA; all rights reserved.
+- SoilGrids 2.0 (ISRIC - World Soil Information), CC BY 4.0.
+- Weather and climate data by Open-Meteo.com (CC BY 4.0), based on ERA5 and
+  ERA5-Land (Copernicus Climate Change Service).
+- Crop requirements: (c) FAO, ECOCROP database (https://ecocrop.apps.fao.org/),
+  used under FAO terms for study, research and non-commercial purposes, citing
+  FAO as the source.
+- Agro-climatic crop constraint factors (olive and wheat, rainfed, low input,
+  1981-2010): FAO & IIASA (2021), Global Agro-Ecological Zones version 4
+  (GAEZ v4), https://gaez.fao.org/, used under FAO terms of use for research
+  and non-commercial purposes, citing FAO and IIASA as the source.
+- Land cover: CORINE Land Cover 2018 (CLC2018), (c) European Union,
+  Copernicus Land Monitoring Service 2018, European Environment Agency (EEA);
+  free, full and open access with attribution.
+- Suitability class ranges S1/S2/S3/N (85/60/40): LUSET (Yen et al., 2006), as
+  reproduced in Selmy et al. (2024), Agronomy 14(11):2601, CC BY 4.0.
+- Soil and slope suitability classes (pH, texture, slope, organic carbon):
+  Dorronsoro-Díaz, C. et al.,
+  "CambioUso", Departamento de Edafología y Química Agrícola, Universidad de
+  Granada (https://edafologia.ugr.es/programas_suelos/practgest/olivar/), based
+  on Sys, Van Ranst, Debaveye & Beernaert (1993), Land Evaluation Part III:
+  Crop requirements, and FAO (1976), A framework for land evaluation. Public
+  teaching resource, cited with full attribution.
+- Base map tiles loaded at runtime: PNOA orthophoto (IGN/CNIG), OpenStreetMap
+  and SIGPAC agricultural parcels (recintos, WMS of the Fondo Español de
+  Garantía Agraria, FEGA); their attributions are shown in the map.
+- npm dependencies listed in frontend/package.json, each under its own license.
+- The optional language model is not distributed with this project; it runs
+  wherever the user configures it (e.g. Ollama with gemma3:4b under the Gemma
+  Terms of Use).

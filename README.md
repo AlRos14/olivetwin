@@ -1,299 +1,230 @@
 # OliveTwin
 
-**NASA Space Apps Challenge 2026 — reto «Dancing with the SARs».**
+**Radar NISAR, vegetación, suelo y clima para saber qué zonas son mejores para el olivo, el almendro y el trigo.**
 
-OliveTwin es una aplicación web estática para explorar, sobre un mapa de España,
-capas de **vegetación (NDVI)** y **humedad superficial** en zonas de estudio
-delimitadas. El objetivo del proyecto es investigar por qué dos olivares
-cercanos y aparentemente similares pueden producir cantidades distintas,
-combinando observaciones radar, vegetación, humedad y registros de cosecha.
+[![NASA Space Apps Challenge 2026](https://img.shields.io/badge/NASA%20Space%20Apps%202026-Dancing%20with%20the%20SARs-0B3D91)](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
+[![Licencia: Apache-2.0](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
 
-Repositorio: <https://github.com/AlRos14/olivetwin> (público).
+![OliveTwin mostrando la humedad del suelo NISAR sobre Jaén](docs/qa/real-01-jaen.jpg)
 
-## Estado actual: demo con datos reales NISAR SME2
+## El reto
 
-La Fase B (WP-04 + WP-07) está **integrada** y la demo publica únicamente
-**datos reales** (decisión de producto del 2026-11-14). La aplicación arranca sin
-backend y permite recorrer la demo de principio a fin.
+OliveTwin es nuestra respuesta al reto **«[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)»**
+del **NASA Space Apps Challenge 2026**: crear una aplicación interactiva que use
+datos radar de la misión **NISAR** (NASA-ISRO Synthetic Aperture Radar) para
+seguir y visualizar cambios en la superficie terrestre.
 
-Qué se puede hacer hoy:
+Nuestro cambio es la **humedad del suelo en zonas agrícolas**: cómo se seca y se
+recarga el suelo durante el verano de 2026 en dos zonas olivareras de España
+(Jaén y Toledo), puesta en contexto con vegetación, relieve, suelo y clima para
+estimar qué zonas son más aptas para cada cultivo. El enunciado completo, los
+recursos oficiales y la política de licencias están en
+[`docs/challenge.md`](docs/challenge.md).
 
-- **Mapa Leaflet de España** (Península, Baleares y Canarias) con dos mapas base:
-  **Ortofoto PNOA** del IGN/CNIG (por defecto) y **OpenStreetMap**, con
-  atribuciones visibles y cambio sin recargar la página.
-- **Dos zonas reales, Jaén y Toledo**, delimitadas por su `bbox`, con **humedad
-  superficial NISAR L3 SME2** y **tres fechas** cada una.
-- **Línea temporal**: slider, botones anterior/siguiente y reproducción. Cambiar
-  de fecha actualiza el overlay sin recrear la imagen ni parpadear, y la
-  procedencia muestra la escena del paso activo.
-- **Capa visible con opacidad 0–100 %**, visibilidad, leyenda, unidad, rango,
-  fecha y procedencia verificable.
-- **Aviso persistente**: «Producto NISAR SME2 PROVISIONAL: no totalmente
-  calibrado; humedad superficial ≠ necesidad de riego».
-- Mensajes de error si el manifiesto o un PNG no están disponibles, sin romper
-  el mapa base ni inventar datos.
+## Qué puedes hacer
 
-> **Importante:** el mapa base (PNOA/OSM) es cartografía real y el overlay es una
-> representación visual del producto NISAR L3 SME2 **PROVISIONAL**. La humedad
-> superficial (~5 cm) no equivale a humedad profunda ni a una necesidad de
-> riego, y los colores del PNG no permiten recuperar valores exactos por píxel.
+| Pestaña | Para qué sirve |
+|---|---|
+| **Capas** | Ver en el mapa cualquier variable (humedad del suelo, radar, vegetación, relieve, suelo, clima, usos del suelo) con su línea temporal, leyenda y una explicación de para qué sirve en el cultivo. Mapa base: satélite, parcelas agrícolas (SIGPAC) o callejero. |
+| **Análisis** | Estudiar una variable: imágenes por fecha, mapa de cambio, gráficas y valores. Al elegir un cultivo, ver sus **valores de referencia** (óptimo, aceptable, no apto). También, **aptitud por cultivo**: mapa de aptitud, qué factor limita y dónde. |
+| **Comparar** | Elegir **zona A**, **zona B** y un cultivo para saber cuál es mejor y por qué. |
+| **Historia** | El reto, por qué usamos radar e hipótesis que la app permite explorar. |
 
-El informe de QA con la evidencia de los escenarios AT-01…AT-20 (adaptados a
-datos reales) está en [`docs/qa-results.md`](docs/qa-results.md). La
-re-ejecución del 2026-11-14 figura en la sección final de ese informe.
+En Análisis y Comparar, **Interpretar con IA** pide a un modelo de lenguaje que
+explique los resultados (opcional, ver más abajo).
 
-## Límites científicos
+> ⚠️ **Datos provisionales.** La humedad NISAR SME2 todavía no está totalmente
+> calibrada, mide solo los ~5 cm superficiales del suelo y **no equivale a una
+> necesidad de riego**. La aptitud por cultivo es un modelo físico, no una
+> predicción de cosecha.
 
-Estas precisiones forman parte del alcance del proyecto y deben respetarse en
-código, textos y demos:
+## Ponerlo en marcha
 
-- **El radar no mide producción directamente.** NISAR y otros radares aportan
-  observaciones (por ejemplo, respuesta radar o humedad superficial estimada)
-  que requieren interpretación y validación; no demuestran por sí mismas una
-  causa agronómica ni un rendimiento en kg/ha.
-- **El NDVI es un índice óptico, no un producto NISAR.** En una implementación
-  real puede proceder de Landsat o Sentinel-2. No debe presentarse como
-  observación radar.
-- **La humedad superficial SME2 no es riego.** Estima humedad en la capa
-  superficial del suelo (~5 cm); no equivale a humedad profunda ni a una dosis de
-  riego, y su resolución limita su uso a parcelas suficientemente grandes.
-- **El producto es PROVISIONAL.** NISAR L3 SME2 no está totalmente calibrado;
-  conviene interpretar cambios relativos con cautela y no como verdad absoluta.
-- **Los overlays PNG son representaciones visuales.** Sus colores no permiten
-  recuperar valores científicos exactos ni hacer consultas por píxel.
-- **El mapa base no es un dato científico.** PNOA/IGN y OpenStreetMap sirven
-  para orientación y no tienen por qué coincidir en fecha con las capas.
+### Requisitos
 
-## Arranque local
+- **Node.js 22** (la versión está en [`.nvmrc`](.nvmrc)) y npm.
+- **Git** para clonar el repositorio.
+- **Conexión a Internet**, para cargar los mapas base.
+- *(Opcional)* **[Ollama](https://ollama.com)** para la interpretación con IA.
 
-Requisitos: **Node.js 22 LTS** (fijada en `.nvmrc`) y npm.
-Con `nvm` instalado:
+No hace falta servidor ni base de datos: es una web estática y los datos ya
+vienen preparados en el repositorio.
+
+### Paso a paso
 
 ```bash
-nvm use
+# 1. Descarga el proyecto
+git clone https://github.com/AlRos14/olivetwin.git
+cd olivetwin
+
+# 2. Instala las dependencias de la web
 cd frontend
 npm ci
+
+# 3. Arráncala
 npm run dev
 ```
 
-Vite imprime la URL de desarrollo (por defecto `http://localhost:5173/`). La
-aplicación carga `public/data/real/manifest.json` y los PNG de Jaén y Toledo al
-abrirse (Jaén se autoselecciona); no necesita backend, base de datos ni claves.
-Requiere Internet para las teselas PNOA/OSM.
+Abre **<http://localhost:5173/>**. La zona de Jaén se selecciona sola; cambia
+de zona arriba a la derecha y prueba las pestañas.
 
-### Scripts npm
+### Interpretación con IA (opcional)
 
-Se ejecutan desde `frontend/` (o con `--prefix frontend` desde la raíz):
+La app funciona sin IA. Para activarla con un modelo local y gratuito:
 
-| Script | Descripción |
+```bash
+# Instala Ollama (https://ollama.com) y, en otra terminal:
+OLLAMA_ORIGINS="http://127.0.0.1:*,http://localhost:*" ollama serve
+ollama pull gemma3:4b
+```
+
+Después, en la app, pulsa **Interpretar con IA**. En «Modelo de IA» puedes
+cambiar a cualquier otro servicio compatible con la API de OpenAI (por ejemplo,
+uno en la nube con tu clave). La clave solo se guarda durante la sesión del
+navegador. En un ordenador sin GPU, cada interpretación tarda unos minutos.
+
+### Problemas frecuentes
+
+| Problema | Solución |
 |---|---|
-| `npm run dev` | Servidor de desarrollo de Vite con recarga en caliente. |
-| `npm run build` | `vue-tsc -b` + `vite build`; genera `frontend/dist/`. |
-| `npm run preview` | Sirve localmente la build de producción. |
-| `npm test` | Suite de Vitest (contrato, servicios, composable y componentes). |
-| `npm run validate:data` | Valida el manifiesto real con el esquema y los assets de `public/data/` (`sample/` es opcional). |
-| `npm run typecheck` | Comprobación de tipos con `vue-tsc` sin generar build. |
+| `npm ci` falla | Comprueba que usas Node.js 22 (`node --version`; con nvm, `nvm use`). |
+| El mapa base sale gris | No hay conexión o el servicio del mapa no responde: cambia de mapa base en Capas. |
+| «Interpretar con IA» da error de conexión | Comprueba que `ollama serve` está en marcha con `OLLAMA_ORIGINS` y que descargaste el modelo. Usa «Probar conexión» en «Modelo de IA». |
+| La IA tarda mucho | Es normal en CPU con un modelo de 4B; usa un modelo más pequeño o un servicio en la nube. |
 
-Comprobaciones antes de abrir o actualizar una pull request:
+### Versión de producción
 
 ```bash
 cd frontend
-npm ci
-npm run validate:data
-npm test
-npm run build
+npm run build      # genera frontend/dist/
+npm run preview    # la sirve en http://localhost:4173/
 ```
 
-`npm ci` requiere que `frontend/package-lock.json` esté versionado. Si un script
-falla, no se simula el resultado: se registra el error y su causa.
+Para publicarla en una subruta (por ejemplo, GitHub Pages):
+`npm run build -- --base /olivetwin/`.
 
-### Build en una subruta
+## Los datos
 
-La aplicación resuelve manifiestos y PNG con `import.meta.env.BASE_URL`, así que
-puede publicarse en una subruta (por ejemplo GitHub Pages). Para comprobarlo:
+Todo procede de fuentes abiertas o de uso libre para investigación. La lista
+completa de datos, fuentes, licencias y atribuciones está en
+**[`docs/data-sources.md`](docs/data-sources.md)** (las atribuciones obligatorias,
+en [`NOTICE`](NOTICE)).
 
-```bash
-cd frontend
-npm run build -- --base /olivetwin/
-npm run preview -- --base /olivetwin/
-```
+| Grupo | Variables | Fuente |
+|---|---|---|
+| Radar NISAR | Humedad del suelo (SME2), radar HH, HV y HV/HH (GCOV), coherencia (GUNW) | NASA/JPL–ISRO, ASF |
+| Vegetación | NDVI y NDMI | Copernicus Sentinel-2 |
+| Relieve | Altitud y pendiente | Copernicus DEM |
+| Suelo | Arcilla, arena, carbono orgánico y pH | ISRIC SoilGrids 2.0 |
+| Clima | Lluvia, temperaturas, ET0 (diario) y clima medio 1991–2020 | Open-Meteo (ERA5) |
+| Usos del suelo | Superficie agrícola y olivar | CORINE Land Cover 2018 |
+| Aptitud por cultivo | Olivo, almendro y trigo de secano | Cálculo propio con FAO GAEZ v4, FAO ECOCROP y tablas de la Universidad de Granada |
 
-La URL local será `http://localhost:4173/olivetwin/`. Después conviene restaurar
-la build normal con `npm run build`. El escenario AT-17 de
-[`docs/qa-results.md`](docs/qa-results.md) documenta esta prueba.
+Las zonas son dos recuadros de unos 35 × 30 km (Jaén) y 60 × 48 km (Toledo),
+con una rejilla de ~200 m y datos de junio a octubre de 2026.
 
-## Pruebas
+### Cómo se calcula la aptitud
 
-- **Unitarias (Vitest):** junto al código de cada nodo, con patrón `*.test.ts`
-  (`frontend/src/**`, `frontend/tests/**`, `frontend/scripts/**`).
-- **Validación de datos:** `npm run validate:data` comprueba esquema, semántica,
-  rutas, coherencia `datasetMode`/`status`, fixtures válidos e inválidos, y la
-  existencia y transparencia de los PNG publicados.
-- **E2E (Playwright, harness externo):** los escenarios en navegador real y las
-  capturas están descritos en
-  [`frontend/tests/e2e/README.md`](frontend/tests/e2e/README.md). Playwright no
-  es dependencia de `frontend/package.json` y no se ejecuta en CI.
-- **Informe de QA:** [`docs/qa-results.md`](docs/qa-results.md), con evidencias
-  en `docs/qa/`.
+Cada factor (clima, pH, textura, pendiente, carbono orgánico y altitud) se
+puntúa de 0 a 1 según los requisitos publicados del cultivo, y la aptitud es el
+**peor** de los factores. Se clasifica en S1 (alta, ≥ 0,85), S2 (moderada),
+S3 (marginal) y N (no apta, < 0,40). En **Comparar** solo cuenta la superficie
+agrícola, y gana la zona con más superficie apta (S1 + S2). El detalle y las
+decisiones están en [`pipelines/analysis/README.md`](pipelines/analysis/README.md).
 
-## Datos: solo reales
+## Limitaciones
 
-La demo carga siempre `datasetMode: "real"`:
+- **Productos NISAR provisionales.** Úsalos para ver cambios relativos, con
+  cautela. Jaén se observa al amanecer (~05:23 UTC) y Toledo al atardecer
+  (~19:09 UTC).
+- **Huecos sin dato.** NISAR no estima humedad en zonas urbanas, agua o
+  vegetación densa, y en Toledo la pasada cubre ~80 % desde mediados de agosto.
+  Se marcan con trama gris; los cálculos usan solo la zona común con dato.
+- **La aptitud es física, no de cosecha.** No mide el agua disponible para el
+  rendimiento, la vecería, el manejo ni la rentabilidad, y no está validada con
+  cosechas. Cada zona es el recuadro elegido, no su provincia.
+- **La IA es orientativa.** Resume las estadísticas que recibe y puede
+  equivocarse, sobre todo con modelos pequeños.
+- **Depende de la red** para los mapas base. Las parcelas SIGPAC solo se ven al
+  acercarse (zoom 15 o más).
 
-- `frontend/public/data/real/manifest.json` declara **Jaén** y **Toledo**, cada
-  una con su capa `soil-moisture` y **tres `timeSteps`** (20 jun, 2 jul y 14 jul
-  de 2026).
-- Cada paso tiene su PNG, su `bbox` y su procedencia (`acquisitionDate`,
-  `sceneId`, CRID y URL de referencia).
-- La interfaz no ofrece selector de modo ni aviso «DATOS SIMULADOS». El
-  componente `DataModeSwitch.vue` permanece en el repositorio sin uso.
-- El contrato sigue admitiendo `datasetMode: "sample"` para fixtures y pruebas,
-  pero `frontend/public/data/sample/` no se publica y `validate:data` lo trata
-  como opcional.
+## Regenerar los datos
 
-Los estados de carga son `loading`, `ready`, `empty` y `error`. Un manifiesto
-roto, un 404 o un JSON inválido producen un error visible; **no** hay fallback a
-otro modo ni a datos sintéticos.
-
-## Cómo añadir datos reales
-
-Añadir una zona real **no requiere modificar componentes Vue**: basta un PNG
-georreferenciado y su entrada en `frontend/public/data/real/manifest.json`,
-validados y aprobados científicamente.
-
-- Guía completa, contrato y checklist:
-  [`docs/handoff-science.md`](docs/handoff-science.md).
-- Conversor de NISAR L3 SME2 a capa `soil-moisture` (PNG + `bbox` + leyenda +
-  procedencia): [`pipelines/nisar/README.md`](pipelines/nisar/README.md).
-- Referencia práctica del contrato:
-  [`docs/data-contract.md`](docs/data-contract.md).
-
-Resumen del flujo con el pipeline existente:
+Solo hace falta si quieres actualizar o ampliar los datos. Necesitas Python 3.12
+y una cuenta gratuita de [NASA Earthdata](https://urs.earthdata.nasa.gov/) en
+`~/.netrc` (nunca en el repositorio).
 
 ```bash
-# 1) Staging (no toca la app): HDF5 NISAR SME2 → PNG + metadatos
-python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
-  --aoi WEST SOUTH EAST NORTH --zone-id jaen --zone-name "Jaén" \
-  --staging pipelines/nisar/sme2_staging
-
-# 2) Publicar todas las fechas como timeSteps tras la aprobación humana
-python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
-  --aoi WEST SOUTH EAST NORTH --zone-id jaen --zone-name "Jaén" \
-  --publish --approved-by "Nombre del revisor"
-
-# 3) Re-render desde el staging sin volver a abrir los HDF5
-python pipelines/nisar/sme2_to_overlay.py \
-  --from-staging pipelines/nisar/sme2_staging/jaen \
-  --zone-id jaen --zone-name "Jaén" \
-  --auto-scale --publish --approved-by "Nombre del revisor"
-
-# 4) Validar y publicar la build estática
+python3 -m venv pipelines/analysis/.venv
+pipelines/analysis/.venv/bin/pip install -r pipelines/analysis/requirements.txt
+pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py \
+  --zone all --approved-by "Nombre del revisor"
 npm run validate:data --prefix frontend
 ```
 
-`--publish` sin `--date` escribe todas las fechas en
-`public/data/real/zones/<id>/soil-moisture/<fecha>.png`, añade o sustituye la
-capa sin duplicarla y sube el manifiesto a `schemaVersion: "1.2.0"`. Después,
-revisa la alineación y la línea temporal en el navegador. No se versionan HDF5,
-GeoTIFF ni otros binarios científicos grandes.
+Las descargas se guardan en una caché fuera de git. La capa de humedad del
+manifiesto se genera con [`pipelines/nisar/`](pipelines/nisar/README.md); el
+paso a paso para publicar una zona está en
+[`docs/handoff-science.md`](docs/handoff-science.md).
 
-## Contrato de datos
+## Para desarrolladores
 
-El contrato vigente es la versión **v1.2.0** (aditiva sobre v1.1.0).
-Convenciones que no deben cambiarse sin una versión mayor:
+### Estructura
 
-- `bbox = [west, south, east, north]` en WGS84 (EPSG:4326). Leaflet recibe
-  `[[south, west], [north, east]]`.
-- Las rutas `image` son relativas a `public/`, sin `/` inicial ni `..`, y se
-  resuelven con `import.meta.env.BASE_URL`.
-- `status` de capa: `synthetic` o `processed_real`, coherente con
-  `datasetMode`; `sample` solo admite `synthetic` y `real` solo
-  `processed_real`.
-- `layer.timeSteps` (v1.2.0) es opcional: pasos ordenados por fecha, con el
-  `image`/`bbox` de `layer` iguales a los del último paso. Unidad, rango y
-  leyenda son comunes para comparar fechas.
+```text
+olivetwin/
+├── frontend/            Web: Vue 3 + Vite + TypeScript + Leaflet
+│   ├── src/             componentes, servicios, composables y tipos
+│   ├── public/data/     datos publicados (manifiesto y cubos de análisis)
+│   └── scripts/         validación de datos
+├── pipelines/analysis/  descarga y procesado del cubo de análisis (Python)
+├── pipelines/nisar/     conversor NISAR SME2 (HDF5) → PNG
+├── contracts/           JSON Schema de los datos (contrato v1.3.0)
+└── docs/                reto, fuentes y licencias, contrato, QA
+```
 
-## Mapa de módulos
+### Comprobaciones
 
-| Ruta | Contenido | Propiedad |
-|---|---|---|
-| `frontend/` | Aplicación Vue 3 + Vite + TypeScript, `package.json`, `package-lock.json` y configuración de Vite. | Integración |
-| `frontend/public/data/real/` | Manifiesto real y PNG NISAR SME2 de Jaén y Toledo (3 fechas). | WP-04 / Ciencia |
-| `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Tipos del contrato, carga de manifiestos y estado de la aplicación. | WP-04 |
-| `frontend/src/components/`, `frontend/src/styles/` | Mapa Leaflet, paneles, leyenda, controles y estilos. | WP-07 |
-| `frontend/src/App.vue` | Composición e integración de la vista; no es propietario de la lógica de datos ni de la UI. | INT01 |
-| `frontend/tests/e2e/` | Specs E2E de Playwright e instrucciones del harness externo. | INT02 |
-| `contracts/` | JSON Schema y documentación del contrato de datos v1.2.0. | WP-04 / A02 |
-| `pipelines/nisar/` | Conversor NISAR L3 SME2 → capa `soil-moisture` y sus pruebas. | Ciencia |
-| `pipelines/vegetation/` | Trabajo futuro de índices de vegetación. | Fase posterior |
-| `pipelines/historical/` | Trabajo futuro con registros históricos y de cosecha. | Fase posterior |
-| `data/references/` | Material de referencia para el equipo; sin binarios grandes versionados. | Compartido |
-| `scripts/` | Utilidades de datos (hoy, validación en `frontend/scripts/`). | WP-04 |
-| `docs/` | Contrato, handoff, QA, revisión del baseline y planes. | Compartido |
-| `.github/` | CI y plantilla de pull request. | Integración |
+Desde `frontend/`:
 
-No se versionan HDF5, GeoTIFF intermedios, NetCDF ni otros binarios científicos
-grandes; solo se publican PNG optimizados y JSON en `frontend/public/data/`.
+| Comando | Qué hace |
+|---|---|
+| `npm test` | Pruebas unitarias (Vitest). |
+| `npm run validate:data` | Valida los datos publicados contra el contrato. |
+| `npm run typecheck` | Comprueba los tipos. |
+| `npm run build` | Compila la web en `frontend/dist/`. |
 
-## Índice de documentación
+Pipelines: `pytest pipelines/analysis/tests` y `pytest pipelines/nisar/tests`
+(sin red). Las pruebas E2E usan Playwright con un harness externo
+([`frontend/tests/e2e/README.md`](frontend/tests/e2e/README.md)). Antes de
+abrir una pull request, ejecuta `npm ci`, `npm run validate:data`, `npm test` y
+`npm run build`. El check de CI se llama `ci`.
+
+### Colaborar
+
+- Ramas, pull requests y revisión: [`docs/contributing.md`](docs/contributing.md).
+- Reglas para agentes automáticos: [`AGENTS.md`](AGENTS.md).
+- `main` está protegida: todo entra por pull request con el check `ci` en
+  verde y revisión humana independiente.
+
+## Documentación
 
 | Documento | Contenido |
 |---|---|
-| [`docs/c0-interfaces.md`](docs/c0-interfaces.md) | Interfaces congeladas entre WP-04 y WP-07 (tipos, composable, props/emits). |
-| [`docs/contract-freeze.md`](docs/contract-freeze.md) | Acuerdo de congelación del contrato y regla de cambios. |
-| [`docs/data-contract.md`](docs/data-contract.md) | Referencia práctica del contrato, validación y diagnóstico. |
-| [`docs/handoff-science.md`](docs/handoff-science.md) | Cómo publicar una zona real sin tocar Vue. |
-| [`docs/qa-results.md`](docs/qa-results.md) | Resultados de aceptación, E2E, evidencias, bugs y limitaciones. |
-| [`docs/baseline-review.md`](docs/baseline-review.md) | Revisión independiente del baseline de Fase A. |
-| [`docs/work-packets/README.md`](docs/work-packets/README.md) | Índice de planes y nodos de Fase A y Fase B con su estado. |
-| [`contracts/README.md`](contracts/README.md) | Esquema JSON y convenciones resumidas. |
-| [`frontend/tests/e2e/README.md`](frontend/tests/e2e/README.md) | Cómo recrear y ejecutar el harness E2E. |
-| [`pipelines/nisar/README.md`](pipelines/nisar/README.md) | Conversor NISAR SME2, salvaguardas y limitaciones. |
-| [`AGENTS.md`](AGENTS.md) | Reglas para agentes y mapa de ámbitos de escritura. |
-| [`docs/contributing.md`](docs/contributing.md) | Ramas, pull requests, revisión y check `ci`. |
+| [`docs/challenge.md`](docs/challenge.md) | El reto de la NASA, recursos y política de licencias. |
+| [`docs/data-sources.md`](docs/data-sources.md) | Datos, fuentes y licencias (auditoría). |
+| [`pipelines/analysis/README.md`](pipelines/analysis/README.md) | Cómo se calcula cada variable y la aptitud por cultivo. |
+| [`docs/data-contract.md`](docs/data-contract.md) | Formato de los datos y validación. |
+| [`docs/handoff-science.md`](docs/handoff-science.md) | Cómo publicar una zona nueva. |
+| [`docs/c0-interfaces.md`](docs/c0-interfaces.md) | Interfaces entre datos e interfaz. |
+| [`docs/qa-results.md`](docs/qa-results.md) | Resultados de pruebas y capturas. |
 
-## Fase B: work packets
+## Licencia y cita
 
-| Work packet | Responsabilidad | Ámbito principal |
-|---|---|---|
-| **WP-04** | Contratos completos, tipos, manifiestos, loader, validador y estado de datos. | `contracts/`, `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/`, `frontend/public/data/`, scripts de datos. |
-| **WP-07** | Mapa Leaflet, mapas base PNOA/OSM, zonas, overlays, opacidad, leyendas, controles y avisos. | `frontend/src/components/`, estilos y código de Leaflet. |
+El código de OliveTwin es **[Apache-2.0](LICENSE)**: puedes usarlo, modificarlo
+y redistribuirlo citando la autoría (incluye [`NOTICE`](NOTICE)). Los datos
+conservan las licencias de sus fuentes: algunas (FAO ECOCROP y FAO GAEZ) solo
+permiten usos **no comerciales**; ver [`docs/data-sources.md`](docs/data-sources.md).
 
-Sus resultados se componen en `frontend/src/App.vue`, que se limita a la
-composición. El reparto detallado, los criterios de aceptación y las reglas de
-convivencia están en [`AGENTS.md`](AGENTS.md) y en el
-[índice de work packets](docs/work-packets/README.md).
-
-## Colaboración
-
-- Guía de contribución, ramas, PR y revisión:
-  [`docs/contributing.md`](docs/contributing.md).
-- Reglas para agentes automáticos: [`AGENTS.md`](AGENTS.md).
-- Plantilla de pull request:
-  [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
-- Incidencias y propuestas: pestaña **Issues** del repositorio.
-
-`main` debe estar siempre compilable. Los cambios entran por pull request
-pequeña, con el check `ci` en verde y revisión independiente; no se fusiona
-sin aprobación humana.
-
-## Limitaciones conocidas
-
-- **Producto PROVISIONAL.** La humedad NISAR L3 SME2 no está totalmente
-  calibrada; las comparaciones entre fechas o zonas deben interpretarse con
-  cautela. Jaén se observa en pasada ascendente (~05:23 UTC) y Toledo en
-  descendente (~19:09 UTC): la comparación incluye la hora del día.
-- **Sin estimación en algunas superficies.** El producto no estima humedad en
-  zonas urbanas, agua o vegetación densa; esos píxeles son transparentes.
-- **Dependencia de red.** PNOA y OSM son servicios externos. Si PNOA falla, la
-  interfaz permite cambiar a OSM y avisa sin bloquear el mapa; sin Internet las
-  teselas no cargan.
-- **Los E2E no están en CI.** Requieren un harness de Playwright externo al
-  repositorio ([instrucciones](frontend/tests/e2e/README.md)).
-- **La demo no cubre producción ni riego.** Solo muestra humedad superficial
-  georreferenciada; no calcula kg/ha ni dosis de riego.
-- `main` está **protegida** (desde el 2026-11-14, al hacerse público el repositorio): toda
-  entrada pasa por PR con el check `ci` en verde; sin force-push ni borrado. No se exige
-  aprobación mínima en GitHub (hackatón de 48 h), pero la revisión independiente sigue siendo norma.
-- La asignación de personas a cada work packet se coordina fuera del repositorio. No se crea `CODEOWNERS`
-  con usuarios no verificados.
+Si usas OliveTwin en una investigación o presentación, cítalo con
+[`CITATION.cff`](CITATION.cff) («Cite this repository» en GitHub).

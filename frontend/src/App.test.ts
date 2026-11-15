@@ -13,6 +13,7 @@ import type {
   TimeStep,
 } from './types/manifest'
 import { makeManifest } from './services/__fixtures__/manifestFixtures'
+import { analysisFixture, makeFetch, settle } from './services/__fixtures__/analysisCube'
 
 /**
  * Stub de OliveMap: evita montar Leaflet en jsdom y permite comprobar de forma
@@ -26,6 +27,9 @@ const OliveMapStub = defineComponent({
     zones: { type: Array, required: true },
     selectedZoneId: { type: String, default: null },
     overlay: { type: Object, default: null },
+    analysisOverlay: { type: Object, default: null },
+    analysisOpacity: { type: Number, default: 0.8 },
+    analysisVisible: { type: Boolean, default: true },
   },
   emits: ['select-zone', 'basemap-error', 'image-error'],
   template: '<div class="olive-map-stub" data-test="olive-map"></div>',
@@ -176,7 +180,7 @@ afterEach(() => {
 })
 
 describe('App — integración con datos reales y línea temporal', () => {
-  it('arranca en real, autoselecciona Jaén y muestra aviso PROVISIONAL y slider', async () => {
+  it('arranca en real, autoselecciona Jaén y muestra subtítulo PROVISIONAL y slider', async () => {
     installFetch()
     const wrapper = await mountApp()
 
@@ -186,14 +190,14 @@ describe('App — integración con datos reales y línea temporal', () => {
     expect(wrapper.find('.ot-mode-switch').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('DATOS SIMULADOS')
 
-    // Cabecera: título, subtítulo y aviso persistente del producto PROVISIONAL.
+    // Cabecera: título y subtítulo con la madurez del producto; sin aviso de
+    // cabecera ni panel de procedencia (decisión de producto 2026-11-15).
     expect(wrapper.get('h1').text()).toBe('OliveTwin')
     expect(wrapper.text()).toContain(
       'NISAR L3 SME2 · humedad superficial · datos PROVISIONAL',
     )
-    expect(wrapper.text()).toContain(
-      'Producto NISAR SME2 PROVISIONAL: no totalmente calibrado; humedad superficial ≠ necesidad de riego',
-    )
+    expect(wrapper.find('.ot-panel__notice').exists()).toBe(false)
+    expect(wrapper.find('.ot-provenance').exists()).toBe(false)
 
     // Ambas zonas disponibles, con Jaén seleccionada automáticamente.
     const options = wrapper.findAll('.ot-zone-selector option')
@@ -217,17 +221,13 @@ describe('App — integración con datos reales y línea temporal', () => {
       timeIndex: 2,
     })
 
-    // Slider temporal y procedencia efectiva del paso activo.
+    // Slider temporal en el paso activo.
     expect(wrapper.find('.ot-time-slider').exists()).toBe(true)
     expect(wrapper.text()).toContain('Paso 3 de 3')
-    expect(wrapper.text()).toContain('2026-07-14')
-    const provenance = wrapper.get('.ot-provenance').text()
-    expect(provenance).toContain('Datos reales')
-    expect(provenance).toContain('TEST-SCENE-jaen-2')
-    expect(provenance).toContain('14 de julio de 2026')
+    expect(wrapper.text()).toContain('07/14/2026')
   })
 
-  it('el slider cambia overlay.url y la procedencia; cambiar de zona reinicia al último paso', async () => {
+  it('el slider cambia overlay.url y la fecha; cambiar de zona reinicia al último paso', async () => {
     installFetch()
     const wrapper = await mountApp()
 
@@ -240,8 +240,7 @@ describe('App — integración con datos reales y línea temporal', () => {
       timeIndex: 0,
     })
     expect(wrapper.text()).toContain('Paso 1 de 3')
-    expect(wrapper.text()).toContain('20 de junio de 2026')
-    expect(wrapper.get('.ot-provenance').text()).toContain('TEST-SCENE-jaen-0')
+    expect(wrapper.text()).toContain('06/20/2026')
 
     // Cambiar de zona vuelve a seleccionar el último paso de la nueva zona.
     await wrapper.get('.ot-zone-selector select').setValue('toledo')
@@ -255,7 +254,6 @@ describe('App — integración con datos reales y línea temporal', () => {
     })
     expect(wrapper.text()).toContain('Paso 3 de 3')
     expect(wrapper.text()).toContain('Toledo')
-    expect(wrapper.get('.ot-provenance').text()).toContain('TEST-SCENE-toledo-2')
   })
 
   it('cambia el mapa base sin perder overlay y gestiona avisos de error', async () => {
@@ -275,16 +273,16 @@ describe('App — integración con datos reales y línea temporal', () => {
     // Fallo de teselas: aviso y cambio de mapa base propuesto por StatusBanner.
     mapOf(wrapper).vm.$emit('basemap-error', 'osm')
     await nextTick()
-    expect(wrapper.text()).toContain('El mapa de OpenStreetMap no responde')
+    expect(wrapper.text()).toContain('La Vista General no responde')
 
     const pnoaButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Usar ortofoto PNOA')
-    if (!pnoaButton) throw new Error('No se encontró el botón «Usar ortofoto PNOA»')
+      .find((button) => button.text() === 'Usar Vista Satelital')
+    if (!pnoaButton) throw new Error('No se encontró el botón «Usar Vista Satelital»')
     await pnoaButton.trigger('click')
     await nextTick()
     expect(mapOf(wrapper).props('baseMap')).toBe('pnoa')
-    expect(wrapper.text()).not.toContain('El mapa de OpenStreetMap no responde')
+    expect(wrapper.text()).not.toContain('La Vista General no responde')
 
     // Error de imagen: se muestra y se limpia al cambiar de paso temporal.
     mapOf(wrapper).vm.$emit('image-error', overlayBefore!.url)
@@ -312,5 +310,71 @@ describe('App — integración con datos reales y línea temporal', () => {
     expect(currentOverlay(wrapper)?.opacity).toBeCloseTo(0.4)
     expect(currentOverlay(wrapper)?.layerId).toBe('soil-moisture')
     expect(wrapper.text()).toContain('40 %')
+  })
+
+  it('pestañas: Capas por defecto, Análisis/Comparar deshabilitadas sin cubo e Historia con el reto', async () => {
+    installFetch()
+    const wrapper = await mountApp()
+    const tabs = wrapper.findAll('.ot-tabs__tab')
+    expect(tabs.map((tab) => tab.text())).toEqual(['Capas', 'Análisis', 'Comparar', 'Historia'])
+    expect(tabs[0].classes()).toContain('is-selected')
+    expect(tabs[1].attributes('disabled')).toBeDefined()
+    expect(tabs[2].attributes('disabled')).toBeDefined()
+
+    await tabs[3].trigger('click')
+    expect(wrapper.text()).toContain('Dancing with the SARs')
+    expect(wrapper.find('.ot-layer-panel').exists()).toBe(false)
+    expect(currentOverlay(wrapper)).not.toBeNull()
+
+    await tabs[0].trigger('click')
+    expect(wrapper.find('.ot-layer-panel').exists()).toBe(true)
+  })
+
+  it('Capas permite elegir una variable del cubo con su línea temporal y su leyenda', async () => {
+    const cube = await makeFetch({ jaen: analysisFixture('jaen') })
+    const manifest = makeManifest(
+      'real',
+      [
+        { ...makeRealZone('jaen', 'Jaén', JAEN_BBOX), analysis: 'data/sample/zones/jaen/analysis/analysis.json' },
+        makeRealZone('toledo', 'Toledo', TOLEDO_BBOX),
+      ],
+      { schemaVersion: '1.3.0' },
+    )
+    fetchedUrls = []
+    vi.stubGlobal('fetch', (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      fetchedUrls.push(url)
+      if (url.endsWith('manifest.json')) return jsonResponse(manifest)
+      return cube.fetchImpl(input, init)
+    }) as typeof fetch)
+    const wrapper = mount(App, { global: { stubs: { OliveMap: OliveMapStub } }, attachTo: document.body })
+    wrappers.push(wrapper)
+    await vi.waitFor(() => expect(mapOf(wrapper).props('selectedZoneId')).toBe('jaen'), { timeout: 3000 })
+    await settle()
+
+    // Con cubo de análisis, Capas ofrece solo sus variables, sin número de fechas, y arranca con la humedad.
+    const select = wrapper.get('.ot-layer-panel select')
+    const labels = select.findAll('option').map((option) => option.text())
+    expect(labels).toEqual(['Elige una variable…', 'Humedad del suelo (fiable)', 'Pendiente'])
+    expect((select.element as HTMLSelectElement).value).toBe('cube:soil-moisture')
+    expect(currentOverlay(wrapper)).toBeNull()
+    expect(wrapper.get('.ot-legend').text()).toContain('m³/m³')
+    expect(wrapper.text()).toContain('Paso 2 de 2')
+    await timeSlider(wrapper).setValue('0')
+    await settle()
+    expect(wrapper.text()).toContain('Paso 1 de 2')
+
+    // Una variable estática no tiene línea temporal.
+    await select.setValue('cube:slope')
+    await settle()
+    expect(wrapper.find('.ot-time-slider').exists()).toBe(false)
+    expect(wrapper.get('.ot-legend').text()).toContain('Pendiente')
+    expect(wrapper.get('.ot-relevance').text()).toContain('Inclinación del terreno')
+
+    // Una zona sin cubo mantiene la capa del manifiesto.
+    await wrapper.get('.ot-zone-selector select').setValue('toledo')
+    await settle()
+    expect(currentOverlay(wrapper)).not.toBeNull()
+    expect(wrapper.get('.ot-layer-panel select option[value="layer:soil-moisture"]').text()).toBe('Humedad del suelo')
   })
 })

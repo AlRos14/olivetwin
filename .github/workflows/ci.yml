@@ -39,14 +39,21 @@ jobs:
       - name: Compilar
         run: npm run build --prefix frontend
 
-      - name: Configurar Python (pipeline NISAR)
+      - name: Configurar Python (pipelines)
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: pipelines/nisar/requirements.txt
+          cache-dependency-path: |
+            pipelines/nisar/requirements.txt
+            pipelines/analysis/requirements.txt
 
       - name: Tests del pipeline NISAR
         run: |
           pip install -r pipelines/nisar/requirements.txt
           python -m pytest -q pipelines/nisar/tests
+
+      - name: Tests del pipeline de análisis
+        run: |
+          pip install -r pipelines/analysis/requirements.txt
+          python -m pytest -q pipelines/analysis/tests

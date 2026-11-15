@@ -30,37 +30,44 @@ describe('TimeSlider', () => {
     expect(mountSlider(0, [STEPS[0]!]).find('.ot-time-slider').exists()).toBe(false)
   })
 
-  it('muestra etiqueta, paso actual y fecha en es-ES/UTC', () => {
+  it('muestra etiqueta, paso actual y fecha MM/DD/YYYY en UTC', () => {
     const wrapper = mountSlider(0)
     const range = wrapper.get('input[type="range"]')
 
     expect(wrapper.text()).toContain('Fecha de adquisición')
-    expect(wrapper.text()).toContain('Paso 1 de 3 · 15 de enero de 2026')
+    expect(wrapper.text()).toContain('Paso 1 de 3 · 01/15/2026')
     expect(range.attributes('min')).toBe('0')
     expect(range.attributes('max')).toBe('2')
     expect(range.attributes('step')).toBe('1')
-    expect(range.attributes('aria-valuetext')).toBe('15 de enero de 2026')
+    expect(range.attributes('aria-valuetext')).toBe('01/15/2026')
     expect(wrapper.get('label').attributes('for')).toBe(range.attributes('id'))
   })
 
-  it('usa step.label en las marcas y la fecha corta cuando no hay label', () => {
+  it('muestra todas las marcas en MM/DD/YYYY aunque haya label', () => {
     const wrapper = mountSlider(1)
     const marks = wrapper.findAll('.ot-time-slider__mark')
 
     expect(marks).toHaveLength(3)
     expect(marks.map((mark) => mark.text())).toEqual([
-      '15 ene 2026',
-      '14 feb',
-      '16 mar 2026',
+      '01/15/2026',
+      '02/14/2026',
+      '03/16/2026',
     ])
     expect(marks[1]!.classes()).toContain('ot-time-slider__mark--active')
   })
 
   it('formatea fechas con hora en UTC e indica la zona', () => {
     const wrapper = mountSlider(2)
-    // El conector entre fecha y hora («, » o « a las ») depende de la versión de ICU de Node.
-    expect(wrapper.text()).toMatch(/Paso 3 de 3 · 16 de marzo de 2026(,| a las) 10:30 UTC/)
+    expect(wrapper.text()).toContain('Paso 3 de 3 · 03/16/2026 10:30 UTC')
     expect(wrapper.get('input[type="range"]').attributes('aria-valuetext')).toContain('UTC')
+  })
+
+  it('usa label solo cuando la fecha no es válida', () => {
+    const wrapper = mountSlider(0, [
+      { date: 'no-es-fecha', label: 'Etiqueta', image: 'a.png', bbox: BBOX },
+      STEPS[0]!,
+    ])
+    expect(wrapper.findAll('.ot-time-slider__mark')[0]!.text()).toBe('Etiqueta')
   })
 
   it('trata un índice nulo o fuera de rango sin romper el slider', () => {

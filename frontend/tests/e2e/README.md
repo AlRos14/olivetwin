@@ -4,11 +4,14 @@ Estas pruebas abren la aplicación real en **Chromium headless** con Playwright,
 navegan como una persona y guardan capturas en `docs/qa/`. No se ejecutan con
 Vitest: su patrón es `*.spec.ts` y Vitest solo incluye `*.test.ts` / `*.test.mjs`.
 
-Desde 2026-11-14 la demo publica **solo datos reales** NISAR L3 SME2 de Jaén y
-Toledo con tres fechas. Los escenarios de datos de muestra se retiraron; los
-specs verifican la autoselección de Jaén, el slider temporal, el cambio de zona,
-los mapas base, el error de manifiesto, la alineación del overlay real y la
-subruta `/olivetwin/`.
+La demo publica **solo datos reales**. Desde 2026-11-15 Jaén y Toledo tienen
+cubo de análisis (contrato v1.3.0) y Capas arranca con la humedad del suelo del
+cubo, pintada en el navegador (imagen `data:` con la rejilla del cubo). Los
+specs verifican la autoselección de Jaén, el desplegable único de variables, la
+línea temporal, el cambio de zona, los mapas base, el error de manifiesto, la
+alineación de la capa con la rejilla, la pestaña Análisis (imágenes, cambio,
+gráficas, ampliación con lectura del dato y aptitud por cultivo, sin llamar al
+modelo de IA) y la subruta `/olivetwin/`.
 
 ## Requisitos
 
@@ -40,6 +43,11 @@ versión y el lanzamiento:
 npx playwright --version
 npx playwright install chromium   # solo si el navegador no está cacheado
 ```
+
+Re-ejecución del 2026-11-15: `@playwright/test@1.65.1` con
+`npx playwright install chromium` (Chrome Headless Shell 159). En ese harness
+los specs se copian a `qa-harness/tests/` antes de cada ejecución (`sync.sh`)
+para que resuelvan `@playwright/test` desde el harness sin enlaces simbólicos.
 
 ### Resolución de `@playwright/test` desde los specs
 

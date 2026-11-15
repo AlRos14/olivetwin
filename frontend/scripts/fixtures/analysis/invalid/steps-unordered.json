@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.3.0",
+  "zoneId": "demo-zona",
+  "generatedAt": "2026-11-15T03:00:00Z",
+  "pipeline": {
+    "name": "fixture",
+    "version": "0"
+  },
+  "grid": {
+    "crs": "EPSG:3857",
+    "bbox": [
+      -3.9,
+      37.6,
+      -3.6,
+      37.9
+    ],
+    "width": 4,
+    "height": 3,
+    "cellSizeM": 250,
+    "encoding": "png-uint8-linear",
+    "nodata": 255
+  },
+  "variables": [
+    {
+      "id": "soil-moisture",
+      "title": "Humedad sintética",
+      "group": "nisar",
+      "unit": "m³/m³",
+      "scale": 0.0025,
+      "offset": 0,
+      "decimals": 3,
+      "displayRange": [
+        0.05,
+        0.4
+      ],
+      "palette": "moisture",
+      "temporal": true,
+      "description": "Variable sintética de prueba.",
+      "caveat": "No es una observación.",
+      "status": "synthetic",
+      "provenance": {
+        "provider": "Fixture sintético OliveTwin",
+        "product": "Rejilla sintética de prueba",
+        "processingVersion": "fixture-1",
+        "license": "Apache-2.0 (fixture del repositorio)",
+        "referenceUrl": null,
+        "note": "Datos sintéticos solo para probar el validador; no son observaciones."
+      },
+      "steps": [
+        {
+          "date": "2026-07-02T05:23:25Z",
+          "data": "data/sample/zones/demo-zona/analysis/soil-moisture/20260702.png",
+          "stats": {
+            "mean": 0.18,
+            "median": 0.18,
+            "p10": 0.16,
+            "p90": 0.19999999999999998,
+            "min": 0.13,
+            "max": 0.22999999999999998,
+            "validFraction": 0.9
+          }
+        },
+        {
+          "date": "2026-06-20T05:23:26Z",
+          "data": "data/sample/zones/demo-zona/analysis/soil-moisture/20260620.png",
+          "stats": {
+            "mean": 0.2,
+            "median": 0.2,
+            "p10": 0.18000000000000002,
+            "p90": 0.22,
+            "min": 0.15000000000000002,
+            "max": 0.25,
+            "validFraction": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "slope",
+      "title": "Pendiente sintética",
+      "group": "terrain",
+      "unit": "°",
+      "scale": 0.25,
+      "offset": 0,
+      "displayRange": [
+        0,
+        30
+      ],
+      "palette": "terrain",
+      "temporal": false,
+      "description": "Variable sintética de prueba.",
+      "caveat": "No es una observación.",
+      "status": "synthetic",
+      "provenance": {
+        "provider": "Fixture sintético OliveTwin",
+        "product": "Rejilla sintética de prueba",
+        "processingVersion": "fixture-1",
+        "license": "Apache-2.0 (fixture del repositorio)",
+        "referenceUrl": null,
+        "note": "Datos sintéticos solo para probar el validador; no son observaciones."
+      },
+      "steps": [
+        {
+          "date": null,
+          "data": "data/sample/zones/demo-zona/analysis/slope/static.png",
+          "stats": {
+            "mean": 8,
+            "median": 8,
+            "p10": 7.98,
+            "p90": 8.02,
+            "min": 7.95,
+            "max": 8.05,
+            "validFraction": 0.9
+          }
+        }
+      ]
+    }
+  ],
+  "zoneSeries": [
+    {
+      "id": "precipitation",
+      "title": "Precipitación sintética",
+      "unit": "mm",
+      "chart": "bar",
+      "provenance": {
+        "provider": "Fixture sintético OliveTwin",
+        "product": "Rejilla sintética de prueba",
+        "processingVersion": "fixture-1",
+        "license": "Apache-2.0 (fixture del repositorio)",
+        "referenceUrl": null,
+        "note": "Datos sintéticos solo para probar el validador; no son observaciones."
+      },
+      "points": [
+        {
+          "date": "2026-06-20",
+          "value": 0
+        },
+        {
+          "date": "2026-06-21",
+          "value": 3.2
+        }
+      ]
+    }
+  ],
+  "unavailable": [
+    {
+      "id": "gunw",
+      "title": "Deformación InSAR",
+      "reason": "Fixture: sin datos."
+    }
+  ],
+  "suitability": {
+    "title": "Índice exploratorio",
+    "note": "Fixture: exploratorio y no validado.",
+    "criteria": [
+      {
+        "variable": "soil-moisture",
+        "aggregate": "mean",
+        "direction": "higher-better",
+        "weight": 1,
+        "rationale": "Hipótesis de prueba."
+      },
+      {
+        "variable": "slope",
+        "aggregate": "static",
+        "direction": "lower-better",
+        "weight": 1,
+        "rationale": "Hipótesis de prueba."
+      }
+    ]
+  }
+}

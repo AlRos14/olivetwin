@@ -34,18 +34,18 @@ const showSynthetic = computed(
 const isEmpty = computed(() => props.loadStatus === 'empty')
 const isLoading = computed(() => props.loadStatus === 'loading')
 
-const basemapMessage = computed(() =>
-  props.basemapError === 'pnoa'
-    ? 'La ortofoto PNOA no responde'
-    : 'El mapa de OpenStreetMap no responde',
+const pnoaFailed = computed(
+  () => props.basemapError === 'pnoa' || props.basemapError === 'pnoa-sigpac',
 )
 
-const basemapAction = computed<BaseMap>(() =>
-  props.basemapError === 'pnoa' ? 'osm' : 'pnoa',
+const basemapMessage = computed(() =>
+  pnoaFailed.value ? 'La Vista Satelital no responde' : 'La Vista General no responde',
 )
+
+const basemapAction = computed<BaseMap>(() => (pnoaFailed.value ? 'osm' : 'pnoa'))
 
 const basemapActionLabel = computed(() =>
-  props.basemapError === 'pnoa' ? 'Usar OpenStreetMap' : 'Usar ortofoto PNOA',
+  pnoaFailed.value ? 'Usar Vista General' : 'Usar Vista Satelital',
 )
 
 function onSwitchBasemap(): void {

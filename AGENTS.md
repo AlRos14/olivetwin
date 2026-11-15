@@ -8,6 +8,12 @@ Un agente puede implementar, probar, documentar y proponer cambios. **No puede
 fusionar, aprobar su propio trabajo, cambiar permisos ni validar por sí mismo
 afirmaciones científicas.**
 
+## Idioma
+
+Comunícate siempre con el equipo **en español**: respuestas, resúmenes,
+preguntas, reportes de entrega y mensajes de PR. El código y los nombres
+técnicos pueden seguir en inglés cuando sea la convención.
+
 ## Antes de escribir
 
 1. Lee, en este orden: `README.md`, este archivo, `docs/contributing.md`,
@@ -102,6 +108,12 @@ No se acepta «probado» sin evidencia reproducible.
 
 ## Datos, ciencia y procedencia
 
+- El proyecto responde al reto
+  [«Dancing with the SARs»](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
+  del NASA Space Apps Challenge 2026. Prioriza los recursos listados en
+  [`docs/challenge.md`](docs/challenge.md). Se puede usar cualquier otro
+  recurso open source o con licencia que permita uso en investigación; **no**
+  recursos con licencia comercial.
 - **No inventes** URLs, usuarios, permisos, cifras, fechas, productos ni
   resultados científicos.
 - No afirmes que el radar mide producción directamente, que el NDVI es NISAR o

@@ -41,3 +41,9 @@ Thumbs.db
 #
 # Toda excepción debe quedar documentada en docs/ y revisarse en la PR.
 # ---------------------------------------------------------------------------
+
+# Entornos y cachés de los pipelines científicos (no se versionan)
+.venv/
+__pycache__/
+pipelines/**/cache/
+pipelines/**/staging/

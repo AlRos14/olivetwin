@@ -26,10 +26,14 @@ import addFormats from 'ajv-formats'
 
 /** Major del contrato admitida por esta versión del validador. */
 export const SCHEMA_MAJOR = 1
-/** Versiones exactas admitidas: 1.1.0 (sin serie temporal) y 1.2.0 (con o sin timeSteps). */
-export const SUPPORTED_SCHEMA_VERSIONS = Object.freeze(['1.1.0', '1.2.0'])
-/** Versión obligatoria cuando el manifiesto usa layer.timeSteps. */
+/** Versiones exactas admitidas: 1.1.0 (sin serie temporal), 1.2.0 (timeSteps) y 1.3.0 (zone.analysis). */
+export const SUPPORTED_SCHEMA_VERSIONS = Object.freeze(['1.1.0', '1.2.0', '1.3.0'])
+/** Versión mínima cuando el manifiesto usa layer.timeSteps. */
 export const TIMESTEPS_SCHEMA_VERSION = '1.2.0'
+/** Versiones que admiten layer.timeSteps. */
+export const TIMESTEPS_SCHEMA_VERSIONS = Object.freeze(['1.2.0', '1.3.0'])
+/** Versión obligatoria cuando alguna zona declara `analysis` (cubo de análisis). */
+export const ANALYSIS_SCHEMA_VERSION = '1.3.0'
 /** Único CRS de presentación admitido en esta versión. */
 export const SUPPORTED_IMAGE_CRS = Object.freeze(['EPSG:3857'])
 /** Tolerancia en grados al comprobar que layer.bbox cae dentro de zone.bbox. */
@@ -75,6 +79,14 @@ function sameBBox(left, right) {
     isBBox(right) &&
     left.every((component, index) => component === right[index])
   )
+}
+
+/** `true` si alguna zona declara `analysis` (aunque sea inválido). */
+function manifestHasAnalysis(manifest) {
+  if (!isPlainObject(manifest) || !Array.isArray(manifest.zones)) {
+    return false
+  }
+  return manifest.zones.some((zone) => isPlainObject(zone) && 'analysis' in zone)
 }
 
 /** `true` si alguna capa del manifiesto declara timeSteps (aunque sea inválido). */
@@ -214,6 +226,7 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
 
   const mode = manifest.datasetMode
   const usesTimeSteps = manifestHasTimeSteps(manifest)
+  const usesAnalysis = manifestHasAnalysis(manifest)
 
   if (
     typeof manifest.schemaVersion === 'string' &&
@@ -225,11 +238,20 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
       `schemaVersion debe ser una versión semver de la major ${SCHEMA_MAJOR} (recibido ${JSON.stringify(manifest.schemaVersion)})`,
     )
   } else if (typeof manifest.schemaVersion === 'string') {
-    if (usesTimeSteps && manifest.schemaVersion !== TIMESTEPS_SCHEMA_VERSION) {
+    if (usesAnalysis && manifest.schemaVersion !== ANALYSIS_SCHEMA_VERSION) {
       pushError(
         errors,
         '/schemaVersion',
-        `layer.timeSteps exige schemaVersion "${TIMESTEPS_SCHEMA_VERSION}" (recibido ${JSON.stringify(manifest.schemaVersion)})`,
+        `zone.analysis exige schemaVersion "${ANALYSIS_SCHEMA_VERSION}" (recibido ${JSON.stringify(manifest.schemaVersion)})`,
+      )
+    } else if (
+      usesTimeSteps &&
+      !TIMESTEPS_SCHEMA_VERSIONS.includes(manifest.schemaVersion)
+    ) {
+      pushError(
+        errors,
+        '/schemaVersion',
+        `layer.timeSteps exige schemaVersion ${TIMESTEPS_SCHEMA_VERSIONS.map((version) => `"${version}"`).join(' o ')} (recibido ${JSON.stringify(manifest.schemaVersion)})`,
       )
     } else if (
       !usesTimeSteps &&
@@ -292,6 +314,17 @@ export function semanticErrors(manifest, { expectedMode } = {}) {
           errors,
           `${zonePath}/bbox`,
           `zone.bbox inválido: south (${zoneBbox[1]}) debe ser menor que north (${zoneBbox[3]})`,
+        )
+      }
+    }
+
+    if (typeof zone.analysis === 'string' && typeof zone.id === 'string') {
+      const expectedAnalysis = `${IMAGE_PATH_ROOT}${mode}/zones/${zone.id}/analysis/analysis.json`
+      if (zone.analysis !== expectedAnalysis) {
+        pushError(
+          errors,
+          `${zonePath}/analysis`,
+          `zone.analysis debe ser ${JSON.stringify(expectedAnalysis)} (recibido ${JSON.stringify(zone.analysis)})`,
         )
       }
     }
@@ -864,6 +897,357 @@ export function createManifestValidator({
       errors.push(...(await assetErrors(manifest, { publicDir, readAsset })))
     }
 
+    return { valid: errors.length === 0, errors }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cubo de análisis por zona (contrato v1.3.0, contracts/analysis.schema.json)
+// ---------------------------------------------------------------------------
+
+/** Tamaño máximo de un PNG de datos del cubo (bytes): evita publicar binarios grandes. */
+export const ANALYSIS_MAX_PNG_BYTES = 2 * 1024 * 1024
+
+function isoTime(value) {
+  return typeof value === 'string' && isValidAcquisitionDate(value)
+    ? Date.parse(value.length === 10 ? `${value}T00:00:00Z` : value)
+    : null
+}
+
+/**
+ * Reglas semánticas del cubo que el esquema no expresa.
+ *
+ * @param {unknown} analysis
+ * @param {{ zoneId?: string, mode?: 'sample' | 'real', zoneBbox?: number[] }} [context]
+ * @returns {{ path: string, message: string }[]}
+ */
+export function analysisSemanticErrors(analysis, { zoneId, mode, zoneBbox } = {}) {
+  /** @type {{ path: string, message: string }[]} */
+  const errors = []
+  if (!isPlainObject(analysis)) {
+    return errors
+  }
+
+  if (zoneId !== undefined && analysis.zoneId !== zoneId) {
+    pushError(errors, '/zoneId', `zoneId ${JSON.stringify(analysis.zoneId)} no coincide con la zona del manifiesto ${JSON.stringify(zoneId)}`)
+  }
+
+  const grid = analysis.grid
+  if (isPlainObject(grid) && isBBox(grid.bbox)) {
+    const [west, south, east, north] = grid.bbox
+    if (!(west < east) || !(south < north)) {
+      pushError(errors, '/grid/bbox', 'grid.bbox inválido: debe cumplir west < east y south < north')
+    }
+    if (isBBox(zoneBbox)) {
+      const tolerance = BBOX_TOLERANCE_DEG
+      const outside =
+        west < zoneBbox[0] - tolerance ||
+        south < zoneBbox[1] - tolerance ||
+        east > zoneBbox[2] + tolerance ||
+        north > zoneBbox[3] + tolerance
+      if (outside) {
+        pushError(errors, '/grid/bbox', `grid.bbox ${JSON.stringify(grid.bbox)} se sale de zone.bbox ${JSON.stringify(zoneBbox)} (tolerancia ${tolerance}°)`)
+      }
+    }
+  }
+
+  const dataPrefix =
+    typeof analysis.zoneId === 'string' && (mode === 'sample' || mode === 'real')
+      ? `${IMAGE_PATH_ROOT}${mode}/zones/${analysis.zoneId}/analysis/`
+      : null
+
+  /** @type {Set<string>} */
+  const variableIds = new Set()
+  if (Array.isArray(analysis.variables)) {
+    analysis.variables.forEach((variable, variableIndex) => {
+      const variablePath = `/variables/${variableIndex}`
+      if (!isPlainObject(variable)) {
+        return
+      }
+      if (typeof variable.id === 'string') {
+        if (variableIds.has(variable.id)) {
+          pushError(errors, `${variablePath}/id`, `id de variable duplicado: "${variable.id}"`)
+        }
+        variableIds.add(variable.id)
+      }
+      if (Array.isArray(variable.displayRange) && variable.displayRange.length === 2) {
+        const [min, max] = variable.displayRange
+        if (!(min < max)) {
+          pushError(errors, `${variablePath}/displayRange`, `displayRange inválido: ${min} debe ser menor que ${max}`)
+        }
+      }
+      if (mode === 'real' && variable.status !== 'processed_real') {
+        pushError(errors, `${variablePath}/status`, 'en modo real toda variable debe ser processed_real')
+      }
+      if (mode === 'sample' && variable.status !== 'synthetic') {
+        pushError(errors, `${variablePath}/status`, 'en modo sample toda variable debe ser synthetic')
+      }
+      if (!Array.isArray(variable.steps)) {
+        return
+      }
+      if (variable.temporal === false && variable.steps.length !== 1) {
+        pushError(errors, `${variablePath}/steps`, `una variable estática (temporal: false) debe tener exactamente un paso (tiene ${variable.steps.length})`)
+      }
+      /** @type {number | null} */
+      let previous = null
+      /** @type {Set<string>} */
+      const seenData = new Set()
+      variable.steps.forEach((step, stepIndex) => {
+        const stepPath = `${variablePath}/steps/${stepIndex}`
+        if (!isPlainObject(step)) {
+          return
+        }
+        if (typeof step.data === 'string') {
+          pushImagePathErrors(errors, `${stepPath}/data`, step.data, mode)
+          if (dataPrefix && !step.data.startsWith(dataPrefix)) {
+            pushError(errors, `${stepPath}/data`, `data debe estar bajo "${dataPrefix}" (recibido ${JSON.stringify(step.data)})`)
+          }
+          if (seenData.has(step.data)) {
+            pushError(errors, `${stepPath}/data`, `PNG repetido en la misma variable: ${step.data}`)
+          }
+          seenData.add(step.data)
+        }
+        if (variable.temporal === true) {
+          const time = isoTime(step.date)
+          if (time === null) {
+            pushError(errors, `${stepPath}/date`, `una variable temporal exige fechas ISO 8601 reales en cada paso (recibido ${JSON.stringify(step.date)})`)
+          } else {
+            if (previous !== null && !(time > previous)) {
+              pushError(errors, `${stepPath}/date`, 'los pasos deben estar en orden estrictamente creciente de fecha')
+            }
+            previous = time
+          }
+        } else if (step.date !== null && step.date !== undefined && isoTime(step.date) === null) {
+          pushError(errors, `${stepPath}/date`, `fecha inválida: ${JSON.stringify(step.date)}`)
+        }
+        if (isPlainObject(step.stats)) {
+          const { p10, median, p90, min, max } = step.stats
+          const ordered = [min, p10, median, p90, max].filter((value) => isFiniteNumber(value))
+          for (let index = 1; index < ordered.length; index += 1) {
+            if (ordered[index] < ordered[index - 1] - 1e-9) {
+              pushError(errors, `${stepPath}/stats`, 'stats incoherentes: debe cumplirse min ≤ p10 ≤ median ≤ p90 ≤ max')
+              break
+            }
+          }
+        }
+      })
+    })
+  }
+
+  if (Array.isArray(analysis.zoneSeries)) {
+    /** @type {Set<string>} */
+    const seriesIds = new Set()
+    analysis.zoneSeries.forEach((series, seriesIndex) => {
+      const seriesPath = `/zoneSeries/${seriesIndex}`
+      if (!isPlainObject(series)) {
+        return
+      }
+      if (typeof series.id === 'string') {
+        if (seriesIds.has(series.id)) {
+          pushError(errors, `${seriesPath}/id`, `id de serie duplicado: "${series.id}"`)
+        }
+        seriesIds.add(series.id)
+      }
+      if (!Array.isArray(series.points)) {
+        return
+      }
+      /** @type {number | null} */
+      let previous = null
+      series.points.forEach((point, pointIndex) => {
+        if (!isPlainObject(point)) {
+          return
+        }
+        const time = isoTime(point.date)
+        if (time === null) {
+          pushError(errors, `${seriesPath}/points/${pointIndex}/date`, `fecha inválida: ${JSON.stringify(point.date)}`)
+          return
+        }
+        if (previous !== null && !(time > previous)) {
+          pushError(errors, `${seriesPath}/points/${pointIndex}/date`, 'los puntos deben estar en orden estrictamente creciente de fecha')
+        }
+        previous = time
+      })
+    })
+  }
+
+  if (Array.isArray(analysis.crops)) {
+    /** @type {Set<string>} */
+    const cropIds = new Set()
+    analysis.crops.forEach((crop, cropIndex) => {
+      const cropPath = `/crops/${cropIndex}`
+      if (!isPlainObject(crop)) {
+        return
+      }
+      if (typeof crop.id === 'string') {
+        if (cropIds.has(crop.id)) {
+          pushError(errors, `${cropPath}/id`, `id de cultivo duplicado: "${crop.id}"`)
+        }
+        cropIds.add(crop.id)
+      }
+      /** @type {{ at: string, raster: unknown }[]} */
+      const rasters = [{ at: `${cropPath}/suitability`, raster: crop.suitability }]
+      /** @type {Set<string>} */
+      const factorIds = new Set()
+      if (Array.isArray(crop.factors)) {
+        crop.factors.forEach((factor, factorIndex) => {
+          const factorPath = `${cropPath}/factors/${factorIndex}`
+          if (!isPlainObject(factor)) {
+            return
+          }
+          if (typeof factor.id === 'string') {
+            if (factorIds.has(factor.id)) {
+              pushError(errors, `${factorPath}/id`, `id de factor duplicado en "${crop.id}": "${factor.id}"`)
+            }
+            factorIds.add(factor.id)
+          }
+          if (Array.isArray(factor.variables)) {
+            factor.variables.forEach((variableId, variableIndex) => {
+              if (typeof variableId === 'string' && !variableIds.has(variableId)) {
+                pushError(errors, `${factorPath}/variables/${variableIndex}`, `el factor usa una variable inexistente en el cubo: "${variableId}"`)
+              }
+            })
+          }
+          rasters.push({ at: `${factorPath}/raster`, raster: factor.raster })
+        })
+      }
+      if (Array.isArray(crop.otherRequirements)) {
+        crop.otherRequirements.forEach((requirement, requirementIndex) => {
+          if (!isPlainObject(requirement) || !Array.isArray(requirement.variables)) return
+          requirement.variables.forEach((variableId, variableIndex) => {
+            if (typeof variableId === 'string' && !variableIds.has(variableId)) {
+              pushError(
+                errors,
+                `${cropPath}/otherRequirements/${requirementIndex}/variables/${variableIndex}`,
+                `el requisito usa una variable inexistente en el cubo: "${variableId}"`,
+              )
+            }
+          })
+        })
+      }
+      for (const { at, raster } of rasters) {
+        if (!isPlainObject(raster) || typeof raster.data !== 'string') {
+          continue
+        }
+        pushImagePathErrors(errors, `${at}/data`, raster.data, mode)
+        if (dataPrefix && !raster.data.startsWith(dataPrefix)) {
+          pushError(errors, `${at}/data`, `data debe estar bajo "${dataPrefix}" (recibido ${JSON.stringify(raster.data)})`)
+        }
+      }
+    })
+  }
+
+  if (isPlainObject(analysis.suitability) && Array.isArray(analysis.suitability.criteria)) {
+    analysis.suitability.criteria.forEach((criterion, criterionIndex) => {
+      if (isPlainObject(criterion) && typeof criterion.variable === 'string' && !variableIds.has(criterion.variable)) {
+        pushError(errors, `/suitability/criteria/${criterionIndex}/variable`, `el criterio apunta a una variable inexistente: "${criterion.variable}"`)
+      }
+    })
+  }
+
+  return errors
+}
+
+/**
+ * Comprueba que cada PNG de datos exista, sea gris de 8 bits sin alfa y tenga
+ * exactamente el tamaño de la rejilla.
+ *
+ * @param {unknown} analysis
+ * @param {{ publicDir?: string | null, readAsset?: (relativePath: string) => Promise<Uint8Array> | Uint8Array }} [options]
+ * @returns {Promise<{ path: string, message: string }[]>}
+ */
+export async function analysisAssetErrors(analysis, { publicDir = null, readAsset } = {}) {
+  /** @type {{ path: string, message: string }[]} */
+  const errors = []
+  if (!isPlainObject(analysis) || !Array.isArray(analysis.variables) || !isPlainObject(analysis.grid)) {
+    return errors
+  }
+  const reader =
+    readAsset ??
+    (publicDir ? (relativePath) => readFile(path.join(publicDir, relativePath)) : null)
+  if (!reader) {
+    throw new TypeError('analysisAssetErrors requiere publicDir o readAsset')
+  }
+  const { width, height } = analysis.grid
+
+  /** @type {{ at: string, data: unknown }[]} */
+  const assets = []
+  analysis.variables.forEach((variable, variableIndex) => {
+    if (!isPlainObject(variable) || !Array.isArray(variable.steps)) {
+      return
+    }
+    variable.steps.forEach((step, stepIndex) => {
+      if (isPlainObject(step)) {
+        assets.push({ at: `/variables/${variableIndex}/steps/${stepIndex}/data`, data: step.data })
+      }
+    })
+  })
+  if (Array.isArray(analysis.crops)) {
+    analysis.crops.forEach((crop, cropIndex) => {
+      if (!isPlainObject(crop)) {
+        return
+      }
+      if (isPlainObject(crop.suitability)) {
+        assets.push({ at: `/crops/${cropIndex}/suitability/data`, data: crop.suitability.data })
+      }
+      if (Array.isArray(crop.factors)) {
+        crop.factors.forEach((factor, factorIndex) => {
+          if (isPlainObject(factor) && isPlainObject(factor.raster)) {
+            assets.push({ at: `/crops/${cropIndex}/factors/${factorIndex}/raster/data`, data: factor.raster.data })
+          }
+        })
+      }
+    })
+  }
+
+  for (const { at, data } of assets) {
+    if (!assertSafeRelativeImage(data)) {
+      continue
+    }
+    let bytes
+    try {
+      bytes = await reader(data)
+    } catch {
+      pushError(errors, at, `no existe el PNG de datos referenciado en public/: ${data}`)
+      continue
+    }
+    const header = readPngHeader(bytes)
+    if (!header.signatureOk) {
+      pushError(errors, at, `el asset ${data} no es un PNG válido (firma incorrecta)`)
+      continue
+    }
+    if (header.colorType !== 0 || header.bitDepth !== 8 || header.hasTrns) {
+      pushError(errors, at, `el PNG de datos ${data} debe ser gris de 8 bits sin alfa (color type ${header.colorType}, bit depth ${header.bitDepth})`)
+    }
+    if (header.width !== width || header.height !== height) {
+      pushError(errors, at, `el PNG de datos ${data} mide ${header.width}x${header.height}; la rejilla exige ${width}x${height}`)
+    }
+    if (bytes.byteLength > ANALYSIS_MAX_PNG_BYTES) {
+      pushError(errors, at, `el PNG de datos ${data} supera ${ANALYSIS_MAX_PNG_BYTES} bytes`)
+    }
+  }
+  return errors
+}
+
+/**
+ * Crea un validador del cubo de análisis (esquema + semántica + assets).
+ *
+ * @param {{ schema: object, publicDir?: string | null, checkAssets?: boolean, readAsset?: (relativePath: string) => Promise<Uint8Array> | Uint8Array }} options
+ */
+export function createAnalysisValidator({ schema, publicDir = null, checkAssets = true, readAsset } = {}) {
+  const validateSchema = compileSchema(schema)
+
+  return async function validate(analysis, context = {}) {
+    /** @type {{ path: string, message: string }[]} */
+    const errors = []
+    const schemaOk = validateSchema(analysis) === true
+    if (!schemaOk) {
+      errors.push(...formatAjvErrors(validateSchema.errors))
+    }
+    errors.push(...analysisSemanticErrors(analysis, context))
+    const assetsEnabled = context.checkAssets ?? checkAssets
+    if (assetsEnabled && schemaOk) {
+      errors.push(...(await analysisAssetErrors(analysis, { publicDir, readAsset })))
+    }
     return { valid: errors.length === 0, errors }
   }
 }

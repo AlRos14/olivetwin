@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:olivetwin:contract:manifest:1.2.0",
-  "title": "OliveTwin manifest — contrato mínimo v1.2.0",
-  "description": "Contrato mínimo congelado en Fase A (nodo A02), alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix) y completado de forma aditiva por WP04-01 dentro de la misma versión 1.1.0. La versión 1.2.0 (C1, docs/c0-interfaces.md §6) añade de forma opcional layer.timeSteps para series temporales; los manifiestos 1.1.0 sin timeSteps siguen siendo válidos. Describe la estructura que WP-04 (datos) y WP-07 (UI) comparten. Las ampliaciones de WP04-01 están registradas en docs/contract-freeze.md §2.3: imageCrs cerrado a EPSG:3857, unit no vacío, leyenda de al menos dos paradas, id de zona en kebab-case y coherencia if/then entre datasetMode y status de capa. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (west < east, coherencia entre bbox de zona y de capa con tolerancia, min < max en range, orden de la leyenda, unicidad de ids, prefijo data/<datasetMode>/, fechas de adquisición reales, orden estricto de timeSteps, igualdad del último paso con layer.image/bbox, procedencia efectiva de cada paso y existencia/alfa del PNG) NO forma parte de este esquema y corresponde al validador de WP-04 (frontend/scripts/validate-lib.mjs).",
+  "$id": "urn:olivetwin:contract:manifest:1.3.0",
+  "title": "OliveTwin manifest — contrato v1.3.0",
+  "description": "Contrato mínimo congelado en Fase A (nodo A02), alineado con el ejemplo 4.3 del plan v2 (nodo A02-fix) y completado de forma aditiva por WP04-01 dentro de la misma versión 1.1.0. La versión 1.2.0 (C1, docs/c0-interfaces.md §6) añade de forma opcional layer.timeSteps para series temporales; los manifiestos 1.1.0 sin timeSteps siguen siendo válidos. La versión 1.3.0 añade de forma opcional zone.analysis, que enlaza un cubo de análisis por zona (contracts/analysis.schema.json); los manifiestos 1.1.0/1.2.0 siguen siendo válidos. Describe la estructura que WP-04 (datos) y WP-07 (UI) comparten. Las ampliaciones de WP04-01 están registradas en docs/contract-freeze.md §2.3: imageCrs cerrado a EPSG:3857, unit no vacío, leyenda de al menos dos paradas, id de zona en kebab-case y coherencia if/then entre datasetMode y status de capa. Los objetos se declaran cerrados (additionalProperties: false) para detectar errores tipográficos; cualquier propiedad nueva debe declararse aquí y versionarse. Excepción deliberada: provenance admite additionalProperties: true para extensiones aditivas del pipeline (por ejemplo CRID o madurez de NISAR SME2). La validación semántica (west < east, coherencia entre bbox de zona y de capa con tolerancia, min < max en range, orden de la leyenda, unicidad de ids, prefijo data/<datasetMode>/, fechas de adquisición reales, orden estricto de timeSteps, igualdad del último paso con layer.image/bbox, procedencia efectiva de cada paso y existencia/alfa del PNG) NO forma parte de este esquema y corresponde al validador de WP-04 (frontend/scripts/validate-lib.mjs).",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -15,7 +15,7 @@
     "schemaVersion": {
       "type": "string",
       "pattern": "^1\\.[0-9]+\\.[0-9]+$",
-      "description": "Versión SemVer del contrato dentro de la major 1. Valor vigente: \"1.2.0\". Un manifiesto con layer.timeSteps DEBE declarar \"1.2.0\"; sin timeSteps se admiten \"1.1.0\" y \"1.2.0\". Las ampliaciones aditivas suben la minor; un cambio incompatible sube la major."
+      "description": "Versión SemVer del contrato dentro de la major 1. Valor vigente: \"1.3.0\". Un manifiesto con zone.analysis DEBE declarar \"1.3.0\"; con layer.timeSteps, \"1.2.0\" o superior; sin ninguno de ellos se admiten \"1.1.0\", \"1.2.0\" y \"1.3.0\". Las ampliaciones aditivas suben la minor; un cambio incompatible sube la major."
     },
     "datasetMode": {
       "type": "string",
@@ -155,10 +155,49 @@
         "required": [
           "schemaVersion"
         ],
-        "description": "La línea temporal es una ampliación v1.2.0: usar timeSteps obliga a declarar schemaVersion \"1.2.0\".",
+        "description": "La línea temporal es una ampliación v1.2.0: usar timeSteps obliga a declarar schemaVersion \"1.2.0\" o posterior (\"1.3.0\").",
         "properties": {
           "schemaVersion": {
-            "const": "1.2.0"
+            "enum": [
+              "1.2.0",
+              "1.3.0"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "zones"
+        ],
+        "properties": {
+          "zones": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": [
+                "analysis"
+              ],
+              "properties": {
+                "analysis": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "schemaVersion"
+        ],
+        "description": "El cubo de análisis es una ampliación v1.3.0: usar zone.analysis obliga a declarar schemaVersion \"1.3.0\".",
+        "properties": {
+          "schemaVersion": {
+            "const": "1.3.0"
           }
         }
       }
@@ -404,6 +443,11 @@
           "items": {
             "$ref": "#/$defs/layer"
           }
+        },
+        "analysis": {
+          "type": "string",
+          "pattern": "^data/(real|sample)/zones/[a-z0-9-]+/analysis/analysis\\.json$",
+          "description": "v1.3.0: ruta relativa a public/ del cubo de análisis de la zona (contracts/analysis.schema.json). Opcional: sin ella la zona funciona como en v1.2.0."
         }
       }
     },
