@@ -67,6 +67,10 @@ If the PNG covers less than the study area, `layer.bbox` may be smaller than
 
 ## 3. Step 2 — complete the metadata
 
+> Free-text values in the data files (names, descriptions, notes, legend labels) are written in
+> Spanish, the source language of the data, and translated for the English interface in
+> `frontend/public/data/real/i18n/en.json` (see [`contributing.md`](contributing.md#translations)).
+
 The complete real manifest has this shape. It is a **template**: the values
 between `<...>` must be replaced with verifiable data. While the
 placeholders are left, `validate:data` will reject the manifest, and that is intentional.
@@ -78,9 +82,9 @@ placeholders are left, `validate:data` will reject the manifest, and that is int
   "appTitle": "OliveTwin",
   "zones": [
     {
-      "id": "nombre-de-la-zona",
-      "name": "Nombre legible de la zona",
-      "description": "Qué zona es, con qué criterio se delimitó y qué no debe inferirse de la capa.",
+      "id": "zone-name",
+      "name": "Readable zone name (Spanish, the data language)",
+      "description": "What the area is, how it was delimited and what must not be inferred from the layer.",
       "bbox": [-4.00, 37.50, -3.90, 37.60],
       "layers": [
         {
@@ -88,7 +92,7 @@ placeholders are left, `validate:data` will reject the manifest, and that is int
           "title": "Humedad superficial (NISAR SME2)",
           "kind": "image-overlay",
           "variable": "soil_moisture",
-          "image": "data/real/zones/nombre-de-la-zona/soil-moisture.png",
+          "image": "data/real/zones/zone-name/soil-moisture.png",
           "bbox": [-3.99, 37.51, -3.91, 37.59],
           "imageCrs": "EPSG:3857",
           "unit": "m³/m³",
@@ -102,17 +106,17 @@ placeholders are left, `validate:data` will reject the manifest, and that is int
           ],
           "status": "processed_real",
           "provenance": {
-            "provider": "<proveedor real del producto>",
-            "product": "<producto, versión y variable>",
-            "acquisitionDate": "<AAAA-MM-DD o fecha-hora ISO 8601 con zona>",
-            "sceneId": "<identificador de escena o producto>",
-            "processingVersion": "<versión del procesamiento o CRID>",
+            "provider": "<actual product provider>",
+            "product": "<product, version and variable>",
+            "acquisitionDate": "<YYYY-MM-DD or ISO 8601 date-time with time zone>",
+            "sceneId": "<scene or product identifier>",
+            "processingVersion": "<processing version or CRID>",
             "referenceUrl": "<https://... verificable>",
-            "note": "Recorte del AOI, reproyección, escala y cualquier limitación relevante.",
+            "note": "AOI crop, reprojection, scale and any relevant limitation.",
             "maturity": "<PROVISIONAL | VALIDATED | BETA, si aplica>",
-            "approvedBy": "<nombre de quien aprobó y fecha>"
+            "approvedBy": "<approver name and date>"
           },
-          "qualityNote": "Limitaciones de calidad y madurez; qué no debe concluirse de esta capa."
+          "qualityNote": "Quality and maturity limitations; what must not be concluded from this layer."
         }
       ]
     }
@@ -172,15 +176,15 @@ Requirements:
   "appTitle": "OliveTwin",
   "zones": [
     {
-      "id": "nombre-de-la-zona",
-      "name": "Nombre legible de la zona",
+      "id": "zone-name",
+      "name": "Readable zone name (Spanish, the data language)",
       "bbox": [-4.0, 37.5, -3.9, 37.6],
       "layers": [
         {
           "id": "soil-moisture",
           "title": "Humedad superficial (NISAR SME2)",
           "kind": "image-overlay",
-          "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-03-15.png",
+          "image": "data/real/zones/zone-name/soil-moisture-2026-03-15.png",
           "bbox": [-4.0, 37.5, -3.9, 37.6],
           "imageCrs": "EPSG:3857",
           "unit": "m³/m³",
@@ -192,45 +196,45 @@ Requirements:
           ],
           "status": "processed_real",
           "provenance": {
-            "provider": "<proveedor real del producto>",
-            "product": "<producto, versión y variable>",
+            "provider": "<actual product provider>",
+            "product": "<product, version and variable>",
             "acquisitionDate": "2026-03-15",
-            "sceneId": "<identificador del último paso>",
-            "processingVersion": "<versión del procesamiento o CRID>",
+            "sceneId": "<identifier of the last step>",
+            "processingVersion": "<processing version or CRID>",
             "referenceUrl": "<https://... verificable>",
-            "note": "Escala fija común a todos los pasos de la serie.",
-            "approvedBy": "<nombre de quien aprobó y fecha>"
+            "note": "Fixed scale shared by every step of the series.",
+            "approvedBy": "<approver name and date>"
           },
-          "qualityNote": "Limitaciones de calidad y madurez de la serie.",
+          "qualityNote": "Quality and maturity limitations of the series.",
           "timeSteps": [
             {
               "date": "2026-01-15",
               "label": "15 ene",
-              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-01-15.png",
+              "image": "data/real/zones/zone-name/soil-moisture-2026-01-15.png",
               "bbox": [-4.0, 37.5, -3.9, 37.6],
               "provenance": {
                 "acquisitionDate": "2026-01-15",
-                "sceneId": "<escena del 15 ene>"
+                "sceneId": "<scene of 15 Jan>"
               }
             },
             {
               "date": "2026-02-15",
               "label": "15 feb",
-              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-02-15.png",
+              "image": "data/real/zones/zone-name/soil-moisture-2026-02-15.png",
               "bbox": [-4.0, 37.5, -3.9, 37.6],
               "provenance": {
                 "acquisitionDate": "2026-02-15",
-                "sceneId": "<escena del 15 feb>"
+                "sceneId": "<scene of 15 Feb>"
               }
             },
             {
               "date": "2026-03-15",
               "label": "15 mar",
-              "image": "data/real/zones/nombre-de-la-zona/soil-moisture-2026-03-15.png",
+              "image": "data/real/zones/zone-name/soil-moisture-2026-03-15.png",
               "bbox": [-4.0, 37.5, -3.9, 37.6],
               "provenance": {
                 "acquisitionDate": "2026-03-15",
-                "sceneId": "<escena del 15 mar>"
+                "sceneId": "<scene of 15 Mar>"
               }
             }
           ]
@@ -262,7 +266,7 @@ NISAR pipeline of this repository does not generate NDVI.
 frontend/public/data/real/
 ├── manifest.json
 └── zones/
-    └── nombre-de-la-zona/
+    └── zone-name/
         └── soil-moisture/
             ├── 20260620T052326.png
             ├── 20260702T052325.png
@@ -396,7 +400,7 @@ installation is done in a virtual environment; scientific dependencies are not i
 python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
   --aoi -90.32 29.90 -90.24 29.96 \
   --zone-id delta-mississippi \
-  --zone-name "Delta del Misisipi" \
+  --zone-name "Mississippi Delta" \
   --staging pipelines/nisar/sme2_staging
 ```
 
@@ -416,7 +420,7 @@ Outputs in `pipelines/nisar/sme2_staging/<zone-id>/`:
 
 | File | Contents |
 |---|---|
-| `png/soil-moisture_<fecha>_<órbita>.png` | Overlay per date. |
+| `png/soil-moisture_<date>_<orbit>.png` | Overlay per date. |
 | `layer.staging.json` | Prepared layer entry; it is not copied by hand. |
 | `report.json` | Coverage, statistics, warnings, discarded scenes and georeferencing check. |
 | `timeseries.json` | Draft of all dates. `--publish` without `--date` writes the whole series as `timeSteps` (see §8.4). |
@@ -449,15 +453,15 @@ Only after the scientific review:
 python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
   --aoi -90.32 29.90 -90.24 29.96 \
   --zone-id delta-mississippi \
-  --zone-name "Delta del Misisipi" \
-  --publish --approved-by "Nombre del revisor"
+  --zone-name "Mississippi Delta" \
+  --publish --approved-by "Reviewer name"
 
 npm run validate:data --prefix frontend
 ```
 
 `--publish` requires `--approved-by`; without it, the script ends with an error. Without
 `--date`, it writes **all** the dates as
-`frontend/public/data/real/zones/<zone-id>/soil-moisture/<fecha>.png` and
+`frontend/public/data/real/zones/<zone-id>/soil-moisture/<date>.png` and
 updates the real manifest atomically:
 
 - adds the ordered `layer.timeSteps`, with the provenance of each scene;

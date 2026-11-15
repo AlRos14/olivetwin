@@ -1,4 +1,4 @@
-# NASA Space Apps Challenge 2026 challenge — "Dancing with the SARs"
+# NASA Space Apps Challenge 2026 — "Dancing with the SARs"
 
 OliveTwin is developed for this NASA Space Apps Challenge 2026 challenge:
 
