@@ -331,10 +331,11 @@ Abre la URL que imprime Vite (por defecto `http://localhost:5173/`) y:
    caer sobre la misma área en ambos.
 4. Comprueba que las zonas sin dato son transparentes (se ve el mapa base) y
    que no hay un rectángulo opaco de relleno.
-5. Verifica que la leyenda, la unidad, la fecha y la procedencia mostradas
-   coinciden con el manifiesto.
+5. Verifica que la leyenda, la unidad y la fecha mostradas coinciden con el
+   manifiesto. La interfaz no muestra la procedencia (decisión de producto del
+   2026-11-15): compruébala en el manifiesto y con `validate:data`.
 6. Recorre la línea temporal: cada fecha debe cambiar solo la imagen (sin
-   recrear el mapa ni parpadear) y la procedencia debe mostrar la escena del paso
+   recrear el mapa ni parpadear) y el slider debe mostrar la fecha del paso
    activo.
 7. Navega fuera de la zona: no debe aparecer color científico fuera de
    `layer.bbox`.
@@ -539,11 +540,13 @@ de referencia del equipo.
 
 La demo publica **humedad superficial NISAR L3 SME2** de Jaén y Toledo
 (producto **PROVISIONAL**, no totalmente calibrado). No son datos sintéticos ni
-una conclusión agronómica: son observaciones georreferenciadas del producto, con
-su procedencia y sus limitaciones visibles.
+una conclusión agronómica: son observaciones georreferenciadas del producto,
+con su procedencia y sus limitaciones declaradas en el manifiesto, en los
+cubos de análisis y en esta documentación. Desde el 2026-11-15 la interfaz solo
+indica «datos PROVISIONAL» en el subtítulo, sin avisos ni panel de procedencia.
 
-El aviso de la interfaz recuerda que la humedad superficial **no equivale a una
-necesidad de riego**. Publicar una capa tampoco demuestra por sí mismo una
+La humedad superficial **no equivale a una necesidad de riego**. Publicar una
+capa tampoco demuestra por sí mismo una
 conclusión sobre producción o kg/ha. Los requisitos del NASA Space Apps
 Challenge o de posibles premios globales dependen de lo que establezca el
 reglamento vigente y de la revisión científica del producto.

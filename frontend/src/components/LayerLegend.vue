@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { StudyLayer } from '../types/manifest'
+import type { LegendSource } from './layerOptions'
+import { NO_DATA_CSS } from '../services/palettes'
 import '../styles/ui.css'
 
 /**
@@ -9,7 +10,7 @@ import '../styles/ui.css'
  * no recuperar valores científicos exactos.
  */
 const props = defineProps<{
-  layer: StudyLayer | null
+  layer: LegendSource | null
 }>()
 
 const numberFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 })
@@ -83,14 +84,14 @@ const rangeLabel = computed(() => {
             aria-hidden="true"
           ></span>
           <span class="ot-legend__stop-label">{{ stop.label }}</span>
-          <span class="ot-legend__stop-value">{{ formatNumber(stop.value) }}</span>
+        </li>
+        <li v-if="layer.noData" class="ot-legend__stop">
+          <span class="ot-legend__swatch" :style="{ background: NO_DATA_CSS }" aria-hidden="true"></span>
+          <span class="ot-legend__stop-label">Sin dato</span>
         </li>
       </ul>
       <p v-if="layer.status === 'synthetic'" class="ot-legend__note">
         Escala ilustrativa: los colores no representan medidas reales
-      </p>
-      <p class="ot-hint">
-        Los colores orientan la lectura; no permiten recuperar valores exactos.
       </p>
     </template>
 

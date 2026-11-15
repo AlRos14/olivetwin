@@ -97,7 +97,7 @@ describe('StatusBanner', () => {
     const alerts = wrapper.findAll('[role="alert"]')
     expect(alerts).toHaveLength(2)
     const texts = alerts.map((alert) => alert.text())
-    expect(texts.some((text) => text.includes('La ortofoto PNOA no responde'))).toBe(true)
+    expect(texts.some((text) => text.includes('La Vista Satelital no responde'))).toBe(true)
     expect(
       texts.some((text) => text.includes('La imagen de la capa no está disponible')),
     ).toBe(true)
@@ -105,21 +105,28 @@ describe('StatusBanner', () => {
 
   it('con fallo de PNOA ofrece cambiar a OpenStreetMap', async () => {
     const wrapper = mountBanner({ basemapError: 'pnoa' })
-    expect(wrapper.text()).toContain('La ortofoto PNOA no responde')
+    expect(wrapper.text()).toContain('La Vista Satelital no responde')
 
     const button = wrapper.get('button')
-    expect(button.text()).toBe('Usar OpenStreetMap')
+    expect(button.text()).toBe('Usar Vista General')
     await button.trigger('click')
     expect(wrapper.emitted('switch-basemap')).toEqual([['osm']])
   })
 
   it('con fallo de OSM ofrece volver a PNOA', async () => {
     const wrapper = mountBanner({ basemapError: 'osm' })
-    expect(wrapper.text()).toContain('El mapa de OpenStreetMap no responde')
+    expect(wrapper.text()).toContain('La Vista General no responde')
 
     const button = wrapper.get('button')
-    expect(button.text()).toBe('Usar ortofoto PNOA')
+    expect(button.text()).toBe('Usar Vista Satelital')
     await button.trigger('click')
     expect(wrapper.emitted('switch-basemap')).toEqual([['pnoa']])
+  })
+
+  it('con fallo de la ortofoto con parcelas también ofrece OpenStreetMap', async () => {
+    const wrapper = mountBanner({ basemapError: 'pnoa-sigpac' })
+    expect(wrapper.text()).toContain('La Vista Satelital no responde')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('switch-basemap')).toEqual([['osm']])
   })
 })

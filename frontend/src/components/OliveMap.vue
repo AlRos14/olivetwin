@@ -20,24 +20,33 @@ import {
 } from './map/tileErrors'
 import StudyZoneMarkers from './StudyZoneMarkers.vue'
 import ScientificOverlay from './ScientificOverlay.vue'
+import AnalysisOverlay from './AnalysisOverlay.vue'
+import type { AnalysisOverlay as AnalysisOverlayData } from '../composables/useZoneAnalysis'
 
 /**
  * Mapa principal OliveTwin (WP07-01).
  *
- * - Mapa base PNOA u OSM; cambiarlo solo sustituye la capa de teselas, sin
- *   recrear el mapa ni tocar el overlay científico.
+ * - Mapa base PNOA, OSM o PNOA + recintos SIGPAC; cambiarlo solo sustituye las
+ *   capas de teselas, sin recrear el mapa ni tocar el overlay científico.
  * - Vista inicial Península + Baleares; un control propio de Leaflet permite
  *   saltar a Canarias. La navegación NO está restringida a España (el contrato
  *   admite bboxes globales y pueden probarse zonas NISAR fuera del país).
  * - Expone el `L.Map` a `StudyZoneMarkers` y `ScientificOverlay` por props.
  * - No hace fetch, no construye rutas y no importa servicios ni composables.
  */
-const props = defineProps<{
-  baseMap: BaseMap
-  zones: StudyZone[]
-  selectedZoneId: string | null
-  overlay: ActiveOverlay | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    baseMap: BaseMap
+    zones: StudyZone[]
+    selectedZoneId: string | null
+    overlay: ActiveOverlay | null
+    /** v1.3.0: capa calculada del cubo de análisis (independiente de `overlay`). */
+    analysisOverlay?: AnalysisOverlayData | null
+    analysisOpacity?: number
+    analysisVisible?: boolean
+  }>(),
+  { analysisOverlay: null, analysisOpacity: 0.8, analysisVisible: true },
+)
 
 const emit = defineEmits<{
   (event: 'select-zone', id: string): void
@@ -45,11 +54,14 @@ const emit = defineEmits<{
   (event: 'image-error', url: string): void
 }>()
 
+const PARCEL_PANE = 'olive-parcels'
+
 const containerRef = ref<HTMLDivElement | null>(null)
 /** `shallowRef` evita que la reactividad profunda de Vue envuelva el mapa de Leaflet. */
 const map = shallowRef<L.Map | null>(null)
 
 let baseLayer: L.TileLayer | null = null
+let parcelLayer: L.TileLayer.WMS | null = null
 let activeBase: BaseMap | null = null
 let baseErrorHandler: ((event: L.TileErrorEvent) => void) | null = null
 let tileTracker = createTileErrorTracker()
@@ -153,6 +165,10 @@ function setBaseLayer(next: BaseMap): void {
     baseLayer = null
     baseErrorHandler = null
   }
+  if (parcelLayer) {
+    instance.removeLayer(parcelLayer)
+    parcelLayer = null
+  }
 
   const definition = BASEMAPS[next]
   const layer = L.tileLayer(definition.url, {
@@ -170,11 +186,32 @@ function setBaseLayer(next: BaseMap): void {
     const coords = (event as Partial<L.TileErrorEvent> | undefined)?.coords as
       | TileCoords
       | undefined
-    if (next === 'pnoa' && coords && !tileTouchesPnoaCoverage(coords)) return
+    if (definition.spainOnly && coords && !tileTouchesPnoaCoverage(coords)) return
     if (tileTracker.register()) emit('basemap-error', next)
   }
   layer.on('tileerror', handleTileError)
   layer.addTo(instance)
+
+  if (definition.parcels) {
+    const parcels = definition.parcels
+    const wms = L.tileLayer.wms(parcels.url, {
+      layers: parcels.layers,
+      styles: '',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      attribution: parcels.attribution,
+      minZoom: parcels.minZoom,
+      maxZoom: definition.maxZoom,
+      pane: PARCEL_PANE,
+    })
+    const pixels = 256 * parcels.pixelRatio
+    wms.wmsParams.width = pixels
+    wms.wmsParams.height = pixels
+    // Los fallos de contornos no invalidan la ortofoto: no cuentan como error de base.
+    wms.addTo(instance)
+    parcelLayer = wms
+  }
 
   baseLayer = layer
   baseErrorHandler = handleTileError
@@ -208,6 +245,10 @@ onMounted(() => {
     attributionControl: true,
   })
   map.value = instance
+  // Contornos de parcelas por encima de las capas de datos (overlayPane = 400).
+  const parcelPane = instance.createPane(PARCEL_PANE)
+  parcelPane.style.zIndex = '450'
+  parcelPane.style.pointerEvents = 'none'
   instance.addControl(new SpainNavControl(viewSpain, viewCanarias))
 
   setBaseLayer(props.baseMap)
@@ -258,5 +299,12 @@ defineExpose({ map })
       @select-zone="handleSelectZone"
     />
     <ScientificOverlay v-if="map" :map="map" :overlay="overlay" @image-error="handleImageError" />
+    <AnalysisOverlay
+      v-if="map"
+      :map="map"
+      :overlay="analysisOverlay"
+      :opacity="analysisOpacity"
+      :visible="analysisVisible"
+    />
   </div>
 </template>

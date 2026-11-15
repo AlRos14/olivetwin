@@ -11,7 +11,7 @@
  */
 
 export type DataMode = 'sample' | 'real'
-export type BaseMap = 'pnoa' | 'osm'
+export type BaseMap = 'pnoa' | 'osm' | 'pnoa-sigpac'
 export type ManifestLoadStatus = 'loading' | 'ready' | 'empty' | 'error'
 /** [west, south, east, north] en grados WGS84 (EPSG:4326). */
 export type BBox = [west: number, south: number, east: number, north: number]
@@ -82,6 +82,8 @@ export interface StudyZone {
   description?: string
   bbox: BBox
   layers: StudyLayer[]
+  /** v1.3.0: ruta relativa a public/ del cubo de análisis (contracts/analysis.schema.json). */
+  analysis?: string
 }
 
 export interface OliveTwinManifest {

@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use OliveTwin, please cite it as below."
+title: "OliveTwin: interactive visualization of NISAR surface soil moisture over Spanish olive groves"
+abstract: >-
+  Static web application developed for the NASA Space Apps Challenge 2026
+  challenge "Dancing with the SARs". It visualizes NISAR surface soil moisture
+  and radar backscatter (provisional products) with Sentinel-2 vegetation,
+  terrain, soil and climate over study areas in Spain, and estimates physical
+  land suitability for olive, almond and rainfed wheat.
+type: software
+authors:
+  - name: "AlRos14 and the OliveTwin contributors"
+repository-code: "https://github.com/AlRos14/olivetwin"
+license: Apache-2.0
+keywords:
+  - NISAR
+  - SAR
+  - soil moisture
+  - olive groves
+  - NASA Space Apps Challenge

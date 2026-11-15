@@ -42,6 +42,8 @@ describe('LayerLegend', () => {
 
     const stops = wrapper.findAll('.ot-legend__stop')
     expect(stops).toHaveLength(3)
+    // Solo muestra la etiqueta de cada parada, sin columna de valores a la derecha.
+    expect(wrapper.find('.ot-legend__stop-value').exists()).toBe(false)
 
     const style = wrapper.get('.ot-legend__scale').attributes('style') ?? ''
     expect(style).toContain('linear-gradient')
@@ -63,7 +65,7 @@ describe('LayerLegend', () => {
       props: { layer: { ...layer, status: 'processed_real' } },
     })
     expect(real.text()).not.toContain('Escala ilustrativa')
-    expect(real.text()).toContain('no permiten recuperar valores exactos')
+    expect(real.text()).not.toContain('no permiten recuperar valores exactos')
   })
 
   it('indica «No declarado» si la capa no trae rango', () => {

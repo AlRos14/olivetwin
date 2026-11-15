@@ -35,11 +35,11 @@ compartida, avisa en la Issue correspondiente antes de hacerlo.
 | `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Contrato, carga de manifiestos y estado. | WP-04 |
 | `frontend/public/data/` | Manifiesto y assets optimizados `real` (la demo no incluye datos de muestra). | WP-04 |
 | `contracts/` | JSON Schema y documentación del contrato. | Owner del contrato (WP-04) con revisión de integración |
-| `scripts/` de datos | Generación y validación de datos. | WP-04 |
+| `frontend/scripts/` | Validación de datos. | WP-04 |
 | `frontend/src/App.vue` | Composición de la vista. | Integración, coordinada entre WP-04 y WP-07 |
 | `frontend/package.json`, `package-lock.json` | Dependencias y scripts. | Coordinación explícita antes de añadir dependencias |
 | `.github/workflows/` | CI. | Integración |
-| `pipelines/`, `data/references/` | Trabajo científico y referencias. | Equipo de datos / responsable del pipeline |
+| `pipelines/` | Trabajo científico y generación de datos. | Equipo de datos / responsable del pipeline |
 | `README.md`, `AGENTS.md`, `docs/contributing.md` | Gobierno y documentación. | Responsable de colaboración |
 
 Si necesitas un cambio fuera de tu ámbito, no sobrescribas el archivo: abre una
@@ -115,7 +115,10 @@ el build y el contrato de datos.
   observaciones de NASA.
 - Una excepción para versionar una prueba pequeña requiere justificación y
   aprobación del owner; no la añadas por iniciativa propia.
-- No incorpores datos sin licencia y procedencia claras.
+- No incorpores datos sin licencia y procedencia claras. Se admiten recursos
+  open source o con licencia que permita uso en investigación, pero no
+  recursos con licencia comercial. Los recursos recomendados del reto están en
+  [`docs/challenge.md`](challenge.md).
 
 ## Contrato de datos
 

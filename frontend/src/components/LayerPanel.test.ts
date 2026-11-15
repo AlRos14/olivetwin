@@ -64,15 +64,16 @@ describe('LayerPanel', () => {
   it('muestra solo las capas declaradas por la zona', () => {
     const wrapper = mount(LayerPanel, { props: baseProps })
 
-    expect(wrapper.find('input[type="radio"][value="ndvi"]').exists()).toBe(true)
-    expect(wrapper.find('input[type="radio"][value="soil-moisture"]').exists()).toBe(true)
-    expect(wrapper.findAll('input[type="radio"]')).toHaveLength(4) // 2 base + 2 capas
+    expect(wrapper.find('option[value="layer:ndvi"]').exists()).toBe(true)
+    expect(wrapper.find('option[value="layer:soil-moisture"]').exists()).toBe(true)
+    // Solo los radios del mapa base: la variable se elige en un desplegable.
+    expect(wrapper.findAll('input[type="radio"]')).toHaveLength(3)
 
     const onlyNdvi = mount(LayerPanel, {
       props: { ...baseProps, zone: zone([ndvi]), selectedLayerId: 'ndvi' },
     })
-    expect(onlyNdvi.find('input[type="radio"][value="ndvi"]').exists()).toBe(true)
-    expect(onlyNdvi.find('input[type="radio"][value="soil-moisture"]').exists()).toBe(false)
+    expect(onlyNdvi.find('option[value="layer:ndvi"]').exists()).toBe(true)
+    expect(onlyNdvi.find('option[value="layer:soil-moisture"]').exists()).toBe(false)
   })
 
   it('emite update:baseMap al cambiar el mapa base', async () => {
@@ -81,9 +82,9 @@ describe('LayerPanel', () => {
     expect(wrapper.emitted('update:baseMap')).toEqual([['osm']])
   })
 
-  it('emite select-layer con el id de la capa pulsada', async () => {
+  it('emite select-layer con el id de la capa elegida', async () => {
     const wrapper = mount(LayerPanel, { props: baseProps })
-    await wrapper.get('input[type="radio"][value="soil-moisture"]').setValue()
+    await wrapper.get('select').setValue('layer:soil-moisture')
     expect(wrapper.emitted('select-layer')).toEqual([['soil-moisture']])
   })
 
@@ -120,7 +121,7 @@ describe('LayerPanel', () => {
     expect(wrapper.text()).toContain('Selecciona una zona de estudio')
     expect(wrapper.find('input[type="range"]').exists()).toBe(false)
     expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
-    expect(wrapper.find('input[type="radio"][value="ndvi"]').exists()).toBe(false)
+    expect(wrapper.find('select').exists()).toBe(false)
     // El mapa base sigue siendo elegible aunque no haya zona.
     expect(wrapper.find('input[type="radio"][value="pnoa"]').exists()).toBe(true)
   })
@@ -146,7 +147,15 @@ describe('LayerPanel', () => {
   it('marca como seleccionados el mapa base y la capa activos', () => {
     const wrapper = mount(LayerPanel, { props: baseProps })
     expect((wrapper.get('input[value="pnoa"]').element as HTMLInputElement).checked).toBe(true)
-    expect((wrapper.get('input[value="ndvi"]').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('layer:ndvi')
     expect((wrapper.get('input[value="osm"]').element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('ofrece la ortofoto con parcelas SIGPAC y emite el cambio', async () => {
+    const wrapper = mount(LayerPanel, { props: baseProps })
+    const radio = wrapper.get('input[value="pnoa-sigpac"]')
+    expect(wrapper.text()).toContain('Vista Parcelas')
+    await radio.setValue(true)
+    expect(wrapper.emitted('update:baseMap')).toEqual([['pnoa-sigpac']])
   })
 })

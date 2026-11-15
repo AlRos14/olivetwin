@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OliveTwin — validador del contrato de manifiestos v1.2.0 (A04 + WP04-01 + C1).
+ * OliveTwin — validador del contrato de manifiestos v1.3.0 (A04 + WP04-01 + C1 + cubo de análisis).
  *
  * Comprueba cuatro capas:
  *   1. El esquema `contracts/manifest.schema.json` compila con Ajv (draft 2020-12).
@@ -13,6 +13,11 @@
  *      (esquema + semántica; sin comprobar ficheros, porque son contractuales).
  *   4. Todos los fixtures de `frontend/scripts/fixtures/invalid/` NO validan
  *      (el esquema o la semántica detectan el error que el fixture representa).
+ *   5. v1.3.0: cada `zone.analysis` de los manifiestos publicados valida contra
+ *      `contracts/analysis.schema.json` + semántica + PNG de datos (gris 8 bits
+ *      con el tamaño de la rejilla), y los fixtures de
+ *      `frontend/scripts/fixtures/analysis/{valid,invalid}/` se comportan como
+ *      se espera.
  *
  * Las rutas se resuelven desde la ubicación de este archivo (`import.meta.url`),
  * nunca desde el directorio de trabajo, para que funcione igual con
@@ -25,13 +30,14 @@ import { readFile, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-import { createManifestValidator } from './validate-lib.mjs'
+import { createAnalysisValidator, createManifestValidator } from './validate-lib.mjs'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const frontendDir = path.resolve(scriptDir, '..')
 const repoRoot = path.resolve(frontendDir, '..')
 
 const schemaPath = path.join(repoRoot, 'contracts', 'manifest.schema.json')
+const analysisSchemaPath = path.join(repoRoot, 'contracts', 'analysis.schema.json')
 const publicDir = path.join(frontendDir, 'public')
 const dataDir = path.join(publicDir, 'data')
 const fixturesDir = path.join(scriptDir, 'fixtures')
@@ -101,11 +107,11 @@ async function listJsonFiles(dir) {
 }
 
 async function main() {
-  console.log('OliveTwin — validación del contrato de manifiestos v1.2.0')
+  console.log('OliveTwin — validación del contrato de manifiestos v1.3.0')
   console.log(`  Esquema: ${relative(schemaPath)}`)
 
   // --- 1. Cargar el schema y compilarlo --------------------------------
-  console.log('\n[1/3] Esquema del contrato')
+  console.log('\n[1/4] Esquema del contrato')
   const loadedSchema = await readJsonFile(schemaPath)
   if (!loadedSchema.ok) {
     fail(`No se pudo cargar el esquema: ${relative(schemaPath)}`, [loadedSchema.error])
@@ -128,7 +134,9 @@ async function main() {
   }
 
   // --- 2. Manifiestos publicados --------------------------------------
-  console.log('\n[2/3] Manifiestos publicados')
+  /** @type {{ mode: 'sample' | 'real', manifest: any }[]} */
+  const publishedManifests = []
+  console.log('\n[2/4] Manifiestos publicados')
   for (const { mode, file, required } of MANIFESTS) {
     const loaded = await readJsonFile(file)
     if (!loaded.ok) {
@@ -144,6 +152,7 @@ async function main() {
 
     if (result.valid) {
       pass(`${relative(file)} válido (datasetMode="${mode}", semántica y assets)`)
+      publishedManifests.push({ mode, manifest: loaded.data })
     } else {
       fail(`${relative(file)} no cumple el contrato`, formatErrors(result.errors))
     }
@@ -153,7 +162,7 @@ async function main() {
   const validFixtures = await listJsonFiles(path.join(fixturesDir, 'valid'))
   const invalidFixtures = await listJsonFiles(path.join(fixturesDir, 'invalid'))
 
-  console.log('\n[3/3] Fixtures de auto-test')
+  console.log('\n[3/4] Fixtures de auto-test')
   if (validFixtures.length === 0) {
     fail('No hay fixtures válidos en frontend/scripts/fixtures/valid/')
   }
@@ -193,6 +202,89 @@ async function main() {
       pass(`${relative(file)} rechazado, como se esperaba`, formatErrors(result.errors)[0])
     } else {
       fail(`${relative(file)} debería ser rechazado y el validador lo acepta`)
+    }
+  }
+
+  // --- 4. Cubos de análisis (v1.3.0) -----------------------------------
+  console.log('\n[4/4] Cubos de análisis (v1.3.0)')
+  const loadedAnalysisSchema = await readJsonFile(analysisSchemaPath)
+  if (!loadedAnalysisSchema.ok) {
+    fail(`No se pudo cargar el esquema: ${relative(analysisSchemaPath)}`, [loadedAnalysisSchema.error])
+  } else {
+    let validateAnalysis = null
+    try {
+      validateAnalysis = createAnalysisValidator({
+        schema: loadedAnalysisSchema.data,
+        publicDir,
+        checkAssets: true,
+      })
+      pass(`El esquema compila (${relative(analysisSchemaPath)})`)
+    } catch (error) {
+      fail('El esquema de análisis no compila con Ajv (draft 2020-12)', [
+        error instanceof Error ? error.message : String(error),
+      ])
+    }
+
+    if (validateAnalysis) {
+      for (const { mode, manifest } of publishedManifests) {
+        for (const zone of manifest.zones ?? []) {
+          if (typeof zone.analysis !== 'string') {
+            continue
+          }
+          const file = path.join(publicDir, zone.analysis)
+          const loaded = await readJsonFile(file)
+          if (!loaded.ok) {
+            fail(`No se pudo leer ${relative(file)} (zona "${zone.id}")`, [loaded.error])
+            continue
+          }
+          const result = await validateAnalysis(loaded.data, {
+            zoneId: zone.id,
+            mode,
+            zoneBbox: zone.bbox,
+          })
+          if (result.valid) {
+            const variables = loaded.data.variables.length
+            const steps = loaded.data.variables.reduce((total, variable) => total + variable.steps.length, 0)
+            const crops = Array.isArray(loaded.data.crops) ? loaded.data.crops : []
+            const cropRasters = crops.reduce((total, crop) => total + 1 + crop.factors.length, 0)
+            const cropText = crops.length ? `, ${crops.length} cultivos con ${cropRasters} PNG de aptitud` : ''
+            pass(`${relative(file)} válido (${variables} variables, ${steps} PNG de datos${cropText})`)
+          } else {
+            fail(`${relative(file)} no cumple el contrato de análisis`, formatErrors(result.errors))
+          }
+        }
+      }
+
+      const analysisFixturesDir = path.join(fixturesDir, 'analysis')
+      const validAnalysis = await listJsonFiles(path.join(analysisFixturesDir, 'valid'))
+      const invalidAnalysis = await listJsonFiles(path.join(analysisFixturesDir, 'invalid'))
+      if (validAnalysis.length === 0 || invalidAnalysis.length === 0) {
+        fail('Faltan fixtures de análisis en frontend/scripts/fixtures/analysis/{valid,invalid}/')
+      }
+      for (const file of validAnalysis) {
+        const loaded = await readJsonFile(file)
+        const result = loaded.ok
+          ? await validateAnalysis(loaded.data, { checkAssets: false, mode: 'sample' })
+          : null
+        if (result?.valid) {
+          pass(`${relative(file)} aceptado, como se esperaba`)
+        } else {
+          fail(`${relative(file)} debería ser válido`, result ? formatErrors(result.errors) : [loaded.error])
+        }
+      }
+      for (const file of invalidAnalysis) {
+        const loaded = await readJsonFile(file)
+        if (!loaded.ok) {
+          fail(`${relative(file)}: JSON mal formado; el fixture debe probar el validador`, [loaded.error])
+          continue
+        }
+        const result = await validateAnalysis(loaded.data, { checkAssets: false, mode: 'sample' })
+        if (!result.valid) {
+          pass(`${relative(file)} rechazado, como se esperaba`, formatErrors(result.errors)[0])
+        } else {
+          fail(`${relative(file)} debería ser rechazado y el validador lo acepta`)
+        }
+      }
     }
   }
 

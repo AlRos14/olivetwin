@@ -3,14 +3,16 @@
  *
  * Se ejecuta con una build específica (`vite build --base /olivetwin/`) servida
  * por `vite preview --base /olivetwin/ --port 4174`. Comprueba que el
- * manifiesto real, los PNG y el overlay se piden bajo la subruta y que la
- * línea temporal sigue funcionando.
+ * manifiesto real, el cubo de análisis y sus PNG de datos se piden bajo la
+ * subruta y que la capa y la línea temporal siguen funcionando.
  */
 import { expect, test } from '@playwright/test'
 import {
   capture,
   getMap,
   installMapProbe,
+  defaultVariable,
+  readAnalysis,
   readRealManifest,
   waitForOverlay,
   waitForTiles,
@@ -43,21 +45,19 @@ test('AT-17 · build bajo /olivetwin/: manifiesto real, PNG y overlay bajo la su
 
   const real = readRealManifest()
   const jaen = real.zones.find((zone) => zone.id === 'jaen')!
-  const layer = jaen.layers.find((candidate) => candidate.id === 'soil-moisture')!
-  const steps = layer.timeSteps ?? []
-  expect(steps).toHaveLength(3)
+  const cube = readAnalysis('jaen')
+  const steps = defaultVariable(cube).steps
+  expect(steps.length).toBeGreaterThanOrEqual(2)
 
-  // Autoselección de Jaén y último paso temporal.
+  // Autoselección de Jaén: la capa del cubo se pinta en el navegador en el último paso.
   await expect(page.locator('.ot-zone-selector select')).toHaveValue('jaen')
-  const overlaySrc = await page.locator('img.olive-scientific-overlay').getAttribute('src')
-  expect(overlaySrc).toBe(`/olivetwin/${steps[2]!.image}`)
-  await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue('2')
+  await expect(page.locator('img.olive-scientific-overlay')).toHaveAttribute('src', /^data:image\/png/)
+  await expect(page.locator('.ot-time-slider input[type="range"]')).toHaveValue(String(steps.length - 1))
 
-  const pngResponse = responses.find((entry) =>
-    new RegExp(
-      `/olivetwin/${steps[2]!.image.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-    ).test(entry.url),
-  )
+  const cubeResponse = responses.find((entry) => entry.url.endsWith(`/olivetwin/${jaen.analysis}`))
+  expect(cubeResponse?.status).toBe(200)
+  const last = steps[steps.length - 1]!.data
+  const pngResponse = responses.find((entry) => entry.url.endsWith(`/olivetwin/${last}`))
   expect(pngResponse?.status).toBe(200)
 
   // Ningún asset de datos se pidió fuera de la subruta.
@@ -76,7 +76,7 @@ test('AT-17 · build bajo /olivetwin/: manifiesto real, PNG y overlay bajo la su
 
   // El encuadre de zona puede animarse: se espera a que termine el zoom.
   await expect.poll(async () => (await getMap(page)).zoom).toBeGreaterThanOrEqual(11)
-  const map = await getMap(page, layer.bbox)
+  const map = await getMap(page, cube.grid.bbox)
   expect(map.zoom).toBeGreaterThanOrEqual(11)
   await capture(page, 'real-09-subruta.jpg')
 })

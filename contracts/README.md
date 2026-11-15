@@ -1,6 +1,6 @@
-# Contrato de manifiestos OliveTwin — v1.2.0
+# Contrato de manifiestos OliveTwin — v1.3.0
 
-**Estado:** congelado en Fase A (nodo A02), corregido en A02-fix para alinearse con el ejemplo §4.3 del plan v2. Ampliación aditiva C1 (v1.2.0) para la línea temporal, 2026-11-14.
+**Estado:** congelado en Fase A (nodo A02), corregido en A02-fix para alinearse con el ejemplo §4.3 del plan v2. Ampliación aditiva C1 (v1.2.0) para la línea temporal, 2026-11-14. Ampliación aditiva v1.3.0 (cubo de análisis por zona), 2026-11-15.
 **Ámbito:** estructura mínima que comparten el cargador de datos (WP-04) y la interfaz Vue + Leaflet (WP-07).
 **Acuerdo completo:** [`docs/contract-freeze.md`](../docs/contract-freeze.md).
 
@@ -12,7 +12,8 @@ propietario de `contracts/` y ampliará este esquema **de forma aditiva**.
 
 | Archivo | Papel |
 |---|---|
-| `manifest.schema.json` | JSON Schema draft 2020-12 del manifiesto mínimo. `$id`: `urn:olivetwin:contract:manifest:1.2.0`. |
+| `manifest.schema.json` | JSON Schema draft 2020-12 del manifiesto mínimo. `$id`: `urn:olivetwin:contract:manifest:1.3.0`. |
+| `analysis.schema.json` | JSON Schema del cubo de análisis por zona (v1.3.0), enlazado desde `zone.analysis`. `$id`: `urn:olivetwin:contract:analysis:1.3.0`. |
 | `README.md` | Este documento: convenciones y validación local. |
 
 Manifiestos vigilados por el contrato:
@@ -85,6 +86,26 @@ La coherencia entre `datasetMode` y `status` sí se expresa en el esquema median
 `if/then`: `sample` solo admite capas `synthetic` y `real` solo `processed_real`.
 Además, `processed_real` exige `provenance.acquisitionDate`, `sceneId` y
 `referenceUrl` como cadenas no nulas.
+
+## Cubo de análisis (v1.3.0)
+
+Una zona puede declarar `"analysis": "data/<modo>/zones/<id>/analysis/analysis.json"`.
+Ese archivo describe:
+
+- `grid`: rejilla común EPSG:3857 (celdas de `cellSizeM` m Web Mercator, fila 0 = norte)
+  con su extensión exacta en WGS84 (`bbox`), `width` y `height`.
+- `variables[]`: cada una con `scale`/`offset` para decodificar sus PNG grises de 8 bits
+  (valor = `offset` + `scale` · código; 255 = sin dato), `displayRange`, `palette`,
+  `temporal`, `description`, `caveat`, `status`, `provenance` (con `license`) y `steps[]`
+  (`date`, `data`, `stats` precalculadas y procedencia del paso).
+- `zoneSeries[]` opcional: series de zona (p. ej. precipitación diaria).
+- `unavailable[]` opcional: fuentes previstas que no se pudieron incorporar y por qué.
+- `suitability` opcional y retirado (2026-11-15): índice exploratorio de aptitud relativa; el pipeline ya no lo genera y la interfaz no lo usa (se mantiene en el esquema por compatibilidad).
+- `crops[]` opcional: aptitud por cultivo (ráster 0–1 global y por factor, requisitos con su
+  fuente, supuestos y método).
+
+Detalle y reglas: [`docs/contract-freeze.md`](../docs/contract-freeze.md) §2.5 y
+[`docs/data-contract.md`](../docs/data-contract.md) §2.8.
 
 ## Convenciones congeladas
 
@@ -165,7 +186,7 @@ del JSON del manifiesto.
 
 ```ts
 export type DataMode = 'sample' | 'real';
-export type BaseMap = 'pnoa' | 'osm';
+export type BaseMap = 'pnoa' | 'osm' | 'pnoa-sigpac';
 export type ManifestLoadStatus = 'loading' | 'ready' | 'empty' | 'error';
 export type BBox = [west: number, south: number, east: number, north: number];
 ```

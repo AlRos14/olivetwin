@@ -52,6 +52,9 @@ export interface AssetOptions {
 export declare const SCHEMA_MAJOR: number
 export declare const SUPPORTED_SCHEMA_VERSIONS: readonly string[]
 export declare const TIMESTEPS_SCHEMA_VERSION: string
+export declare const TIMESTEPS_SCHEMA_VERSIONS: readonly string[]
+export declare const ANALYSIS_SCHEMA_VERSION: string
+export declare const ANALYSIS_MAX_PNG_BYTES: number
 export declare const SUPPORTED_IMAGE_CRS: readonly string[]
 export declare const BBOX_TOLERANCE_DEG: number
 export declare const IMAGE_PATH_ROOT: string
@@ -82,4 +85,26 @@ export declare function assetErrors(
 export declare function createManifestValidator(options: ValidatorOptions): (
   manifest: unknown,
   options?: ValidateOptions,
+) => Promise<ValidationResult>
+
+export interface AnalysisContext {
+  zoneId?: string
+  mode?: 'sample' | 'real'
+  zoneBbox?: number[]
+  checkAssets?: boolean
+}
+
+export declare function analysisSemanticErrors(
+  analysis: unknown,
+  context?: AnalysisContext,
+): ValidationError[]
+
+export declare function analysisAssetErrors(
+  analysis: unknown,
+  options?: AssetOptions,
+): Promise<ValidationError[]>
+
+export declare function createAnalysisValidator(options: ValidatorOptions): (
+  analysis: unknown,
+  context?: AnalysisContext,
 ) => Promise<ValidationResult>

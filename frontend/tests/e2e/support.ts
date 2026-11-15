@@ -263,6 +263,7 @@ export interface RealManifest {
     id: string
     name: string
     bbox: number[]
+    analysis?: string
     layers: Array<{
       id: string
       image: string
@@ -279,4 +280,39 @@ export function readRealManifest(): RealManifest {
   return JSON.parse(
     fs.readFileSync(path.join(repoDir(), 'frontend/public/data/real/manifest.json'), 'utf8'),
   )
+}
+
+export interface AnalysisCube {
+  zoneId: string
+  grid: { bbox: number[]; width: number; height: number }
+  variables: Array<{
+    id: string
+    title: string
+    temporal: boolean
+    steps: Array<{ date: string | null; data: string }>
+  }>
+  crops?: Array<{ id: string; name: string }>
+}
+
+/** Cubo de análisis publicado de una zona (contrato v1.3.0). */
+export function readAnalysis(zoneId: string): AnalysisCube {
+  const zone = readRealManifest().zones.find((candidate) => candidate.id === zoneId)
+  if (!zone?.analysis) throw new Error(`La zona ${zoneId} no declara cubo de análisis`)
+  return JSON.parse(fs.readFileSync(path.join(repoDir(), 'frontend/public', zone.analysis), 'utf8'))
+}
+
+/** Variable que Capas muestra al abrir: humedad completa, si no la filtrada. */
+export function defaultVariable(cube: AnalysisCube): AnalysisCube['variables'][number] {
+  return (
+    cube.variables.find((variable) => variable.id === 'soil-moisture-all') ??
+    cube.variables.find((variable) => variable.id === 'soil-moisture') ??
+    cube.variables[0]
+  )
+}
+
+/** Fecha como la muestra la interfaz: numérica estadounidense MM/DD/YYYY en UTC. */
+export function longDate(iso: string): string {
+  const date = new Date(iso)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${pad(date.getUTCMonth() + 1)}/${pad(date.getUTCDate())}/${date.getUTCFullYear()}`
 }

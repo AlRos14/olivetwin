@@ -192,6 +192,40 @@ describe('OliveMap — vista y mapa base', () => {
     }
     expect(wrapper.emitted('basemap-error')).toEqual([['osm']])
   })
+
+  it('PNOA + SIGPAC añade los recintos como WMS encima de los datos y los quita al cambiar', async () => {
+    const wrapper = mountOliveMap()
+    await nextTick()
+    const map = exposedMap(wrapper)
+    await wrapper.setProps({ baseMap: 'pnoa-sigpac' })
+    await nextTick()
+
+    const wms = allLayers(map).filter(
+      (layer): layer is L.TileLayer.WMS => layer instanceof L.TileLayer.WMS,
+    )
+    expect(wms).toHaveLength(1)
+    const parcels = wms[0]!
+    expect(parcels.wmsParams.layers).toBe('AU.Sigpac:recinto')
+    expect(parcels.wmsParams.transparent).toBe(true)
+    expect(parcels.wmsParams.width).toBe(512)
+    expect(parcels.options.minZoom).toBe(15)
+    expect(parcels.options.pane).toBe('olive-parcels')
+    expect(parcels.options.attribution).toContain('FEGA')
+    expect(Number(map.getPane('olive-parcels')!.style.zIndex)).toBeGreaterThan(400)
+    expect(tileLayers(map).some((layer) => layer.options.attribution?.includes('PNOA'))).toBe(true)
+    expect(imageLayers(map)).toHaveLength(1)
+
+    // Los fallos de los contornos no se tratan como caída del mapa base.
+    for (let index = 0; index < 10; index += 1) {
+      parcels.fire('tileerror', { coords: { x: 31, y: 24, z: 6 } })
+    }
+    expect(wrapper.emitted('basemap-error')).toBeUndefined()
+
+    await wrapper.setProps({ baseMap: 'osm' })
+    await nextTick()
+    expect(allLayers(map).some((layer) => layer instanceof L.TileLayer.WMS)).toBe(false)
+    expect(tileLayers(map)).toHaveLength(1)
+  })
 })
 
 describe('OliveMap — encuadre y controles', () => {
