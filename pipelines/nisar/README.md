@@ -64,8 +64,9 @@ Useful options:
 
 The moisture palette is sequential dry→wet and different from the NDVI one:
 `#a6611a · #e9c46a · #d9f0a3 · #41b6c4 · #2c7fb8 · #253494`. The legend labels the first stop
-as the dry end, the last one as the wet end and the intermediate ones with the moisture value
-(e.g. `0.12 m³/m³`).
+"Más seco" (driest), the last one "Más húmedo" (wettest) and the intermediate ones with a decimal
+comma (e.g. "0,12 m³/m³"). These Spanish data strings are shown in English by the interface through
+`frontend/public/data/real/i18n/en.json`.
 
 ## Time series (`timeSteps`, contract v1.2.0)
 

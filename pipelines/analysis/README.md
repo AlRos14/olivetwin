@@ -211,7 +211,7 @@ English rendering used by the interface lives next to the data in
 After regenerating the cube:
 
 1. List or write the missing entries from the repository root:
-   `npm run i18n:data -- --write --prefix frontend` (or, from `frontend/`,
+   `npm run i18n:data --prefix frontend -- --write` (or, from `frontend/`,
    `npm run i18n:data -- --write`).
 2. Translate the new entries in `frontend/public/data/real/i18n/en.json`.
 3. Run `npm run validate:data`, which reports data strings without an English entry.
