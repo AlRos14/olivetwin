@@ -71,6 +71,7 @@ function attachElement(current: OverlayState): void {
   detachElement(current)
   current.element = element
   current.elementErrorHandler = current.reportError
+  element.alt = t('layers.map.overlayAlt')
   element.addEventListener('error', current.elementErrorHandler)
 }
 

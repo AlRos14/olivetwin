@@ -6,6 +6,7 @@ import type { ActiveOverlay, BBox, StudyZone } from '../types/manifest'
 import OliveMap from './OliveMap.vue'
 import ScientificOverlay from './ScientificOverlay.vue'
 import { CANARIAS_VIEW_BOUNDS, SPAIN_VIEW_BOUNDS, bboxToLatLngBounds } from './map/geo'
+import { setLocale } from '../i18n'
 
 const JAEN_BBOX: BBox = [-3.86, 37.69, -3.61, 37.9]
 const TOLEDO_BBOX: BBox = [-4.2, 39.7, -3.9, 39.9]
@@ -301,5 +302,25 @@ describe('OliveMap — encuadre y controles', () => {
     wrapper.unmount()
     wrappers = wrappers.filter((candidate) => candidate !== wrapper)
     expect(removeSpy).toHaveBeenCalled()
+  })
+
+  it('rotula los controles de encuadre en el idioma activo sin recrear el mapa', async () => {
+    const wrapper = mountOliveMap()
+    await nextTick()
+    const map = exposedMap(wrapper)
+    const labels = () => wrapper.findAll('button').map((button) => button.text())
+
+    expect(labels()).toEqual(expect.arrayContaining(['España', 'Canarias']))
+    expect(wrapper.get('.olive-map').attributes('aria-label')).toContain('Mapa de España')
+
+    setLocale('en', { persist: false })
+    await nextTick()
+
+    expect(exposedMap(wrapper)).toBe(map)
+    expect(labels()).toEqual(expect.arrayContaining(['Spain', 'Canary Islands']))
+    expect(wrapper.get('.olive-map').attributes('aria-label')).toContain('Map of Spain')
+    expect(wrapper.get('.olive-map-nav').attributes('aria-label')).toBe('Views of Spain')
+
+    setLocale('es', { persist: false })
   })
 })
