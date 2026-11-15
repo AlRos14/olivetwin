@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { DeepReadonly } from 'vue'
 import type { LlmReportState } from '../composables/useLlm'
 import { parseMarkdown } from '../services/markdownLite'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /**
@@ -27,7 +28,7 @@ const running = computed(() => props.report.status === 'running')
     <header class="ot-llm__header">
       <h3 class="ot-llm__title">{{ title }}</h3>
       <div class="ot-llm__actions">
-        <button v-if="running" type="button" class="ot-button" @click="emit('stop')">Detener</button>
+        <button v-if="running" type="button" class="ot-button" @click="emit('stop')">{{ t('analysis.llm.stop') }}</button>
         <button
           v-else
           type="button"
@@ -36,15 +37,15 @@ const running = computed(() => props.report.status === 'running')
           :title="disabledReason ?? undefined"
           @click="emit('run')"
         >
-          {{ report.status === 'done' ? 'Volver a interpretar' : 'Interpretar con IA' }}
+          {{ report.status === 'done' ? t('analysis.llm.rerun') : t('analysis.llm.run') }}
         </button>
       </div>
     </header>
 
     <p v-if="report.status === 'idle'" class="ot-hint">
-      El modelo recibe las estadísticas calculadas de los datos y devuelve una interpretación.
+      {{ t('analysis.llm.idle') }}
     </p>
-    <p v-if="running && !report.text" class="ot-hint" role="status">Generando la interpretación…</p>
+    <p v-if="running && !report.text" class="ot-hint" role="status">{{ t('analysis.llm.generating') }}</p>
     <p v-if="report.status === 'error'" class="ot-analysis__error" role="alert">{{ report.error }}</p>
 
     <div v-if="report.text" class="ot-llm__body" aria-live="polite">
@@ -77,7 +78,7 @@ const running = computed(() => props.report.status === 'running')
         </p>
       </template>
       <p v-if="report.model" class="ot-llm__meta">
-        Generado por {{ report.model }}<template v-if="report.stopped"> · detenido</template><template v-if="running"> · escribiendo…</template>
+        {{ t('analysis.llm.generatedBy', { model: report.model }) }}<template v-if="report.stopped">{{ t('analysis.llm.stopped') }}</template><template v-if="running">{{ t('analysis.llm.writing') }}</template>
       </p>
     </div>
   </section>

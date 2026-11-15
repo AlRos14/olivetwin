@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { limitingShares, suitabilityBins } from './cropSuitability'
+import { limitingShares, suitabilityBinLabel, suitabilityBins } from './cropSuitability'
 import { parseInline, parseMarkdown } from './markdownLite'
 
 describe('suitabilityBins', () => {
@@ -8,7 +8,7 @@ describe('suitabilityBins', () => {
     const { bins, validFraction } = suitabilityBins(new Float32Array([0.1, 0.5, 0.6, 0.85, 1, Number.NaN]))
     expect(bins.map((bin) => bin.fraction)).toEqual([0.2, 0.2, 0.2, 0.4])
     expect(validFraction).toBeCloseTo(5 / 6)
-    expect(bins.map((bin) => bin.label)).toEqual([
+    expect(bins.map((bin) => suitabilityBinLabel(bin.id))).toEqual([
       'N · no apta (< 0,40)',
       'S3 · marginal (0,40–0,60)',
       'S2 · moderada (0,60–0,85)',

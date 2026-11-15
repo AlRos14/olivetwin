@@ -10,6 +10,7 @@ import {
   rainBefore,
   rangeIndices,
   sampleIndices,
+  unitLabel,
 } from './seriesAnalysis'
 
 const steps = [
@@ -122,5 +123,19 @@ describe('preferredVariable', () => {
     expect(preferredVariable([variable('ndvi'), variable('soil-moisture')])?.id).toBe('soil-moisture')
     expect(preferredVariable([variable('slope', false), variable('ndvi')], (v) => v.temporal)?.id).toBe('ndvi')
     expect(preferredVariable([])).toBeNull()
+  })
+})
+
+
+describe('unitLabel', () => {
+  it('muestra las cantidades adimensionales y la lluvia anual como lámina en mm', () => {
+    expect(unitLabel('1')).toBe('adimensional')
+    expect(unitLabel('adimensional')).toBe('adimensional')
+    expect(unitLabel('adimensional (0–1)')).toBe('adimensional')
+    expect(unitLabel('fracción')).toBe('adimensional')
+    expect(unitLabel('mm/año')).toBe('mm')
+    expect(unitLabel('m³/m³')).toBe('m³/m³')
+    expect(unitLabel('°C')).toBe('°C')
+    expect(unitLabel(null)).toBe('')
   })
 })

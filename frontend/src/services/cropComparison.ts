@@ -11,7 +11,7 @@
  * `FACTOR_THRESHOLD` entre las zonas.
  */
 import type { RequirementClasses } from '../types/analysis'
-import type { ClassShares } from './cropRequirements'
+import type { ClassShares, ObservedValue } from './cropRequirements'
 import { SUITABLE_MIN, type LimitingShare, type SuitabilityBin } from './cropSuitability'
 
 /** Diferencia mínima de superficie apta (fracción) para declarar ganador. */
@@ -31,8 +31,8 @@ export interface ZoneFactorSummary {
   shares: ClassShares
   /** Fracción de la zona en que este factor es el que más limita. */
   limiting: number
-  /** Valores observados de las variables del factor (texto ya formateado). */
-  observed: string[]
+  /** Valores observados de las variables del factor (sin formatear: se traducen al mostrarlos). */
+  observed: ObservedValue[]
   classes: RequirementClasses | null
 }
 

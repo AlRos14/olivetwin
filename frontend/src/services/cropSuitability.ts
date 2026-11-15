@@ -6,8 +6,12 @@
  * factor limita en cada celda (el de menor puntuación, como en Ecocrop).
  */
 
+import { t } from '../i18n'
+
+export type SuitabilityClassId = 'N' | 'S3' | 'S2' | 'S1'
+
 export interface SuitabilityBin {
-  label: string
+  id: SuitabilityClassId
   min: number
   max: number
   fraction: number
@@ -19,11 +23,25 @@ export interface SuitabilityBin {
  * S1 ≥ 0,85. «Apta» = S1 + S2.
  */
 export const SUITABILITY_CLASSES = [
-  { label: 'N · no apta (< 0,40)', min: 0, max: 0.4 },
-  { label: 'S3 · marginal (0,40–0,60)', min: 0.4, max: 0.6 },
-  { label: 'S2 · moderada (0,60–0,85)', min: 0.6, max: 0.85 },
-  { label: 'S1 · alta (≥ 0,85)', min: 0.85, max: 1 },
+  { id: 'N', min: 0, max: 0.4 },
+  { id: 'S3', min: 0.4, max: 0.6 },
+  { id: 'S2', min: 0.6, max: 0.85 },
+  { id: 'S1', min: 0.85, max: 1 },
 ] as const
+
+/** Texto de la clase en el idioma activo (incluye el rango). */
+export function suitabilityBinLabel(id: SuitabilityClassId): string {
+  switch (id) {
+    case 'S1':
+      return t('analysis.crops.suitability.S1')
+    case 'S2':
+      return t('analysis.crops.suitability.S2')
+    case 'S3':
+      return t('analysis.crops.suitability.S3')
+    default:
+      return t('analysis.crops.suitability.N')
+  }
+}
 
 /** Aptitud mínima para contar como «apta» (S1 + S2). */
 export const SUITABLE_MIN = 0.6
@@ -39,7 +57,7 @@ export function suitabilityBins(values: Float32Array): { bins: SuitabilityBin[];
     counts[bin] += 1
   }
   const bins = SUITABILITY_CLASSES.map((cls, index) => ({
-    label: cls.label,
+    id: cls.id,
     min: cls.min,
     max: cls.max,
     fraction: valid > 0 ? counts[index] / valid : 0,

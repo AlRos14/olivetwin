@@ -21,6 +21,7 @@ import {
   type EncodedRaster,
 } from '../services/analysisService'
 import { renderRgba, rgbaToDataUrl } from '../services/palettes'
+import { t } from '../i18n'
 
 export type AnalysisStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -97,7 +98,7 @@ export function useZoneAnalysis(
 
   function loadRaster(raster: EncodedRaster): Promise<Float32Array> {
     const current = analysis.value
-    if (!current) return Promise.reject(new Error('Sin análisis cargado'))
+    if (!current) return Promise.reject(new Error(t('analysis.errors.noAnalysis')))
     const key = `${current.zoneId}|${raster.data}|${raster.scale}|${raster.offset}`
     let promise = cache.get(key)
     if (!promise) {
@@ -111,7 +112,9 @@ export function useZoneAnalysis(
   function loadStep(target: AnalysisVariable, stepIndex: number): Promise<Float32Array> {
     const step = target.steps[stepIndex]
     if (!step) {
-      return Promise.reject(new AnalysisLoadError('semantic', `La variable «${target.id}» no tiene el paso ${stepIndex}.`))
+      return Promise.reject(
+        new AnalysisLoadError('semantic', t('analysis.errors.noStep', { id: target.id, index: stepIndex })),
+      )
     }
     return loadRaster({ data: step.data, scale: target.scale, offset: target.offset })
   }
@@ -148,8 +151,7 @@ export function useZoneAnalysis(
     } catch (error) {
       if (requestId !== loadCounter || (error as { name?: string })?.name === 'AbortError') return
       state.status = 'error'
-      state.error =
-        error instanceof AnalysisLoadError ? error.message : 'No se pudo cargar el análisis de la zona.'
+      state.error = error instanceof AnalysisLoadError ? error.message : t('analysis.errors.loadAnalysis')
     }
   }
 
@@ -183,8 +185,7 @@ export function useZoneAnalysis(
     } catch (error) {
       if (requestId !== renderCounter) return
       overlay.value = null
-      state.renderError =
-        error instanceof AnalysisLoadError ? error.message : 'No se pudo calcular la capa de análisis.'
+      state.renderError = error instanceof AnalysisLoadError ? error.message : t('analysis.errors.renderLayer')
     } finally {
       if (requestId === renderCounter) state.rendering = false
     }

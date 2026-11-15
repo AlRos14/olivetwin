@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { CropSuitability } from '../types/analysis'
-import { classShares, factorOwnVariables, requirementForVariable, requirementSource } from './cropRequirements'
+import {
+  classShares,
+  factorOwnVariables,
+  observedValues,
+  observedText,
+  requirementForVariable,
+  requirementSource,
+  requirementSourceText,
+} from './cropRequirements'
 
 const raster = { data: 'x.png', scale: 1, offset: 0, stats: { mean: null, median: null, p10: null, p90: null, validFraction: 0 } }
 
@@ -46,9 +54,27 @@ describe('cropRequirements', () => {
     expect(requirementForVariable(crop, 'elevation')).toMatchObject({ kind: 'factor', id: 'altitud', classes: null })
     const other = requirementForVariable(crop, 'soil-soc')!
     expect(other).toMatchObject({ kind: 'other', reason: 'solo cualitativa' })
-    expect(requirementSource(crop, other)).toBe('FAO')
-    expect(requirementSource(crop, requirementForVariable(crop, 'elevation')!)).toBe('FAO ECOCROP — Ficha ECOCROP «Olea europaea»')
+    expect(requirementSource(crop, other)).toEqual({ citation: 'FAO', product: null })
+    expect(requirementSourceText(requirementSource(crop, other))).toBe('FAO')
+    const ecocrop = requirementSource(crop, requirementForVariable(crop, 'elevation')!)
+    expect(ecocrop).toEqual({ citation: null, product: 'Ficha ECOCROP «Olea europaea»' })
+    expect(requirementSourceText(ecocrop)).toBe('FAO ECOCROP — Ficha ECOCROP «Olea europaea»')
     expect(requirementForVariable(crop, 'ndvi')).toBeNull()
+  })
+
+  it('describe el valor observado sin formatear y lo compone en el idioma activo', () => {
+    const variable = {
+      id: 'climate-tmean-annual',
+      title: 'Temperatura media',
+      unit: '°C',
+      scale: 0.1,
+      decimals: 1,
+      temporal: false,
+      steps: [{ stats: { mean: 17.2, p10: 13.4, p90: 21.1 } }],
+    } as never
+    const values = observedValues([variable], ['climate-tmean-annual'])
+    expect(values[0]).toMatchObject({ title: 'Temperatura media', mean: 17.2, p10: 13.4, p90: 21.1, decimals: 1 })
+    expect(observedText(values[0])).toBe('Temperatura media: media 17,2 °C (p10–p90 13,4–21,1)')
   })
 
   it('reparte la zona en óptimo, aceptable y no apto según la puntuación', () => {

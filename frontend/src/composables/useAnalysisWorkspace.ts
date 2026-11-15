@@ -17,11 +17,13 @@ import type { AnalysisStats, AnalysisVariable, CropSuitability, ZoneAnalysis } f
 import type { StudyZone } from '../types/manifest'
 import {
   applyMask,
+  areaBreakdown,
   commonMask,
   difference,
   histogram,
   summarize,
   symmetricRange,
+  type AreaMean,
   type HistogramBin,
 } from '../services/analysisMath'
 import { AnalysisLoadError, preferredVariable } from '../services/analysisService'
@@ -33,6 +35,7 @@ import {
   requirementForVariable,
   requirementSource,
   type ClassShares,
+  type RequirementSource,
   type VariableRequirement,
 } from '../services/cropRequirements'
 import type { LlmSettings } from '../services/llmClient'
@@ -45,6 +48,7 @@ import {
   type RequirementContext,
 } from '../services/llmPrompts'
 import { renderRgba } from '../services/palettes'
+import { t } from '../i18n'
 import {
   changeSummary,
   climateSummary,
@@ -102,7 +106,7 @@ export interface ChangeView {
  */
 export interface SpatialView {
   histogram: HistogramBin[]
-  byArea: { label: string; mean: number | null }[]
+  byArea: AreaMean[]
 }
 
 export const HISTOGRAM_BINS = 10
@@ -121,7 +125,7 @@ export interface CropFactorView {
 /** Valor de referencia del cultivo elegido para la variable elegida (fijo, del cubo). */
 export interface RequirementView {
   requirement: VariableRequirement | null
-  source: string | null
+  source: RequirementSource | null
   shares: ClassShares | null
 }
 
@@ -134,7 +138,7 @@ export interface CropView {
   factors: CropFactorView[]
   limiting: LimitingShare[]
   unlimited: number
-  byArea: { label: string; mean: number | null }[]
+  byArea: AreaMean[]
 }
 
 interface WorkspaceState {
@@ -199,49 +203,6 @@ function variableDecimals(variable: AnalysisVariable | null): number {
   if (!variable) return 2
   if (typeof variable.decimals === 'number') return variable.decimals
   return variable.scale < 0.01 ? 3 : variable.scale < 0.1 ? 2 : 1
-}
-
-function meanOf(values: number[]): number | null {
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
-}
-
-/** Media por cuadrantes y por tercios de altitud (para describir dónde es mayor o menor). */
-function areaBreakdown(
-  analysis: ZoneAnalysis,
-  suitability: Float32Array,
-  elevation: Float32Array | null,
-): { label: string; mean: number | null }[] {
-  const { width, height } = analysis.grid
-  const quadrants: Record<string, number[]> = { noroeste: [], noreste: [], suroeste: [], sureste: [] }
-  for (let row = 0; row < height; row += 1) {
-    for (let col = 0; col < width; col += 1) {
-      const value = suitability[row * width + col]
-      if (Number.isNaN(value)) continue
-      const key = `${row < height / 2 ? 'nor' : 'sur'}${col < width / 2 ? 'oeste' : 'este'}`
-      quadrants[key].push(value)
-    }
-  }
-  const result = Object.entries(quadrants).map(([label, values]) => ({ label: `cuadrante ${label}`, mean: meanOf(values) }))
-  if (elevation) {
-    const pairs: [number, number][] = []
-    for (let index = 0; index < suitability.length; index += 1) {
-      if (!Number.isNaN(suitability[index]) && !Number.isNaN(elevation[index])) pairs.push([elevation[index], suitability[index]])
-    }
-    if (pairs.length >= 3) {
-      const sorted = pairs.map(([z]) => z).sort((a, b) => a - b)
-      const t1 = sorted[Math.floor(sorted.length / 3)]
-      const t2 = sorted[Math.floor((2 * sorted.length) / 3)]
-      const low = pairs.filter(([z]) => z < t1).map(([, s]) => s)
-      const mid = pairs.filter(([z]) => z >= t1 && z < t2).map(([, s]) => s)
-      const high = pairs.filter(([z]) => z >= t2).map(([, s]) => s)
-      result.push(
-        { label: `cotas bajas (< ${Math.round(t1)} m)`, mean: meanOf(low) },
-        { label: `cotas medias (${Math.round(t1)}–${Math.round(t2)} m)`, mean: meanOf(mid) },
-        { label: `cotas altas (≥ ${Math.round(t2)} m)`, mean: meanOf(high) },
-      )
-    }
-  }
-  return result
 }
 
 /** Media por celda de varias fechas, solo en la zona común (fuera de ella, sin dato). */
@@ -422,7 +383,7 @@ export function useAnalysisWorkspace(
         if (token !== seriesCounter) return
         spatial.value = {
           histogram: histogram(values, target.displayRange, HISTOGRAM_BINS),
-          byArea: areaBreakdown(current, values, elevation),
+          byArea: areaBreakdown(width, height, values, elevation),
         }
       }
       state.seriesStatus = 'ready'
@@ -433,8 +394,7 @@ export function useAnalysisWorkspace(
       change.value = null
       spatial.value = null
       state.seriesStatus = 'error'
-      state.seriesError =
-        error instanceof AnalysisLoadError ? error.message : 'No se pudieron cargar las imágenes de la serie.'
+      state.seriesError = error instanceof AnalysisLoadError ? error.message : t('analysis.errors.loadSeries')
     }
   }
 
@@ -449,7 +409,7 @@ export function useAnalysisWorkspace(
     if (!promise) {
       promise = (async () => {
         const current = analysis.value
-        if (!current) throw new Error('Sin análisis cargado')
+        if (!current) throw new Error(t('analysis.errors.noAnalysis'))
         const { width, height } = current.grid
         const [values, factorValues] = await Promise.all([
           zoneAnalysis.loadRaster(target.suitability),
@@ -482,7 +442,7 @@ export function useAnalysisWorkspace(
           })),
           limiting: shares,
           unlimited,
-          byArea: areaBreakdown(current, values, elevation),
+          byArea: areaBreakdown(width, height, values, elevation),
         }
       })()
       promise.catch(() => cropCache.delete(target.id))
@@ -514,8 +474,7 @@ export function useAnalysisWorkspace(
         if (token !== cropCounter) return
         cropView.value = null
         state.cropStatus = 'error'
-        state.cropError =
-          error instanceof AnalysisLoadError ? error.message : 'No se pudieron cargar los mapas de aptitud.'
+        state.cropError = error instanceof AnalysisLoadError ? error.message : t('analysis.errors.loadSuitability')
       }
     },
     { immediate: true },
@@ -600,7 +559,10 @@ export function useAnalysisWorkspace(
   }
 
   function zoneInfo() {
-    return { name: zone.value?.name ?? analysis.value?.zoneId ?? 'zona', description: zone.value?.description }
+    return {
+      name: zone.value?.name ?? analysis.value?.zoneId ?? t('analysis.results.zoneFallback'),
+      description: zone.value?.description,
+    }
   }
 
   async function runVariableReport(): Promise<void> {

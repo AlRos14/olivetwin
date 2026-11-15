@@ -6,10 +6,51 @@
  * para la tabla, las gráficas y el contexto que se envía al modelo de IA.
  */
 import type { AnalysisStep, ZoneSeries } from '../types/analysis'
+import type { AreaMean } from './analysisMath'
+import { t } from '../i18n'
 
 /** Máximo de imágenes que se muestran a la vez: más no aportan lectura. */
 export const MAX_SAMPLES = 12
 const DAY_MS = 86_400_000
+
+/** Unidades del dato que significan una cantidad adimensional (contrato: `1`). */
+const DIMENSIONLESS = /^(1|adimensional(\s*\(\s*0[–-]1\s*\))?|fracci[oó]n)$/i
+/** Lámina anual: el «anual» va en el título, la unidad es una longitud (mm). */
+const ANNUAL_DEPTH = /^mm\s*\/\s*(a[nñ]o|year|yr)$/i
+
+/**
+ * Unidad para mostrar: las adimensionales (`1`, «adimensional», «fracción») se
+ * presentan como «dimensionless» / «adimensional»; la precipitación anual se
+ * muestra como lámina en mm (sin «/año»); el resto se deja tal cual (símbolos
+ * SI de los datos).
+ */
+export function unitLabel(unit: string | null | undefined): string {
+  const raw = (unit ?? '').trim()
+  if (!raw) return ''
+  if (DIMENSIONLESS.test(raw)) return t('analysis.units.dimensionless')
+  if (ANNUAL_DEPTH.test(raw)) return 'mm'
+  return raw
+}
+
+/** Nombre de una parte de la zona (cuadrante o franja de altitud) en el idioma activo. */
+export function areaMeanLabel(area: AreaMean): string {
+  switch (area.id) {
+    case 'quadrant-nw':
+      return t('analysis.areas.quadrant-nw')
+    case 'quadrant-ne':
+      return t('analysis.areas.quadrant-ne')
+    case 'quadrant-sw':
+      return t('analysis.areas.quadrant-sw')
+    case 'quadrant-se':
+      return t('analysis.areas.quadrant-se')
+    case 'elevation-low':
+      return t('analysis.areas.elevation-low', { max: area.max ?? 0 })
+    case 'elevation-mid':
+      return t('analysis.areas.elevation-mid', { min: area.min ?? 0, max: area.max ?? 0 })
+    default:
+      return t('analysis.areas.elevation-high', { min: area.min ?? 0 })
+  }
+}
 
 export function stepTime(date: string | null): number | null {
   if (!date) return null

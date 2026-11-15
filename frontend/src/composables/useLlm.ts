@@ -12,6 +12,7 @@ import {
   type ChatMessage,
   type LlmSettings,
 } from '../services/llmClient'
+import { t } from '../i18n'
 
 export type LlmReportStatus = 'idle' | 'running' | 'done' | 'error'
 
@@ -75,7 +76,7 @@ export function useLlmReport(settings: LlmSettings, options: { fetchImpl?: typeo
       if (controller !== current) return
       report.text = text
       report.status = text.trim() ? 'done' : 'error'
-      if (!text.trim()) report.error = 'El modelo no devolvió texto.'
+      if (!text.trim()) report.error = t('analysis.llm.empty')
     } catch (error) {
       if (controller !== current) return
       if ((error as { name?: string })?.name === 'AbortError') {
@@ -84,7 +85,7 @@ export function useLlmReport(settings: LlmSettings, options: { fetchImpl?: typeo
         return
       }
       report.status = 'error'
-      report.error = error instanceof LlmError ? error.message : 'No se pudo generar la interpretación.'
+      report.error = error instanceof LlmError ? error.message : t('analysis.llm.failed')
     } finally {
       if (controller === current) controller = null
     }
