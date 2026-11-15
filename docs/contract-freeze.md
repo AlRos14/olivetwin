@@ -1,171 +1,170 @@
-# Congelación del contrato mínimo OliveTwin — v1.1.0, ampliaciones aditivas v1.2.0 y v1.3.0
+# OliveTwin minimal contract freeze — v1.1.0, additive extensions v1.2.0 and v1.3.0
 
-**Fecha del acuerdo:** 14 de noviembre de 2026 (Fase A, nodo A02; corregido en A02-fix).
-**Estado:** congelado para el arranque de Fase B; alineado con el ejemplo §4.3 del plan v2.
-**Repositorio:** <https://github.com/AlRos14/olivetwin> (público, owner `AlRos14`).
-**Alcance:** manifiestos de datos, convenciones espaciales y tipos de referencia compartidos por
-WP-04 (datos y contratos) y WP-07 (Vue + Leaflet).
+**Agreement date:** 14 November 2026 (Phase A, node A02; corrected in A02-fix).
+**Status:** frozen for the start of Phase B; aligned with example §4.3 of plan v2.
+**Repository:** <https://github.com/AlRos14/olivetwin> (public, owner `AlRos14`).
+**Scope:** data manifests, spatial conventions and reference types shared by
+WP-04 (data and contracts) and WP-07 (Vue + Leaflet).
 
-Este documento es el acuerdo que permite lanzar ambos work packets en paralelo. No define el
-loader, ni la lógica científica, ni componentes de interfaz: eso pertenece a WP-04 y WP-07.
+This document is the agreement that allows both work packets to be launched in parallel. It does not define the
+loader, the scientific logic or UI components: that belongs to WP-04 and WP-07.
 
-## 1. Relación con el plan de Fase B
+## 1. Relationship with the Phase B plan
 
-Este baseline **sustituye los nodos PRE00, PRE01, PRE02 y C0** del plan de Fase B. Una vez
-aprobado GA:
+This baseline **replaces nodes PRE00, PRE01, PRE02 and C0** of the Phase B plan. Once
+GA is approved:
 
-- no se repite el bootstrap del proyecto;
-- no se renegocia el contrato básico aquí descrito;
-- el orquestador de Fase B marca esos nodos como ya satisfechos y lanza WP-04 y WP-07.
+- the project bootstrap is not repeated;
+- the basic contract described here is not renegotiated;
+- the Phase B orchestrator marks those nodes as already satisfied and launches WP-04 and WP-07.
 
-El esquema completo, los fixtures, el generador de PNG y la validación científica siguen
-siendo responsabilidad de WP-04.
+The complete schema, the fixtures, the PNG generator and the scientific validation remain
+the responsibility of WP-04.
 
-## 2. Campos y convenciones inmutables
+## 2. Immutable fields and conventions
 
-| Objeto | Campos mínimos / convenios | Propiedad del trabajo posterior |
+| Object | Minimum fields / conventions | Ownership of later work |
 |---|---|---|
-| Manifest | `schemaVersion`, `datasetMode` (`sample`/`real`), `appTitle`, `zones[]` | WP-04 completa el schema |
-| Zona | `id`, `name`, `bbox`, `layers[]`; `description` opcional | WP-04 formaliza JSON Schema; WP-07 visualiza |
-| Capa | `id` (`ndvi` o `soil-moisture`), `title`, `kind: image-overlay`, `image`, `bbox`, `imageCrs`, `unit`, `status`, `legend`, `provenance`, `qualityNote`; `variable` y `range` (`[min,max]`) opcionales | WP-04 define restricciones/validador; WP-07 usa props |
-| BBox | `[west, south, east, north]`, WGS84 EPSG:4326; Leaflet recibe `[[south,west],[north,east]]` | No cambiar orden sin versión mayor |
-| Capa PNG | PNG RGBA + `bbox` de imagen, CRS de presentación adecuado, transparencia de nodata | WP-04 genera muestra; científicos producen real |
-| Modo | `sample` / `real` en runtime; nunca fallback silencioso | WP-04 estado, WP-07 selector UI |
-| Estado de carga | `loading`, `ready`, `empty`, `error` | WP-04 servicio/composable |
-| Mapa base | `pnoa` / `osm` | WP-07 |
-| Rutas | `image` relativa a `public/`, sin `/` inicial, sin `..` y sin `%`; resolver con `import.meta.env.BASE_URL` | WP-04 carga, WP-07 no crea rutas |
-| Procedencia | `synthetic` vs `processed_real`; no presentar datos inventados como NASA real | Aprobación científica cuando haya real |
+| Manifest | `schemaVersion`, `datasetMode` (`sample`/`real`), `appTitle`, `zones[]` | WP-04 completes the schema |
+| Zone | `id`, `name`, `bbox`, `layers[]`; optional `description` | WP-04 formalises the JSON Schema; WP-07 renders it |
+| Layer | `id` (`ndvi` or `soil-moisture`), `title`, `kind: image-overlay`, `image`, `bbox`, `imageCrs`, `unit`, `status`, `legend`, `provenance`, `qualityNote`; optional `variable` and `range` (`[min,max]`) | WP-04 defines restrictions/validator; WP-07 uses props |
+| BBox | `[west, south, east, north]`, WGS84 EPSG:4326; Leaflet receives `[[south,west],[north,east]]` | Do not change the order without a major version |
+| PNG layer | RGBA PNG + image `bbox`, suitable presentation CRS, nodata transparency | WP-04 generates the sample; scientists produce the real data |
+| Mode | `sample` / `real` at runtime; never a silent fallback | WP-04 state, WP-07 UI selector |
+| Load status | `loading`, `ready`, `empty`, `error` | WP-04 service/composable |
+| Base map | `pnoa` / `osm` | WP-07 |
+| Paths | `image` relative to `public/`, without a leading `/`, without `..` and without `%`; resolve with `import.meta.env.BASE_URL` | WP-04 loads, WP-07 does not create paths |
+| Provenance | `synthetic` vs `processed_real`; do not present invented data as real NASA data | Scientific approval when there is real data |
 
-Notas de aplicación:
+Application notes:
 
-- `schemaVersion` debe cumplir `^1\.[0-9]+\.[0-9]+$`. En este baseline se admiten
-  `1.1.0` (sin serie temporal) y `1.2.0` (con o sin `timeSteps`, ver §2.4).
-- `zones: []` es válido en ambos modos; en `real` expresa ausencia deliberada de mediciones,
-  no un error que deba rellenarse con ejemplos.
-- Las rutas `image` se resuelven como `${import.meta.env.BASE_URL}${image}`. WP-04 entrega la
-  URL resuelta; WP-07 no compone rutas.
-- `legend` es una **lista de al menos dos clases** `{value: number, color: "#rrggbb", label:
-  string}`, coherente con el ejemplo §4.3 del plan v2; no es un objeto libre y debe estar
-  ordenada por `value` de forma creciente estricta (validación semántica).
-- `provenance` exige `provider`, `product` y `processingVersion`. Admite
-  `acquisitionDate` (fecha ISO 8601 o `null`), `sceneId`, `referenceUrl` y `note` (string o
-  `null`). Se mantiene `additionalProperties: true` para extensiones aditivas del pipeline
-  científico (por ejemplo CRID o madurez de NISAR SME2). El antiguo campo `source` se elimina.
-- La semántica de los valores (rango de `bbox`, `min < max` en `range`, orden de la leyenda,
-  unicidad de `id`, coherencia zona/capa, prefijo `data/<datasetMode>/`, existencia y alfa del
-  PNG, coherencia `datasetMode`/`status` y valores de `imageCrs`) corresponde al validador de
-  WP-04 (`frontend/scripts/validate-lib.mjs`), complementado por el `if/then` del esquema y no
-  por el JSON Schema mínimo por sí solo.
+- `schemaVersion` must match `^1\.[0-9]+\.[0-9]+$`. This baseline admits
+  `1.1.0` (no time series) and `1.2.0` (with or without `timeSteps`, see §2.4).
+- `zones: []` is valid in both modes; in `real` it expresses a deliberate absence of measurements,
+  not an error that must be filled with examples.
+- `image` paths are resolved as `${import.meta.env.BASE_URL}${image}`. WP-04 delivers the
+  resolved URL; WP-07 does not compose paths.
+- `legend` is a **list of at least two classes** `{value: number, color: "#rrggbb", label:
+  string}`, consistent with example §4.3 of plan v2; it is not a free object and must be
+  sorted by `value` in strictly increasing order (semantic validation).
+- `provenance` requires `provider`, `product` and `processingVersion`. It admits
+  `acquisitionDate` (ISO 8601 date or `null`), `sceneId`, `referenceUrl` and `note` (string or
+  `null`). `additionalProperties: true` is kept for additive extensions of the scientific
+  pipeline (for example CRID or NISAR SME2 maturity). The former `source` field is removed.
+- The semantics of the values (`bbox` range, `min < max` in `range`, legend order,
+  uniqueness of `id`, zone/layer coherence, `data/<datasetMode>/` prefix, existence and alpha of the
+  PNG, `datasetMode`/`status` coherence and `imageCrs` values) belongs to the WP-04 validator
+  (`frontend/scripts/validate-lib.mjs`), complemented by the schema's `if/then` and not
+  by the minimal JSON Schema alone.
 
-### 2.1 Decisión de producto: `bbox` global, mapa centrado en España
+### 2.1 Product decision: global `bbox`, map centred on Spain
 
-El contrato **no limita las zonas a España**. El rango admitido de `bbox` es el global
-(longitud ±180°, latitud ±90°) y se mantiene así deliberadamente: el equipo puede probar
-manifiestos con datos NISAR reales de zonas fuera de España sin tocar el esquema ni sus
-consumidores. Esta decisión no cambia el producto visible: el mapa navegable de WP-07 sigue
-centrado en España (Península, Baleares y Canarias) y el encuadre inicial no se amplía por
-la mera presencia de una zona exterior. `fitBounds` solo se aplica a la zona seleccionada.
+The contract **does not restrict zones to Spain**. The admitted range of `bbox` is the global one
+(longitude ±180°, latitude ±90°) and it is kept that way deliberately: the team can test
+manifests with real NISAR data from zones outside Spain without touching the schema or its
+consumers. This decision does not change the visible product: the navigable map of WP-07 remains
+centred on Spain (Mainland, Balearic Islands and Canary Islands) and the initial framing is not enlarged by
+the mere presence of an external zone. `fitBounds` only applies to the selected zone.
 
-### 2.2 Corrección A02-fix dentro de v1.1.0
+### 2.2 A02-fix correction within v1.1.0
 
-La primera redacción de A02 divergía del ejemplo §4.3 del plan v2 en tres puntos:
-`legend` era un objeto, `provenance` exigía `source` y faltaban `variable`, `range` y
-`description`. A02-fix corrigió el esquema antes de que existieran consumidores en Fase B;
-por ello la versión sigue siendo **1.1.0** (corrección previa a la implementación, no cambio
-de interfaz ya desplegada). A partir de la aprobación de GA, cualquier cambio se rige por la
-regla de la sección 4.
+The first draft of A02 diverged from example §4.3 of plan v2 in three points:
+`legend` was an object, `provenance` required `source` and `variable`, `range` and
+`description` were missing. A02-fix corrected the schema before any consumers existed in Phase B;
+therefore the version is still **1.1.0** (a correction prior to implementation, not a change
+to an already deployed interface). From GA approval onwards, any change is governed by the
+rule in section 4.
 
-### 2.3 Ampliación WP04-01 (aditiva) dentro de v1.1.0
+### 2.3 WP04-01 extension (additive) within v1.1.0
 
-El nodo WP04-01 completó el JSON Schema y el validador con las reglas que la congelación ya
-delegaba explícitamente en WP-04. **No se añaden campos, no se renombra nada y no cambia el
-orden de `bbox`**, por lo que los manifiestos y fixtures existentes siguen siendo válidos y
-`frontend/src/types/manifest.ts` no requiere cambios. La versión declarada por los manifiestos
-continúa siendo `1.1.0`.
+Node WP04-01 completed the JSON Schema and the validator with the rules that the freeze already
+explicitly delegated to WP-04. **No fields are added, nothing is renamed and the
+`bbox` order does not change**, so the existing manifests and fixtures remain valid and
+`frontend/src/types/manifest.ts` requires no changes. The version declared by the manifests
+remains `1.1.0`.
 
-| Regla | Dónde se aplica | Efecto |
+| Rule | Where it applies | Effect |
 |---|---|---|
-| `imageCrs` cerrado a `["EPSG:3857"]` | Esquema | El PNG de overlay se prepara en Web Mercator, norte arriba y extensión de `layer.bbox`. Antes era una cadena libre «por concretar en WP-04». |
-| `unit` no vacío ni solo espacios | Esquema (`minLength: 1` + patrón `\S`) | Evita unidades vacías en la leyenda y la procedencia. |
-| `legend` con al menos 2 paradas | Esquema (`minItems: 2`) | Una escala necesita al menos dos extremos; el ejemplo §4.3 usa tres. |
-| `legend` ordenada por `value` creciente estricto | Semántica | La UI puede pintar la escala sin reordenar; valores repetidos se rechazan. |
-| `id` de zona en kebab-case | Esquema (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) | Slugs estables (`jaen-demo`), sin mayúsculas, guiones dobles ni guiones en los extremos. |
-| `datasetMode: sample` ⇒ toda capa `synthetic`; `datasetMode: real` ⇒ toda capa `processed_real` | Esquema (`if/then`) y semántica | Bloquea mezclar ejemplos con datos reales y viceversa. |
-| `processed_real` exige `provenance.acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no nulas | Esquema (`if/then`) y semántica | No se concede el estado real sin fecha, identificador de escena/producto y URL de referencia. |
-| `west < east`, `south < north` en zona y capa | Semántica | Cajas geográficas válidas. |
-| `layer.bbox` dentro de `zone.bbox` con tolerancia `0.01°` | Semántica | La cobertura del raster no puede salirse de su zona de estudio. |
-| `range` con `min < max` estricto | Semántica | La escala tiene un intervalo no degenerado. |
-| `id` de zona único e `id` de capa único por zona | Semántica | Evita selecciones ambiguas en el manifiesto activo. |
-| `image` bajo `data/<datasetMode>/` | Semántica | Un manifiesto `sample` no puede referenciar assets de `real` ni al revés. |
-| `image` sin ningún `%` | Esquema (patrón), semántica y runtime (`assetUrl`) | El navegador normaliza la codificación porcentual: `%2e%2e` equivale a `..`, así que se veta cualquier `%` aunque no haya `..` literal. |
-| `acquisitionDate` es una fecha real | Esquema (`format: date`/`date-time` con ajv-formats) y semántica (calendario) | Se aceptan `2026-10-19T11:19:03Z` (pipeline NISAR) y `2026-10-19`; se rechazan `2026-13-45` o `2026-02-30`, que `Date.parse` normalizaría en silencio. |
-| PNG existente en `frontend/public/` y con canal alfa (color type 4 o 6, o `tRNS`) | Semántica + assets | Un overlay sin transparencia o un 404 se detectan antes de publicar. |
-| `schemaVersion` semver de la major 1 | Esquema + semántica | Solo se admiten contratos `1.x.y`. |
+| `imageCrs` closed to `["EPSG:3857"]` | Schema | The overlay PNG is prepared in Web Mercator, north up and extent of `layer.bbox`. It used to be a free string "to be specified in WP-04". |
+| `unit` not empty or whitespace-only | Schema (`minLength: 1` + pattern `\S`) | Prevents empty units in the legend and provenance. |
+| `legend` with at least 2 stops | Schema (`minItems: 2`) | A scale needs at least two ends; example §4.3 uses three. |
+| `legend` sorted by strictly increasing `value` | Semantics | The UI can paint the scale without reordering; repeated values are rejected. |
+| Zone `id` in kebab-case | Schema (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) | Stable slugs (`jaen-demo`), without capitals, double hyphens or leading/trailing hyphens. |
+| `datasetMode: sample` ⇒ every layer `synthetic`; `datasetMode: real` ⇒ every layer `processed_real` | Schema (`if/then`) and semantics | Blocks mixing examples with real data and vice versa. |
+| `processed_real` requires `provenance.acquisitionDate`, `sceneId` and `referenceUrl` as non-null strings | Schema (`if/then`) and semantics | The real status is not granted without a date, scene/product identifier and reference URL. |
+| `west < east`, `south < north` in zone and layer | Semantics | Valid geographic boxes. |
+| `layer.bbox` within `zone.bbox` with `0.01°` tolerance | Semantics | Raster coverage cannot fall outside its study area. |
+| `range` with strictly `min < max` | Semantics | The scale has a non-degenerate interval. |
+| Unique zone `id` and unique layer `id` per zone | Semantics | Avoids ambiguous selections in the active manifest. |
+| `image` under `data/<datasetMode>/` | Semantics | A `sample` manifest cannot reference `real` assets or vice versa. |
+| `image` without any `%` | Schema (pattern), semantics and runtime (`assetUrl`) | The browser normalises percent-encoding: `%2e%2e` is equivalent to `..`, so any `%` is banned even if there is no literal `..`. |
+| `acquisitionDate` is a real date | Schema (`format: date`/`date-time` with ajv-formats) and semantics (calendar) | `2026-10-19T11:19:03Z` (NISAR pipeline) and `2026-10-19` are accepted; `2026-13-45` or `2026-02-30`, which `Date.parse` would silently normalise, are rejected. |
+| PNG existing in `frontend/public/` and with an alpha channel (colour type 4 or 6, or `tRNS`) | Semantics + assets | An overlay without transparency or a 404 is detected before publishing. |
+| `schemaVersion` semver with major 1 | Schema + semantics | Only `1.x.y` contracts are admitted. |
 
-La decisión de producto sobre `bbox` **global** (longitud ±180°, latitud ±90°, sin limitar las
-zonas a España) se mantiene sin cambios y queda registrada en §2.1. El mapa navegable sigue
-centrado en España; el contrato solo permite probar zonas externas sin tocar el esquema.
+The product decision on the **global** `bbox` (longitude ±180°, latitude ±90°, without restricting the
+zones to Spain) remains unchanged and is recorded in §2.1. The navigable map is still
+centred on Spain; the contract only allows testing external zones without touching the schema.
 
-La lógica semántica y de assets vive en `frontend/scripts/validate-lib.mjs`, compartida por la
-CLI `frontend/scripts/validate-data.mjs` y los tests `frontend/src/types/contract.test.ts`.
-El runtime de WP-04 replica en `frontend/src/services/manifestSemantics.ts` el subconjunto
-mínimo de geometría e ids (orden de `bbox`, contención con tolerancia de 0.01° y unicidad de
-ids de zona) para no cargar `node:fs`/`node:path` en el navegador; ambas implementaciones deben
-mantenerse alineadas y probadas.
-Los fixtures contractuales viven en `frontend/scripts/fixtures/` y **no** se publican en
-`frontend/public/data/`; el fixture `real-with-processed-real.json` existe solo para probar el
-estado `processed_real` y declara explícitamente que no es una observación científica.
+The semantic and asset logic lives in `frontend/scripts/validate-lib.mjs`, shared by the
+CLI `frontend/scripts/validate-data.mjs` and the tests `frontend/src/types/contract.test.ts`.
+The WP-04 runtime replicates in `frontend/src/services/manifestSemantics.ts` the minimal
+subset of geometry and ids (`bbox` order, containment with 0.01° tolerance and uniqueness of
+zone ids) to avoid loading `node:fs`/`node:path` in the browser; both implementations must
+remain aligned and tested.
+The contractual fixtures live in `frontend/scripts/fixtures/` and are **not** published in
+`frontend/public/data/`; the fixture `real-with-processed-real.json` exists only to test the
+`processed_real` status and explicitly declares that it is not a scientific observation.
 
-### 2.4 Ampliación C1 (aditiva, v1.2.0): línea temporal
+### 2.4 C1 extension (additive, v1.2.0): timeline
 
-La decisión C1 (docs/c0-interfaces.md §6) añade **una propiedad opcional**,
-`layer.timeSteps`, para que una capa real pueda traer varias fechas y la UI
-ofrezca un control temporal. Es un cambio de minor conforme a §4.1: no cambia
-campos existentes, no altera el orden de `bbox` ni el significado de
-`sample`/`real`, y los manifiestos v1.1.0 sin `timeSteps` siguen validando.
+Decision C1 (docs/c0-interfaces.md §6) adds **one optional property**,
+`layer.timeSteps`, so that a real layer can carry several dates and the UI
+offers a time control. It is a minor change per §4.1: it does not change
+existing fields, does not alter the `bbox` order or the meaning of
+`sample`/`real`, and v1.1.0 manifests without `timeSteps` still validate.
 
-| Regla | Dónde se aplica | Efecto |
+| Rule | Where it applies | Effect |
 |---|---|---|
-| `layer.timeSteps` es array de ≥ 1 pasos `{date, label?, image, bbox, provenance?}` | Esquema | Unidad, `range`, `legend` y `status` siguen siendo de la capa y comunes a todos los pasos. |
-| `schemaVersion: "1.2.0"` obligatorio si hay `timeSteps`; sin serie se admiten `"1.1.0"` y `"1.2.0"` | Esquema (`if/then` + `const`) y semántica | Un manifiesto con serie no puede declararse v1.1.0. |
-| `date` ISO 8601 real y orden estrictamente creciente sin duplicados | Esquema (`format`) y semántica | El slider no recibe fechas imposibles ni repetidas. |
-| `image` de cada paso con las mismas reglas seguras y prefijo `data/<datasetMode>/` | Esquema, semántica y assets | No se mezclan assets de modos ni se lee fuera de `public/`. |
-| `bbox` de cada paso dentro de `zone.bbox` (tolerancia 0.01°) | Semántica | La cobertura de cualquier fecha queda dentro de la zona. |
-| `layer.image` y `layer.bbox` iguales a los del **último** paso | Semántica y runtime | Un consumidor v1.1 que ignore `timeSteps` sigue mostrando la fecha más reciente. |
-| Procedencia efectiva `{ ...layer.provenance, ...step.provenance }` con `acquisitionDate`, `sceneId` y `referenceUrl` en `processed_real` | Semántica | No se aprueba una serie real con pasos sin trazabilidad. |
-| PNG de **cada** paso existente y con alfa | Assets (`validate:data`) | Se detecta un 404 o un PNG opaco antes de publicar. |
+| `layer.timeSteps` is an array of ≥ 1 steps `{date, label?, image, bbox, provenance?}` | Schema | Unit, `range`, `legend` and `status` still belong to the layer and are common to all steps. |
+| `schemaVersion: "1.2.0"` mandatory if there are `timeSteps`; without a series, `"1.1.0"` and `"1.2.0"` are admitted | Schema (`if/then` + `const`) and semantics | A manifest with a series cannot declare itself v1.1.0. |
+| `date` a real ISO 8601 date and strictly increasing order without duplicates | Schema (`format`) and semantics | The slider does not receive impossible or repeated dates. |
+| `image` of each step with the same safe rules and `data/<datasetMode>/` prefix | Schema, semantics and assets | Assets from different modes are not mixed and nothing outside `public/` is read. |
+| `bbox` of each step within `zone.bbox` (0.01° tolerance) | Semantics | The coverage of any date stays within the zone. |
+| `layer.image` and `layer.bbox` equal to those of the **last** step | Semantics and runtime | A v1.1 consumer that ignores `timeSteps` still shows the most recent date. |
+| Effective provenance `{ ...layer.provenance, ...step.provenance }` with `acquisitionDate`, `sceneId` and `referenceUrl` in `processed_real` | Semantics | A real series with steps lacking traceability is not approved. |
+| PNG of **each** step existing and with alpha | Assets (`validate:data`) | A 404 or an opaque PNG is detected before publishing. |
 
-`frontend/src/types/manifest.ts` ya exponía `TimeStep` y los campos
-`timeSteps`/`selectedTimeIndex`/`selectTimeStep` congelados en C1; esta
-ampliación no los reinterpreta. El estado (`useOliveTwinData`) elige el último
-paso por defecto y reinicia el índice al cambiar de modo, zona o capa.
+`frontend/src/types/manifest.ts` already exposed `TimeStep` and the fields
+`timeSteps`/`selectedTimeIndex`/`selectTimeStep` frozen in C1; this
+extension does not reinterpret them. The state (`useOliveTwinData`) chooses the last
+step by default and resets the index when the mode, zone or layer changes.
 
-### 2.5 Ampliación v1.3.0 (aditiva): cubo de análisis por zona
+### 2.5 v1.3.0 extension (additive): per-zone analysis cube
 
-Para medir variables de interés agronómico (humedad, retrodispersión radar,
-vegetación, relieve, suelo y clima) y compararlas por celda, una zona puede
-enlazar **opcionalmente** un cubo de análisis con `zone.analysis`. Es un cambio
-de minor conforme a §4.1: no cambia campos existentes ni el orden de `bbox`, y
-los manifiestos v1.1.0/v1.2.0 siguen validando.
+To measure variables of agronomic interest (moisture, radar backscatter,
+vegetation, relief, soil and climate) and compare them cell by cell, a zone can
+**optionally** link an analysis cube with `zone.analysis`. It is a minor change
+per §4.1: it does not change existing fields or the `bbox` order, and
+v1.1.0/v1.2.0 manifests still validate.
 
-| Regla | Dónde se aplica | Efecto |
+| Rule | Where it applies | Effect |
 |---|---|---|
-| `zone.analysis` = `data/<datasetMode>/zones/<zone.id>/analysis/analysis.json` | Esquema (patrón) y semántica | El cubo vive junto a la zona y en el modo correcto. |
-| `schemaVersion: "1.3.0"` obligatorio si alguna zona declara `analysis`; `timeSteps` admite `"1.2.0"` o `"1.3.0"` | Esquema (`if/then`) y semántica | Un consumidor v1.2 no recibe campos que no conoce sin aviso de versión. |
-| El cubo cumple [`contracts/analysis.schema.json`](../contracts/analysis.schema.json) | Esquema propio | Rejilla EPSG:3857 común, variables con `scale`/`offset`, pasos con estadísticas, series de zona, fuentes no disponibles y criterios del índice. |
-| Datos como PNG **gris de 8 bits** (valor = `offset` + `scale` · código; 255 = sin dato) con el tamaño exacto de la rejilla y ≤ 2 MB | Semántica y assets (`validate:data`) | Solo se publican PNG y JSON; nunca GeoTIFF/HDF5. |
-| Pasos de variables temporales con fecha ISO real y orden estrictamente creciente; variables estáticas con un único paso | Semántica | Las series y los mapas de cambio comparan fechas reales. |
-| `status` coherente con el modo y `provenance.license` obligatoria | Esquema y semántica | Cada variable declara licencia y atribución de su fuente. |
-| Criterios del índice de aptitud que apuntan a variables existentes | Semántica | El índice no referencia datos ausentes. |
-| `crops[]` opcional: aptitud por cultivo con ráster global y por factor (0–1), fuente con licencia, supuestos y método; factores que usan variables existentes; ids únicos | Esquema, semántica y assets | Los mapas de aptitud son trazables y se validan como el resto del cubo. |
-| `cropFactor.classes` y `cropFactor.reference` opcionales; `crop.otherRequirements[]` opcional con variables existentes | Esquema y semántica | Los tramos óptimo / aceptable / no apto y la fuente de cada requisito se publican con los datos; la UI no los inventa. |
-| `variable.group` admite `landcover` (usos del suelo, p. ej. CORINE) | Esquema | Ampliación aditiva del enum; los cubos anteriores siguen siendo válidos. |
+| `zone.analysis` = `data/<datasetMode>/zones/<zone.id>/analysis/analysis.json` | Schema (pattern) and semantics | The cube lives next to the zone and in the correct mode. |
+| `schemaVersion: "1.3.0"` mandatory if any zone declares `analysis`; `timeSteps` admits `"1.2.0"` or `"1.3.0"` | Schema (`if/then`) and semantics | A v1.2 consumer does not receive fields it does not know about without a version warning. |
+| The cube complies with [`contracts/analysis.schema.json`](../contracts/analysis.schema.json) | Its own schema | Common EPSG:3857 grid, variables with `scale`/`offset`, steps with statistics, zone series, unavailable sources and index criteria. |
+| Data as **8-bit grey** PNGs (value = `offset` + `scale` · code; 255 = no data) with the exact grid size and ≤ 2 MB | Semantics and assets (`validate:data`) | Only PNG and JSON are published; never GeoTIFF/HDF5. |
+| Steps of temporal variables with a real ISO date and strictly increasing order; static variables with a single step | Semantics | Series and change maps compare real dates. |
+| `status` consistent with the mode and mandatory `provenance.license` | Schema and semantics | Each variable declares the licence and attribution of its source. |
+| Suitability index criteria that point to existing variables | Semantics | The index does not reference missing data. |
+| Optional `crops[]`: crop suitability with a global and per-factor raster (0–1), source with licence, assumptions and method; factors that use existing variables; unique ids | Schema, semantics and assets | Suitability maps are traceable and are validated like the rest of the cube. |
+| Optional `cropFactor.classes` and `cropFactor.reference`; optional `crop.otherRequirements[]` with existing variables | Schema and semantics | The optimal / acceptable / unsuitable bands and the source of each requirement are published with the data; the UI does not invent them. |
+| `variable.group` admits `landcover` (land use, e.g. CORINE) | Schema | Additive extension of the enum; previous cubes remain valid. |
 
-El índice de aptitud es **exploratorio y relativo a la zona** (rangos
-percentiles ponderados): no es un umbral agronómico ni una predicción de
-cosecha, y la UI lo indica siempre.
+The suitability index is **exploratory and relative to the zone** (weighted percentile
+ranges): it is not an agronomic threshold or a harvest prediction, and the UI always says so.
 
-## 3. Tipos TypeScript de referencia
+## 3. Reference TypeScript types
 
 ```ts
 export type DataMode = 'sample' | 'real';
@@ -174,42 +173,42 @@ export type ManifestLoadStatus = 'loading' | 'ready' | 'empty' | 'error';
 export type BBox = [west: number, south: number, east: number, north: number];
 ```
 
-Estos tipos son el contrato de referencia. **`frontend/src/types/manifest.ts` no se crea en
-Fase A**: lo materializa WP-04 a partir de este acuerdo y queda como único propietario del
-archivo, evitando un segundo módulo competidor. WP-07 importa esos tipos, no los redefine.
+These types are the reference contract. **`frontend/src/types/manifest.ts` is not created in
+Phase A**: WP-04 materialises it from this agreement and remains the sole owner of the
+file, avoiding a second competing module. WP-07 imports those types, it does not redefine them.
 
-## 4. Regla de cambios
+## 4. Change rule
 
-1. **Aditivo (minor: 1.2.0, 1.3.0…):** nueva propiedad opcional, nuevo `$def` reutilizable,
-   nueva variante que no rompa consumidores existentes o aclaración documental. El JSON
-   Schema y este documento se actualizan en el mismo cambio.
-2. **Incompatible (major: 2.0.0):** campo obligatorio nuevo, cambio de tipo o de semántica,
-   eliminación o renombrado de campo, cambio del orden de `bbox`, o ampliación de un enum que
-   los consumidores tratan de forma exhaustiva (`datasetMode`, `status`, `id` de capa).
-3. Cambiar el orden de `bbox` o el significado de `sample`/`real` **siempre** es major, sin
-   excepciones.
-4. Toda ampliación requiere revisión de integración de `contracts/` y actualización de este
-   documento. Un cambio no aprobado no se considera contrato.
-5. Los manifiestos de ejemplo (`frontend/public/data/{sample,real}/manifest.json`) se
-   mantienen válidos frente a la versión vigente del esquema.
+1. **Additive (minor: 1.2.0, 1.3.0…):** new optional property, new reusable `$def`,
+   new variant that does not break existing consumers or a documentation clarification. The JSON
+   Schema and this document are updated in the same change.
+2. **Incompatible (major: 2.0.0):** new mandatory field, change of type or semantics,
+   removal or renaming of a field, change of the `bbox` order, or extension of an enum that
+   consumers treat exhaustively (`datasetMode`, `status`, layer `id`).
+3. Changing the `bbox` order or the meaning of `sample`/`real` is **always** major, without
+   exceptions.
+4. Every extension requires integration review of `contracts/` and an update of this
+   document. An unapproved change is not considered part of the contract.
+5. The example manifests (`frontend/public/data/{sample,real}/manifest.json`) are
+   kept valid against the current version of the schema.
 
-## 5. Propiedad
+## 5. Ownership
 
-| Ámbito | Owner |
+| Scope | Owner |
 |---|---|
-| `contracts/`, `frontend/src/types`, servicios, composables, manifiestos y scripts de datos | **WP-04** |
-| `frontend/src/components`, estilos y mapa Leaflet | **WP-07** |
-| Owner humano de WP-04 y WP-07 | coordinado fuera del repositorio (decisión GA) |
+| `contracts/`, `frontend/src/types`, services, composables, manifests and data scripts | **WP-04** |
+| `frontend/src/components`, styles and Leaflet map | **WP-07** |
+| Human owner of WP-04 and WP-07 | coordinated outside the repository (GA decision) |
 
-La asignación de personas a ambos work packets se coordina **fuera del repositorio** (decisión GA, hackatón de 48 h): no se registra ni se verifica en GitHub. Solo consta `AlRos14` como
-colaborador del repositorio. Lo que sí rige dentro del repo son los scopes de archivos y la
-revisión independiente de cada PR.
+The assignment of people to both work packets is coordinated **outside the repository** (GA decision, 48 h hackathon): it is neither recorded nor verified on GitHub. Only `AlRos14` appears as
+a collaborator of the repository. What does govern inside the repo are the file scopes and the
+independent review of each PR.
 
-## 6. Verificación de la congelación
+## 6. Verification of the freeze
 
-Validación local de los dos manifiestos iniciales, del ejemplo completo §4.3 y de los casos
-negativos con JSON Schema draft 2020-12 (script temporal fuera del repositorio, no
-versionado):
+Local validation of the two initial manifests, of the complete example §4.3 and of the
+negative cases with JSON Schema draft 2020-12 (temporary script outside the repository, not
+versioned):
 
 ```bash
 npx -y ajv-cli@5 validate --spec=draft2020 \
@@ -217,43 +216,43 @@ npx -y ajv-cli@5 validate --spec=draft2020 \
   -d frontend/public/data/real/manifest.json
 ```
 
-Casos negativos exigidos:
+Required negative cases:
 
-| Caso | Resultado esperado |
+| Case | Expected result |
 |---|---|
-| `datasetMode: "unknown"` | rechazado por `enum` |
-| `zones: null` | rechazado por `type: array` |
-| sin `schemaVersion` | rechazado por `required` |
-| `legend` como objeto | rechazado por `type: array` |
-| `image: "/abs.png"` | rechazado por el patrón de ruta segura |
-| `image: "../x.png"` | rechazado por el patrón de ruta segura |
-| `image: "data/sample/%2e%2e/x.png"` | rechazado por el patrón de ruta segura (sin `%`) |
-| `acquisitionDate: "2026-13-45"` | rechazado por `format: date` y por la semántica de calendario |
+| `datasetMode: "unknown"` | rejected by `enum` |
+| `zones: null` | rejected by `type: array` |
+| no `schemaVersion` | rejected by `required` |
+| `legend` as an object | rejected by `type: array` |
+| `image: "/abs.png"` | rejected by the safe-path pattern |
+| `image: "../x.png"` | rejected by the safe-path pattern |
+| `image: "data/sample/%2e%2e/x.png"` | rejected by the safe-path pattern (no `%`) |
+| `acquisitionDate: "2026-13-45"` | rejected by `format: date` and by calendar semantics |
 
-Evidencia de la ejecución de A02-fix con `ajv@8.20.0` en modo draft 2020-12, desde
-`frontend/` y con el runner en `/tmp` (no versionado), 18/18 comprobaciones correctas:
+Evidence of the A02-fix run with `ajv@8.20.0` in draft 2020-12 mode, from
+`frontend/` and with the runner in `/tmp` (not versioned), 18/18 checks correct:
 
-- el ejemplo completo §4.3 del plan v2 (con `description`, `variable`, `range` y `legend`
-  como lista): válido;
-- `sample/manifest.json` y `real/manifest.json` vacíos: válidos;
-- `datasetMode: "unknown"`: inválido por `enum`;
-- `zones: null`: inválido por `type: array`;
-- sin `schemaVersion`: inválido por `required`;
-- `legend` como objeto: inválido por `type: array`;
-- `image: "/abs.png"` e `image: "../x.png"`: inválidos por el patrón de ruta;
-- `provenance` sin `provider` o sin `processingVersion`: inválido por `required`;
-- `provenance` con `source` y con campos extra `crid`/`maturity`: válido
-  (`additionalProperties: true`), sin exigir ya `source`;
-- `range` con un solo valor, `legend` vacía o color no `#rrggbb`: inválidos;
-- zona con `bbox` fuera de España: válida, confirmando que el contrato es global.
+- the complete example §4.3 of plan v2 (with `description`, `variable`, `range` and `legend`
+  as a list): valid;
+- empty `sample/manifest.json` and `real/manifest.json`: valid;
+- `datasetMode: "unknown"`: invalid by `enum`;
+- `zones: null`: invalid by `type: array`;
+- no `schemaVersion`: invalid by `required`;
+- `legend` as an object: invalid by `type: array`;
+- `image: "/abs.png"` and `image: "../x.png"`: invalid by the path pattern;
+- `provenance` without `provider` or without `processingVersion`: invalid by `required`;
+- `provenance` with `source` and with extra fields `crid`/`maturity`: valid
+  (`additionalProperties: true`), no longer requiring `source`;
+- `range` with a single value, empty `legend` or a colour that is not `#rrggbb`: invalid;
+- zone with a `bbox` outside Spain: valid, confirming that the contract is global.
 
-La automatización en CI pertenece a A04 (`frontend/scripts/validate-data.*` y
-`.github/workflows/ci.yml`); WP-04 ampliará el esquema y añadirá casos de prueba semánticos.
+The automation in CI belongs to A04 (`frontend/scripts/validate-data.*` and
+`.github/workflows/ci.yml`); WP-04 will extend the schema and add semantic test cases.
 
-## 7. Fuera de alcance de esta congelación
+## 7. Out of scope of this freeze
 
-- Lógica de carga, caché o composables (WP-04).
-- Generación de PNG, GeoTIFF, HDF5 o datos NISAR (WP-04 / pipeline científico).
-- Componentes, estilos, mapa base y overlays Leaflet (WP-07).
-- Elección de hosting, `base` de Vite y despliegue (Fase B).
-- Científicos de referencia, misiones y productos reales: no se declaran sin evidencia.
+- Loading, caching or composables logic (WP-04).
+- Generation of PNG, GeoTIFF, HDF5 or NISAR data (WP-04 / scientific pipeline).
+- Components, styles, base map and Leaflet overlays (WP-07).
+- Choice of hosting, Vite `base` and deployment (Phase B).
+- Reference scientists, missions and real products: they are not declared without evidence.

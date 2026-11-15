@@ -1,158 +1,171 @@
-# Guía de contribución
+# Contributing guide
 
-OliveTwin se desarrolla en un único repositorio:
-<https://github.com/AlRos14/olivetwin> (público). Esta guía explica dónde
-plantear trabajo, qué puede editar cada persona y qué necesita una pull request
-para integrarse.
+OliveTwin is developed in a single repository:
+<https://github.com/AlRos14/olivetwin> (public). This guide explains where to
+propose work, what each person may edit and what a pull request needs in order
+to be integrated.
 
-## Dónde abrir una Issue
+Repository documentation is written in **English**; team communication may be in
+Spanish.
 
-Usa la pestaña **Issues** del repositorio para:
+## Where to open an Issue
 
-- proponer una funcionalidad o un cambio de contrato;
-- reportar un error reproducible;
-- pedir acceso, revisión o aclaración sobre un ámbito;
-- registrar un bloqueo o una limitación.
+Use the repository's **Issues** tab to:
 
-Antes de abrir una Issue, busca si ya existe una equivalente. Incluye contexto,
-resultado esperado, resultado actual, archivos afectados, comandos ejecutados y
-la procedencia de los datos implicados. No publiques secretos, tokens ni datos
-personales en una Issue.
+- propose a feature or a contract change;
+- report a reproducible bug;
+- ask for access, review or clarification about a scope;
+- record a blocker or a limitation.
 
-No hay usuarios de ejemplo ni owners inventados. Las identidades del equipo se
-irán registrando cuando estén verificadas; por ahora solo `AlRos14` figura como
-owner del repositorio y colaborador verificado.
+Before opening an Issue, search whether an equivalent one already exists. Include context,
+expected result, current result, affected files, commands executed and
+the provenance of the data involved. Do not publish secrets, tokens or personal
+data in an Issue.
 
-## ¿Qué puedo editar?
+There are no example users or invented owners. Team identities will
+be recorded once verified; for now only `AlRos14` appears as
+repository owner and verified collaborator.
 
-La asignación de personas a **WP-04** y **WP-07** se coordina **fuera del repositorio** (decisión GA, hackatón de 48 h): no se registra ni se verifica en GitHub.
-Los scopes de archivos sí son obligatorios: si necesitas tocar un área
-compartida, avisa en la Issue correspondiente antes de hacerlo.
+## What can I edit?
 
-| Área | Uso | Quién edita |
+The assignment of people to **WP-04** and **WP-07** is coordinated **outside the repository** (GA decision, 48 h hackathon): it is neither recorded nor verified on GitHub.
+File scopes are mandatory: if you need to touch a shared area, mention it in
+the corresponding Issue before doing so.
+
+| Area | Use | Who edits |
 |---|---|---|
-| `frontend/src/components/`, estilos, Leaflet | Mapa, paneles, leyenda, controles y avisos. | WP-07 |
-| `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Contrato, carga de manifiestos y estado. | WP-04 |
-| `frontend/public/data/` | Manifiesto y assets optimizados `real` (la demo no incluye datos de muestra). | WP-04 |
-| `contracts/` | JSON Schema y documentación del contrato. | Owner del contrato (WP-04) con revisión de integración |
-| `frontend/scripts/` | Validación de datos. | WP-04 |
-| `frontend/src/App.vue` | Composición de la vista. | Integración, coordinada entre WP-04 y WP-07 |
-| `frontend/package.json`, `package-lock.json` | Dependencias y scripts. | Coordinación explícita antes de añadir dependencias |
-| `.github/workflows/` | CI. | Integración |
-| `pipelines/` | Trabajo científico y generación de datos. | Equipo de datos / responsable del pipeline |
-| `README.md`, `AGENTS.md`, `docs/contributing.md` | Gobierno y documentación. | Responsable de colaboración |
+| `frontend/src/components/`, styles, Leaflet | Map, panels, legend, controls and notices. | WP-07 |
+| `frontend/src/types/`, `frontend/src/services/`, `frontend/src/composables/` | Contract, manifest loading and state. | WP-04 |
+| `frontend/public/data/` | `real` manifest and optimised assets (the demo does not include sample data). | WP-04 |
+| `contracts/` | JSON Schema and contract documentation. | Contract owner (WP-04) with integration review |
+| `frontend/scripts/` | Data validation. | WP-04 |
+| `frontend/src/App.vue` | View composition. | Integration, coordinated between WP-04 and WP-07 |
+| `frontend/package.json`, `package-lock.json` | Dependencies and scripts. | Explicit coordination before adding dependencies |
+| `.github/workflows/` | CI. | Integration |
+| `pipelines/` | Scientific work and data generation. | Data team / pipeline owner |
+| `README.md`, `AGENTS.md`, `docs/contributing.md` | Governance and documentation. | Collaboration owner |
 
-Si necesitas un cambio fuera de tu ámbito, no sobrescribas el archivo: abre una
-Issue o pide al owner que lo haga. Un solo owner por archivo o subpaquete;
-autor y revisor nunca deben ser la misma persona.
+If you need a change outside your scope, do not overwrite the file: open an
+Issue or ask the owner to make it. A single owner per file or subpackage;
+author and reviewer must never be the same person.
 
-## Ramas
+## Branches
 
-Crea una rama corta desde `main`. Convención:
+Create a short branch from `main`. Convention:
 
-- `bootstrap/...` — estructura y puesta en marcha (por ejemplo,
+- `bootstrap/...` — scaffolding and initial setup (for example,
   `bootstrap/phase-a`).
-- `wp04/...` — contratos, datos, loader y validación.
-- `wp07/...` — mapa Leaflet, componentes y estilos.
-- `wp02/...` — trabajo del paquete WP-02.
+- `wp04/...` — contracts, data, loader and validation.
+- `wp07/...` — Leaflet map, components and styles.
+- `wp02/...` — work of the WP-02 package.
 
-Usa minúsculas y guiones, con un nombre descriptivo y breve. No trabajes
-directamente sobre `main` y no reutilices una rama ya fusionada.
+Use lowercase and hyphens, with a descriptive and short name. Do not work
+directly on `main` and do not reuse an already merged branch.
 
 ## Pull requests
 
-`main` debe estar **siempre compilable**. Los cambios entran por pull request
-pequeña:
+`main` must **always compile**. Changes come in through small pull
+requests:
 
-1. Abre una Issue o enlaza el work packet.
-2. Crea una rama corta desde `main`.
-3. Haz commits pequeños con prefijo convencional (`feat:`, `fix:`, `docs:`,
+1. Open an Issue or link the work packet.
+2. Create a short branch from `main`.
+3. Make small commits with a conventional prefix (`feat:`, `fix:`, `docs:`,
    `chore:`, `test:`, `ci:`, `refactor:`).
-4. Abre la PR contra `main` usando
+4. Open the PR against `main` using
    [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md).
-5. Espera el check **`ci`** en verde y una revisión independiente.
-6. La fusión se hace con **squash merge** y se borra la rama.
+5. Wait for the **`ci`** check to be green and for an independent review.
+6. The merge is done with **squash merge** and the branch is deleted.
 
-Reglas de una PR:
+Rules for a PR:
 
-- un propósito por PR; evita mezclar refactorizaciones, formato y cambios
-  funcionales;
-- no incluyas archivos ajenos a tu ámbito;
-- actualiza la documentación y los ejemplos si cambia el comportamiento;
-- incluye capturas o una descripción verificable si el cambio es de interfaz;
-- no fusiones tu propia PR.
+- one purpose per PR; avoid mixing refactorings, formatting and
+  functional changes;
+- do not include files outside your scope;
+- update the documentation and examples if behaviour changes;
+- include screenshots or a verifiable description if the change is in the interface;
+- do not merge your own PR.
 
-### Check requerido: `ci`
+### Required check: `ci`
 
-El workflow de CI ejecuta la instalación, la validación de los manifiestos y la
-build. El nombre estable del job es **`ci`**. Una PR con `ci` en rojo no se
-fusiona, aunque la instalación de npm haya funcionado: el check también verifica
-el build y el contrato de datos.
+The CI workflow runs the installation, the manifest validation and the
+build. The stable job name is **`ci`**. A PR with `ci` in red is not
+merged, even if the npm installation worked: the check also verifies
+the build and the data contract.
 
-### Revisión independiente
+### Independent review
 
-- Cada work packet tiene un owner humano y requiere revisión de otra persona.
-- Un comentario automático, una aprobación de un agente o una revisión de la
-  misma sesión **no cuentan** como aprobación humana.
-- Si varias personas comparten credenciales, GitHub no puede distinguir quién
-  aprobó. En ese caso, deja constancia de la revisión por un canal externo o
-  usa una cuenta de bot separada para las automatizaciones.
-- Los cambios en `contracts/` y `.github/workflows/` requieren además revisión
-  de integración.
-- El revisor comprueba el ámbito, las pruebas, la procedencia de los datos, la
-  ausencia de binarios grandes y que no se afirmen resultados científicos no
-  validados.
+- Each work packet has a human owner and requires review by another person.
+- An automatic comment, an agent approval or a review from the
+  same session **do not count** as human approval.
+- If several people share credentials, GitHub cannot tell who
+  approved. In that case, record the review through an external channel or
+  use a separate bot account for automations.
+- Changes in `contracts/` and `.github/workflows/` additionally require
+  integration review.
+- The reviewer checks the scope, the tests, the data provenance, the
+  absence of large binaries and that no unvalidated scientific results are claimed.
 
-## Datos y archivos grandes
+## Data and large files
 
-- **No versiones** HDF5, GeoTIFF intermedios, NetCDF ni otros binarios
-  científicos grandes. `.gitignore` excluye `*.h5`, `*.hdf5`, `*.tif`, `*.tiff`
-  y `*.nc`.
-- Publica solo assets optimizados (PNG y JSON) en `frontend/public/data/`.
-- Toda capa debe declarar procedencia, fecha cuando exista y estado
-  (`synthetic` o `processed_real`).
-- Los datos sintéticos deben estar marcados como tales y nunca presentarse como
-  observaciones de NASA.
-- Una excepción para versionar una prueba pequeña requiere justificación y
-  aprobación del owner; no la añadas por iniciativa propia.
-- No incorpores datos sin licencia y procedencia claras. Se admiten recursos
-  open source o con licencia que permita uso en investigación, pero no
-  recursos con licencia comercial. Los recursos recomendados del reto están en
+- **Do not version** HDF5, intermediate GeoTIFF, NetCDF or other large
+  scientific binaries. `.gitignore` excludes `*.h5`, `*.hdf5`, `*.tif`, `*.tiff`
+  and `*.nc`.
+- Publish only optimised assets (PNG and JSON) in `frontend/public/data/`.
+- Every layer must declare provenance, a date when it exists and status
+  (`synthetic` or `processed_real`).
+- Synthetic data must be marked as such and never presented as
+  NASA observations.
+- An exception to version a small test requires justification and
+  approval from the owner; do not add it on your own initiative.
+- Do not incorporate data without clear licence and provenance. Open source
+  resources, or resources with a licence that allows use in research, are admitted, but not
+  resources with a commercial licence. The recommended resources of the challenge are in
   [`docs/challenge.md`](challenge.md).
 
-## Contrato de datos
+## Data contract
 
-El contrato congelado es **v1.1.0**. Las ampliaciones deben ser aditivas o
-aprobarse como cambio de interfaz con su versión. No cambies sin acuerdo:
+The frozen contract is **v1.1.0**. Extensions must be additive or
+approved as an interface change with its version. Do not change without agreement:
 
-- el orden `bbox = [west, south, east, north]` en EPSG:4326;
-- la coherencia entre `datasetMode` y el `status` de cada capa;
-- las rutas relativas a `public/` y su resolución con `import.meta.env.BASE_URL`.
+- the order `bbox = [west, south, east, north]` in EPSG:4326;
+- the coherence between `datasetMode` and the `status` of each layer;
+- the paths relative to `public/` and their resolution with `import.meta.env.BASE_URL`.
 
-Consulta [`docs/contract-freeze.md`](contract-freeze.md) y
+See [`docs/contract-freeze.md`](contract-freeze.md) and
 [`contracts/README.md`](../contracts/README.md).
 
-## Protección de `main`
+## Translations
 
-Configurada el 2026-11-14, al hacerse público el repositorio:
+- The interface is translated through the catalogues in
+  `frontend/src/i18n/messages/{en,es}`. English is the default language and Spanish is
+  selectable with a discreet selector.
+- Texts that come from the published data (titles, descriptions, notices, provenance, legend
+  labels, crops…) are translated in `frontend/public/data/real/i18n/en.json`, without
+  changing the JSON data.
+- To update them: regenerate the catalogue with `npm run i18n:data -- --write`,
+  translate the missing entries and run `npm run validate:data`.
 
-- PR obligatoria para entrar en `main`; check requerido `ci`;
-- sin force-push ni borrado de `main`;
-- 0 aprobaciones requeridas en GitHub (hackatón de 48 h): la revisión
-  independiente se mantiene como norma del equipo, no como bloqueo técnico;
-- el administrador puede saltarse la protección solo en una emergencia.
+## Protection of `main`
 
-No se crea un archivo `CODEOWNERS` con usuarios ficticios. Se completará cuando
-las identidades reales estén verificadas.
+Configured on 2026-11-14, when the repository became public:
 
-## Antes de pedir revisión
+- PR mandatory to enter `main`; required `ci` check;
+- no force-push and no deletion of `main`;
+- 0 approvals required on GitHub (48 h hackathon): the independent
+  review is kept as a team rule, not as a technical block;
+- the administrator can bypass the protection only in an emergency.
 
-- [ ] La rama parte de `main` y tiene un propósito.
-- [ ] Solo se han modificado archivos de mi ámbito.
-- [ ] `npm ci` funciona desde una instalación limpia.
-- [ ] `npm run validate:data` pasa.
-- [ ] `npm run build` pasa.
-- [ ] La PR enlaza su Issue o work packet.
-- [ ] La plantilla de PR está completa, con procedencia y riesgos.
-- [ ] No hay binarios grandes, secretos ni datos sintéticos sin marcar.
-- [ ] He solicitado revisión a una persona distinta de quien implementó.
+A `CODEOWNERS` file with fictitious users is not created. It will be completed when
+the real identities are verified.
+
+## Before requesting review
+
+- [ ] The branch starts from `main` and has one purpose.
+- [ ] Only files in my scope have been modified.
+- [ ] `npm ci` works from a clean installation.
+- [ ] `npm run validate:data` passes.
+- [ ] `npm run build` passes.
+- [ ] The PR links its Issue or work packet.
+- [ ] The PR template is complete, with provenance and risks.
+- [ ] There are no large binaries, secrets or unmarked synthetic data.
+- [ ] I have requested review from a person other than the implementer.

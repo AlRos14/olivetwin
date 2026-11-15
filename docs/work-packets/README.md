@@ -1,70 +1,70 @@
-# Work packets de OliveTwin
+# OliveTwin work packets
 
-Este directorio reúne los planes de ejecución del proyecto y el estado de sus
-nodos. Los planes son documentos de trabajo: describen el alcance acordado, no
-sustituyen al contrato ni al informe de QA.
+This directory brings together the project's execution plans and the status of their
+nodes. The plans are working documents: they describe the agreed scope, they do not
+replace the contract or the QA report.
 
-## Planes
+## Plans
 
-| Plan | Contenido | Estado |
+| Plan | Content | Status |
 |---|---|---|
-| [`OliveTwin_Fase_A_Baseline_GitHub.md`](OliveTwin_Fase_A_Baseline_GitHub.md) | Baseline de GitHub: repositorio, bootstrap Vue, contrato mínimo, gobierno, CI y revisión (nodos A00–A05). | Ejecutado; revisión independiente en [`docs/baseline-review.md`](../baseline-review.md). |
-| [`OliveTwin_WP04_WP07_Plan_Actualizado.md`](OliveTwin_WP04_WP07_Plan_Actualizado.md) | Plan v2 de la «demo de la demo»: WP-04 (datos y contrato) y WP-07 (mapa y UI) en paralelo, integración, QA y aceptación. | Ejecutado e integrado; QA en [`docs/qa-results.md`](../qa-results.md). |
+| [`OliveTwin_Fase_A_Baseline_GitHub.md`](OliveTwin_Fase_A_Baseline_GitHub.md) | GitHub baseline: repository, Vue bootstrap, minimal contract, governance, CI and review (nodes A00–A05). | Executed; independent review in [`docs/baseline-review.md`](../baseline-review.md). |
+| [`OliveTwin_WP04_WP07_Plan_Actualizado.md`](OliveTwin_WP04_WP07_Plan_Actualizado.md) | Plan v2 of the "demo of the demo": WP-04 (data and contract) and WP-07 (map and UI) in parallel, integration, QA and acceptance. | Executed and integrated; QA in [`docs/qa-results.md`](../qa-results.md). |
 
-> **Nota sobre las imágenes:** los planes referencian diagramas DAG en PNG
-> (`OliveTwin_Fase_A_DAG.png` y `OliveTwin_WP04_WP07_DAG.png`). Esos binarios no
-> se versionan en este repositorio; los diagramas equivalentes en Mermaid y en
-> texto están incluidos en cada plan.
+> **Note on images:** the plans reference DAG diagrams in PNG
+> (`OliveTwin_Fase_A_DAG.png` and `OliveTwin_WP04_WP07_DAG.png`). Those binaries are not
+> versioned in this repository; the equivalent diagrams in Mermaid and in
+> text are included in each plan.
 
-## Fase A — baseline (A00–A05)
+## Phase A — baseline (A00–A05)
 
-| Nodo | Contenido | Estado | Evidencia |
+| Node | Content | Status | Evidence |
 |---|---|---|---|
-| A00 | Repositorio y acceso | Hecho | Repositorio privado real verificado en `docs/baseline-review.md`. |
-| A01 | Árbol y bootstrap Vue 3 + Vite + TypeScript | Integrado | `frontend/` compila; `npm run build` documentado en la revisión. |
-| A02 | Contrato mínimo v1.1.0 y ejemplos | Congelado | [`docs/contract-freeze.md`](../contract-freeze.md) y [`contracts/`](../../contracts/). |
-| A03 | Gobierno de Git, agentes y plantilla de PR | Integrado | [`AGENTS.md`](../../AGENTS.md), [`docs/contributing.md`](../contributing.md) y plantilla en `.github/`. |
-| A04 | CI y validación de manifiestos | Integrado | Check `ci` en verde y `npm run validate:data` en CI. |
-| A05 | Revisión independiente y PR del baseline | PASS con limitaciones | [`docs/baseline-review.md`](../baseline-review.md). La fusión es acto del owner humano. |
+| A00 | Repository and access | Done | Real private repository verified in `docs/baseline-review.md`. |
+| A01 | Tree and Vue 3 + Vite + TypeScript bootstrap | Integrated | `frontend/` compiles; `npm run build` documented in the review. |
+| A02 | Minimal contract v1.1.0 and examples | Frozen | [`docs/contract-freeze.md`](../contract-freeze.md) and [`contracts/`](../../contracts/). |
+| A03 | Git governance, agents and PR template | Integrated | [`AGENTS.md`](../../AGENTS.md), [`docs/contributing.md`](../contributing.md) and the template in `.github/`. |
+| A04 | CI and manifest validation | Integrated | `ci` check green and `npm run validate:data` in CI. |
+| A05 | Independent review and baseline PR | PASS with limitations | [`docs/baseline-review.md`](../baseline-review.md). The merge is an act of the human owner. |
 
-## Fase B — WP-04 ∥ WP-07 (demo de la demo)
+## Phase B — WP-04 ∥ WP-07 (demo of the demo)
 
-Interfaces congeladas en [`docs/c0-interfaces.md`](../c0-interfaces.md). Los
-nodos PRE00/PRE01/PRE02/C0 del plan v2 quedaron satisfechos por el baseline de
-Fase A y por el documento C0; no se repitieron.
+Interfaces frozen in [`docs/c0-interfaces.md`](../c0-interfaces.md). Nodes
+PRE00/PRE01/PRE02/C0 of plan v2 were satisfied by the Phase A baseline and by the
+C0 document; they were not repeated.
 
-### WP-04 — Arquitectura, contratos y datos
+### WP-04 — Architecture, contracts and data
 
-| Nodo | Contenido | Estado | Evidencia |
+| Node | Content | Status | Evidence |
 |---|---|---|---|
-| WP04-01 | JSON Schema v1.1.0, tipos TypeScript y fixtures | Integrado | `contracts/manifest.schema.json`, `frontend/src/types/manifest.ts`. |
-| WP04-02 | Generador y datos de muestra (Jaén y Toledo), manifiesto real vacío | Integrado y **retirado** en la demo final (solo datos reales, ver `docs/c0-interfaces.md` §7) | `frontend/public/data/real/`. |
-| WP04-03 | Loader de manifiestos con `BASE_URL`, validación y errores | Integrado | `frontend/src/services/`. |
-| WP04-04 | Composable de estado `sample`/`real`, selección y cancelación | Integrado | `frontend/src/composables/useOliveTwinData.ts`. |
-| WP04-05 | Handoff científico y referencia del contrato | Integrado | [`docs/handoff-science.md`](../handoff-science.md), [`docs/data-contract.md`](../data-contract.md). |
+| WP04-01 | JSON Schema v1.1.0, TypeScript types and fixtures | Integrated | `contracts/manifest.schema.json`, `frontend/src/types/manifest.ts`. |
+| WP04-02 | Sample generator and data (Jaén and Toledo), empty real manifest | Integrated and **withdrawn** in the final demo (real data only, see `docs/c0-interfaces.md` §7) | `frontend/public/data/real/`. |
+| WP04-03 | Manifest loader with `BASE_URL`, validation and errors | Integrated | `frontend/src/services/`. |
+| WP04-04 | State composable `sample`/`real`, selection and cancellation | Integrated | `frontend/src/composables/useOliveTwinData.ts`. |
+| WP04-05 | Scientific handoff and contract reference | Integrated | [`docs/handoff-science.md`](../handoff-science.md), [`docs/data-contract.md`](../data-contract.md). |
 
-### WP-07 — Frontend, cartografía e interacción
+### WP-07 — Frontend, cartography and interaction
 
-| Nodo | Contenido | Estado | Evidencia |
+| Node | Content | Status | Evidence |
 |---|---|---|---|
-| WP07-01 | Mapa Leaflet, PNOA/OSM, España y Canarias | Integrado | `frontend/src/components/OliveMap.vue`. |
-| WP07-02 | Zonas, contornos y `fitBounds` desde props | Integrado | `frontend/src/components/StudyZoneMarkers.vue`. |
-| WP07-03 | Overlays PNG por `bbox`, opacidad y ciclo de vida | Integrado | `frontend/src/components/ScientificOverlay.vue`. |
-| WP07-04 | Panel, selectores, leyenda, procedencia y avisos | Integrado | Componentes de `frontend/src/components/` y `frontend/src/styles/ui.css`. |
+| WP07-01 | Leaflet map, PNOA/OSM, Spain and Canary Islands | Integrated | `frontend/src/components/OliveMap.vue`. |
+| WP07-02 | Zones, outlines and `fitBounds` from props | Integrated | `frontend/src/components/StudyZoneMarkers.vue`. |
+| WP07-03 | PNG overlays by `bbox`, opacity and lifecycle | Integrated | `frontend/src/components/ScientificOverlay.vue`. |
+| WP07-04 | Panel, selectors, legend, provenance and notices | Integrated | Components in `frontend/src/components/` and `frontend/src/styles/ui.css`. |
 
-### Integración y aceptación
+### Integration and acceptance
 
-| Nodo | Contenido | Estado | Evidencia |
+| Node | Content | Status | Evidence |
 |---|---|---|---|
-| INT01 | Composición final en `App.vue` y cableado props/emits | Integrado | `frontend/src/App.vue`. |
-| INT02 | Tests, build, E2E y smoke visual | Completado | [`docs/qa-results.md`](../qa-results.md); specs en `frontend/tests/e2e/`. |
-| G2 | Aceptación final con revisión independiente y aprobación humana | **Pendiente** | No existe `docs/acceptance.md`; la aprobación humana no puede sustituirse por un agente. |
+| INT01 | Final composition in `App.vue` and props/emits wiring | Integrated | `frontend/src/App.vue`. |
+| INT02 | Tests, build, E2E and visual smoke test | Completed | [`docs/qa-results.md`](../qa-results.md); specs in `frontend/tests/e2e/`. |
+| G2 | Final acceptance with independent review and human approval | **Pending** | `docs/acceptance.md` does not exist; human approval cannot be replaced by an agent. |
 
-## Correcciones documentales posteriores a la QA
+## Documentary corrections after QA
 
-| Incidencia | Descripción | Estado |
+| Issue | Description | Status |
 |---|---|---|
-| B-01 | `README.md` y `frontend/README.md` describían la Fase A y negaban el mapa y las capas. | Corregido en la rama de documentación; pendiente de revisión independiente. |
-| B-02 | `docs/work-packets/` solo contenía un marcador. | Corregido con este índice y la copia de los dos planes; pendiente de revisión independiente. |
+| B-01 | `README.md` and `frontend/README.md` described Phase A and denied the map and the layers. | Fixed in the documentation branch; pending independent review. |
+| B-02 | `docs/work-packets/` only contained a placeholder. | Fixed with this index and the copy of the two plans; pending independent review. |
 
-El detalle de ambos bugs está en [`docs/qa-results.md`](../qa-results.md) §6.
+The details of both bugs are in [`docs/qa-results.md`](../qa-results.md) §6.

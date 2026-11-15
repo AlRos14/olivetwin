@@ -1,102 +1,102 @@
-# Contrato de datos OliveTwin v1.3.0 — referencia práctica
+# OliveTwin data contract v1.3.0 — practical reference
 
-Este documento describe el contrato **tal como está implementado** en el
-repositorio: el JSON Schema, el validador de datos, el cargador de manifiestos y
-el composable de estado. No sustituye a los documentos de congelación, pero
-evita tener que leer el código para saber qué se puede publicar y qué se rechaza.
+This document describes the contract **as implemented** in the
+repository: the JSON Schema, the data validator, the manifest loader and
+the state composable. It does not replace the freeze documents, but it
+avoids having to read the code to know what can be published and what is rejected.
 
-> **Decisión de producto (2026-11-14):** la demo publica **solo datos reales**
-> NISAR L3 SME2 de Jaén y Toledo. El contrato sigue admitiendo `datasetMode:
-> "sample"` para pruebas y fixtures, pero la aplicación no carga ni ofrece datos
-> de muestra; ver [`docs/c0-interfaces.md`](c0-interfaces.md) §7.
+> **Product decision (2026-11-14):** the demo publishes **real data only**
+> from NISAR L3 SME2 for Jaén and Toledo. The contract still admits `datasetMode:
+> "sample"` for tests and fixtures, but the application neither loads nor offers sample
+> data; see [`docs/c0-interfaces.md`](c0-interfaces.md) §7.
 
-| Documento | Papel |
+| Document | Role |
 |---|---|
-| [`contracts/manifest.schema.json`](../contracts/manifest.schema.json) | Fuente de verdad estructural (JSON Schema draft 2020-12). |
-| [`docs/contract-freeze.md`](contract-freeze.md) | Acuerdo de congelación y regla de cambios. |
-| [`contracts/README.md`](../contracts/README.md) | Resumen del esquema y convenciones. |
-| [`docs/c0-interfaces.md`](c0-interfaces.md) | Interfaces congeladas entre WP-04 y WP-07. |
-| [`docs/handoff-science.md`](handoff-science.md) | Guía para publicar una zona real sin tocar Vue. |
+| [`contracts/manifest.schema.json`](../contracts/manifest.schema.json) | Structural source of truth (JSON Schema draft 2020-12). |
+| [`docs/contract-freeze.md`](contract-freeze.md) | Freeze agreement and change rule. |
+| [`contracts/README.md`](../contracts/README.md) | Summary of the schema and conventions. |
+| [`docs/c0-interfaces.md`](c0-interfaces.md) | Interfaces frozen between WP-04 and WP-07. |
+| [`docs/handoff-science.md`](handoff-science.md) | Guide to publishing a real zone without touching Vue. |
 
-Versión vigente: **1.3.0**. El valor se declara en `schemaVersion`; el
-validador solo admite la major `1` y las versiones exactas `1.1.0`
-(manifiestos sin serie temporal), `1.2.0` (con o sin `timeSteps`) y `1.3.0`
-(obligatoria si alguna zona declara `analysis`). Ambas ampliaciones son
-**aditivas**: un manifiesto v1.1.0 o v1.2.0 sigue siendo válido y se muestra
-igual que antes.
+Current version: **1.3.0**. The value is declared in `schemaVersion`; the
+validator only admits major `1` and the exact versions `1.1.0`
+(manifests without a time series), `1.2.0` (with or without `timeSteps`) and `1.3.0`
+(mandatory if any zone declares `analysis`). Both extensions are
+**additive**: a v1.1.0 or v1.2.0 manifest remains valid and is displayed
+as before.
 
-## 1. Dónde vive cada cosa
+## 1. Where each thing lives
 
 ```text
 frontend/public/data/
 └── real/
-    ├── manifest.json                    # datasetMode: "real" (obligatorio)
-    └── zones/<zona>/<capa>/<fecha>.png  # PNG aprobados y sus timeSteps
+    ├── manifest.json                    # datasetMode: "real" (mandatory)
+    └── zones/<zone>/<layer>/<date>.png  # approved PNGs and their timeSteps
 
-# Opcional y NO usado por la demo: material sintético para pruebas locales
+# Optional and NOT used by the demo: synthetic material for local tests
 # frontend/public/data/sample/manifest.json
 ```
 
-- Todos los assets publicados son **PNG optimizados y JSON**. No se versionan
-  HDF5, GeoTIFF, NetCDF ni otros binarios científicos (ver `.gitignore`).
-- El manifiesto real es el único que carga la aplicación. El contrato conserva
-  `sample` para fixtures y pruebas, pero `frontend/public/data/sample/` no se
-  publica en esta rama y `validate:data` lo trata como opcional.
-- `frontend/public/data/real/` solo contiene datos con aprobación científica:
-  Jaén y Toledo (3 fechas cada una) publicados desde el pipeline NISAR SME2.
-- Las rutas `image` son **relativas a `frontend/public/`**, nunca al sistema de
-  archivos ni al directorio de trabajo.
+- All published assets are **optimised PNGs and JSON**. HDF5, GeoTIFF, NetCDF or
+  other scientific binaries are not versioned (see `.gitignore`).
+- The real manifest is the only one the application loads. The contract keeps
+  `sample` for fixtures and tests, but `frontend/public/data/sample/` is not
+  published in this branch and `validate:data` treats it as optional.
+- `frontend/public/data/real/` only contains data with scientific approval:
+  Jaén and Toledo (3 dates each) published from the NISAR SME2 pipeline.
+- `image` paths are **relative to `frontend/public/`**, never to the file
+  system or to the working directory.
 
-## 2. Estructura del manifiesto
+## 2. Manifest structure
 
-### 2.1 Manifiesto
+### 2.1 Manifest
 
-| Campo | Obligatorio | Tipo | Regla |
+| Field | Mandatory | Type | Rule |
 |---|---|---|---|
-| `schemaVersion` | Sí | string | SemVer de la major 1. Valores admitidos: `"1.1.0"` o `"1.2.0"`; con `timeSteps` es obligatorio `"1.2.0"`. |
-| `datasetMode` | Sí | string | Enum cerrado: `"sample"` \| `"real"`. |
-| `appTitle` | Sí | string | No vacío ni solo espacios. |
-| `zones` | Sí | array | Puede ser `[]`; **nunca** `null`. |
+| `schemaVersion` | Yes | string | SemVer with major 1. Admitted values: `"1.1.0"` or `"1.2.0"`; with `timeSteps`, `"1.2.0"` is mandatory. |
+| `datasetMode` | Yes | string | Closed enum: `"sample"` \| `"real"`. |
+| `appTitle` | Yes | string | Not empty or whitespace-only. |
+| `zones` | Yes | array | It can be `[]`; **never** `null`. |
 
-El objeto raíz es cerrado (`additionalProperties: false`): un campo desconocido
-en el manifiesto se rechaza para detectar errores tipográficos. Lo mismo ocurre
-con las zonas y las capas; la única excepción deliberada es `provenance` (§2.5).
+The root object is closed (`additionalProperties: false`): an unknown field
+in the manifest is rejected in order to detect typos. The same happens
+with zones and layers; the only deliberate exception is `provenance` (§2.5).
 
-### 2.2 Zona (`zones[]`)
+### 2.2 Zone (`zones[]`)
 
-| Campo | Obligatorio | Tipo | Regla |
+| Field | Mandatory | Type | Rule |
 |---|---|---|---|
-| `id` | Sí | string | Kebab-case `^[a-z0-9]+(?:-[a-z0-9]+)*$`; único en el manifiesto. |
-| `name` | Sí | string | No vacío ni solo espacios. |
-| `description` | No | string | Si existe, no vacía. En una zona sintética debe aclarar que la ubicación es ilustrativa. |
-| `bbox` | Sí | number[4] | `[west, south, east, north]` en WGS84; ver §3. |
-| `layers` | Sí | array | Puede ser `[]`. Cada capa se describe en §2.3. |
+| `id` | Yes | string | Kebab-case `^[a-z0-9]+(?:-[a-z0-9]+)*$`; unique in the manifest. |
+| `name` | Yes | string | Not empty or whitespace-only. |
+| `description` | No | string | If present, not empty. In a synthetic zone it must clarify that the location is illustrative. |
+| `bbox` | Yes | number[4] | `[west, south, east, north]` in WGS84; see §3. |
+| `layers` | Yes | array | It can be `[]`. Each layer is described in §2.3. |
 
-**Una zona sin capas es válida.** No se rellena con datos de muestra ni con
-valores inventados: la interfaz simplemente no tendrá capa que pintar.
+**A zone without layers is valid.** It is not filled with sample data or
+invented values: the interface simply will have no layer to paint.
 
-### 2.3 Capa (`zones[].layers[]`)
+### 2.3 Layer (`zones[].layers[]`)
 
-| Campo | Obligatorio | Tipo | Regla |
+| Field | Mandatory | Type | Rule |
 |---|---|---|---|
-| `id` | Sí | string | Enum cerrado: `"ndvi"` \| `"soil-moisture"`. Añadir otro id exige cambio de contrato. |
-| `title` | Sí | string | No vacío ni solo espacios. |
-| `kind` | Sí | string | Constante `"image-overlay"`; en v1.2.0 no hay otro tipo de capa. |
-| `variable` | No | string | Etiqueta científica, por ejemplo `"NDVI"` o `"Humedad superficial"`. |
-| `image` | Sí | string | Ruta relativa a `public/`, segura y bajo `data/<datasetMode>/`; ver §3.4. |
-| `bbox` | Sí | number[4] | Cobertura del PNG; puede ser menor que `zone.bbox`. |
-| `imageCrs` | Sí | string | Enum cerrado: `"EPSG:3857"`. |
-| `unit` | Sí | string | No vacío ni solo espacios (`index`, `m³/m³`, `%`…). |
-| `range` | No | number[2] | `[min, max]`, ambos números y `min < max` estricto. |
-| `legend` | Sí | array | Al menos 2 paradas `{value, color, label}`; ver §2.4. |
-| `status` | Sí | string | Enum cerrado: `"synthetic"` \| `"processed_real"`. |
-| `provenance` | Sí | objeto | Trazabilidad; ver §2.5. |
-| `qualityNote` | Sí | string | No vacío; limitaciones que la UI puede mostrar. |
-| `timeSteps` | No | array | **v1.2.0**: serie temporal ordenada de al menos un paso; ver §2.7. |
+| `id` | Yes | string | Closed enum: `"ndvi"` \| `"soil-moisture"`. Adding another id requires a contract change. |
+| `title` | Yes | string | Not empty or whitespace-only. |
+| `kind` | Yes | string | Constant `"image-overlay"`; in v1.2.0 there is no other layer type. |
+| `variable` | No | string | Scientific label, for example `"NDVI"` or `"Humedad superficial"`. |
+| `image` | Yes | string | Path relative to `public/`, safe and under `data/<datasetMode>/`; see §3.4. |
+| `bbox` | Yes | number[4] | Coverage of the PNG; it may be smaller than `zone.bbox`. |
+| `imageCrs` | Yes | string | Closed enum: `"EPSG:3857"`. |
+| `unit` | Yes | string | Not empty or whitespace-only (`index`, `m³/m³`, `%`…). |
+| `range` | No | number[2] | `[min, max]`, both numbers and strictly `min < max`. |
+| `legend` | Yes | array | At least 2 stops `{value, color, label}`; see §2.4. |
+| `status` | Yes | string | Closed enum: `"synthetic"` \| `"processed_real"`. |
+| `provenance` | Yes | object | Traceability; see §2.5. |
+| `qualityNote` | Yes | string | Not empty; limitations that the UI can show. |
+| `timeSteps` | No | array | **v1.2.0**: ordered time series of at least one step; see §2.7. |
 
-### 2.4 Leyenda
+### 2.4 Legend
 
-`legend` es una **lista ordenada** de clases, no un objeto libre:
+`legend` is an **ordered list** of classes, not a free object:
 
 ```json
 [
@@ -106,36 +106,36 @@ valores inventados: la interfaz simplemente no tendrá capa que pintar.
 ]
 ```
 
-- `value`: número; puede ser negativo (por ejemplo NDVI).
-- `color`: hexadecimal de seis dígitos `#rrggbb`; no se admiten nombres ni
-  colores de tres dígitos.
-- `label`: texto no vacío.
-- Orden **creciente estricto** por `value`. El validador rechaza valores
-  repetidos o desordenados.
-- La leyenda permite interpretar el PNG; **no** permite recuperar el valor
-  científico exacto de un píxel.
+- `value`: number; it may be negative (for example NDVI).
+- `color`: six-digit hexadecimal `#rrggbb`; names and
+  three-digit colours are not admitted.
+- `label`: non-empty text.
+- **Strictly increasing** order by `value`. The validator rejects repeated or
+  out-of-order values.
+- The legend allows the PNG to be interpreted; it does **not** allow the exact
+  scientific value of a pixel to be recovered.
 
-### 2.5 Procedencia (`provenance`)
+### 2.5 Provenance (`provenance`)
 
-| Campo | Obligatorio | Tipo | Regla |
+| Field | Mandatory | Type | Rule |
 |---|---|---|---|
-| `provider` | Sí | string | Proveedor u origen del procesamiento. En sintéticos, un generador sintético; nunca una misión real. |
-| `product` | Sí | string | Producto o descripción. En sintéticos debe quedar claro que no es satelital. |
-| `processingVersion` | Sí | string | Versión del procesamiento o del generador (`sample-v1`, CRID, versión del pipeline…). |
-| `acquisitionDate` | Condicional | string \| null | Fecha ISO 8601 (fecha o fecha-hora con zona). **Obligatoria y no nula si `status: processed_real`.** |
-| `sceneId` | Condicional | string \| null | Identificador de escena o producto. **Obligatorio y no vacío si `processed_real`.** |
-| `referenceUrl` | Condicional | string \| null | URL `http(s)://` verificable. **Obligatoria y no nula si `processed_real`.** |
-| `note` | No | string \| null | Nota libre sobre procedencia o limitaciones. |
+| `provider` | Yes | string | Provider or origin of the processing. In synthetic data, a synthetic generator; never a real mission. |
+| `product` | Yes | string | Product or description. In synthetic data it must be clear that it is not satellite data. |
+| `processingVersion` | Yes | string | Version of the processing or of the generator (`sample-v1`, CRID, pipeline version…). |
+| `acquisitionDate` | Conditional | string \| null | ISO 8601 date (date or date-time with time zone). **Mandatory and non-null if `status: processed_real`.** |
+| `sceneId` | Conditional | string \| null | Scene or product identifier. **Mandatory and non-empty if `processed_real`.** |
+| `referenceUrl` | Conditional | string \| null | Verifiable `http(s)://` URL. **Mandatory and non-null if `processed_real`.** |
+| `note` | No | string \| null | Free note about provenance or limitations. |
 
-`provenance` mantiene `additionalProperties: true` de forma deliberada. Es la
-única vía aditiva para metadatos del pipeline sin cambiar el contrato, por
-ejemplo `crid`, `maturity` o `approvedBy`. No se inventan proveedores,
-productos, fechas, escenas ni URLs.
+`provenance` keeps `additionalProperties: true` deliberately. It is the
+only additive route for pipeline metadata without changing the contract, for
+example `crid`, `maturity` or `approvedBy`. Providers, products, dates,
+scenes or URLs are not invented.
 
-### 2.6 Ejemplo mínimo válido (sintético)
+### 2.6 Minimal valid example (synthetic)
 
-Estructural y semánticamente válido; para publicarlo haría falta además el PNG
-correspondiente en `frontend/public/data/sample/zones/zona-ejemplo/ndvi.png`.
+Structurally and semantically valid; to publish it, the corresponding PNG would
+also be needed in `frontend/public/data/sample/zones/zona-ejemplo/ndvi.png`.
 
 ```json
 {
@@ -181,12 +181,12 @@ correspondiente en `frontend/public/data/sample/zones/zona-ejemplo/ndvi.png`.
 }
 ```
 
-### 2.7 Línea temporal (`timeSteps`, v1.2.0)
+### 2.7 Timeline (`timeSteps`, v1.2.0)
 
-Una capa puede declarar **varias fechas** en `timeSteps`. La ampliación es
-opcional y aditiva; el resto de reglas de la capa no cambia. La unidad,
-`range`, `legend` y `status` son **comunes a todos los pasos**: la escala debe
-ser fija en el tiempo para que las fechas se puedan comparar.
+A layer can declare **several dates** in `timeSteps`. The extension is
+optional and additive; the rest of the layer rules do not change. Unit,
+`range`, `legend` and `status` are **common to all steps**: the scale must
+be fixed through time so that dates can be compared.
 
 ```json
 {
@@ -248,310 +248,310 @@ ser fija en el tiempo para que las fechas se puedan comparar.
 }
 ```
 
-Reglas obligatorias:
+Mandatory rules:
 
-| Regla | Detalle |
+| Rule | Detail |
 |---|---|
-| `schemaVersion` | `"1.2.0"` si se usa `timeSteps`; sin serie temporal se admiten `"1.1.0"` y `"1.2.0"`. |
-| Tamaño | `timeSteps` tiene al menos un paso. |
-| `date` | ISO 8601 real: fecha (`2026-10-19`) o fecha-hora con zona (`2026-10-19T11:19:03Z`). |
-| Orden | Estrictamente creciente por `date`, sin duplicados. |
-| `image` del paso | Mismas reglas seguras que `layer.image` y prefijo `data/<datasetMode>/`; PNG existente con alfa en `validate:data`. |
-| `bbox` del paso | `[west, south, east, north]`, válido y dentro de `zone.bbox` con tolerancia 0.01°. |
-| Último paso | `layer.image` y `layer.bbox` deben ser **exactamente** los del último paso. Así un consumidor v1.1 sigue mostrando la fecha más reciente. |
-| `provenance` del paso | Parcial; la procedencia efectiva es `{ ...layer.provenance, ...step.provenance }`. |
-| `processed_real` | La procedencia efectiva de **cada** paso debe tener `acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no vacías (no `null`). |
+| `schemaVersion` | `"1.2.0"` if `timeSteps` is used; without a time series, `"1.1.0"` and `"1.2.0"` are admitted. |
+| Size | `timeSteps` has at least one step. |
+| `date` | Real ISO 8601: date (`2026-10-19`) or date-time with time zone (`2026-10-19T11:19:03Z`). |
+| Order | Strictly increasing by `date`, without duplicates. |
+| Step `image` | Same safe rules as `layer.image` and `data/<datasetMode>/` prefix; PNG existing with alpha in `validate:data`. |
+| Step `bbox` | `[west, south, east, north]`, valid and within `zone.bbox` with 0.01° tolerance. |
+| Last step | `layer.image` and `layer.bbox` must be **exactly** those of the last step. Thus a v1.1 consumer still shows the most recent date. |
+| Step `provenance` | Partial; the effective provenance is `{ ...layer.provenance, ...step.provenance }`. |
+| `processed_real` | The effective provenance of **each** step must have `acquisitionDate`, `sceneId` and `referenceUrl` as non-empty strings (not `null`). |
 
-En runtime, `useOliveTwinData` selecciona por defecto el último paso al elegir
-la capa. `selectTimeStep(index)` cambia el paso activo y `ActiveOverlay` expone
-`url`/`bbox` del paso junto con `timeIndex` y `timeStep`. Cambiar de modo, zona
-o capa reinicia el índice; un índice fuera de rango se ignora.
+At runtime, `useOliveTwinData` selects the last step by default when the
+layer is chosen. `selectTimeStep(index)` changes the active step and `ActiveOverlay` exposes
+the step's `url`/`bbox` together with `timeIndex` and `timeStep`. Changing the mode, zone
+or layer resets the index; an out-of-range index is ignored.
 
-### 2.8 Cubo de análisis por zona (`zone.analysis`, v1.3.0)
+### 2.8 Per-zone analysis cube (`zone.analysis`, v1.3.0)
 
-`zone.analysis` apunta a `data/<modo>/zones/<id>/analysis/analysis.json`, que
-valida contra [`contracts/analysis.schema.json`](../contracts/analysis.schema.json).
-Lo genera [`pipelines/analysis/`](../pipelines/analysis/README.md) y lo usan las
-pestañas «Análisis» y «Gemelos» de la aplicación.
+`zone.analysis` points to `data/<mode>/zones/<id>/analysis/analysis.json`, which
+validates against [`contracts/analysis.schema.json`](../contracts/analysis.schema.json).
+It is generated by [`pipelines/analysis/`](../pipelines/analysis/README.md) and used by the
+"Analysis" and "Twins" tabs of the application.
 
-| Bloque | Contenido |
+| Block | Content |
 |---|---|
-| `grid` | Rejilla común EPSG:3857: `bbox` WGS84 exacto, `width`, `height`, `cellSizeM` (m Web Mercator), `encoding: "png-uint8-linear"`, `nodata: 255`. |
-| `variables[]` | `id`, `title`, `group` (`nisar`, `optical`, `terrain`, `soil`, `climate`), `unit`, `scale`, `offset`, `displayRange`, `palette`, `temporal`, `description`, `caveat`, `status`, `provenance` (con `license`) y `steps[]`. |
-| `steps[]` | `date` (ISO; `null` solo en productos estáticos), `data` (PNG gris de 8 bits), `stats` (`mean`, `median`, `p10`, `p90`, `min`, `max`, `validFraction`) y `provenance` del paso. |
-| `zoneSeries[]` | Series de zona `{id, title, unit, chart: bar|line, provenance, points[{date, value}]}`. |
-| `unavailable[]` | Fuentes previstas no incorporadas, con el motivo verificable. |
-| `suitability` | `title`, `note` y `criteria[{variable, aggregate, direction, weight, rationale}]` (índice relativo; la interfaz ya no lo usa). |
-| `crops[]` | Aptitud por cultivo: `id`, `name`, `scientificName`, `assumptions`, `method`, `source` (procedencia con licencia), `suitability` (ráster 0–1) y `factors[{id, label, variables, requirement, parameters, raster}]`. Cada ráster es `{data, scale, offset, stats}` con la misma codificación que los pasos. |
+| `grid` | Common EPSG:3857 grid: exact WGS84 `bbox`, `width`, `height`, `cellSizeM` (m in Web Mercator), `encoding: "png-uint8-linear"`, `nodata: 255`. |
+| `variables[]` | `id`, `title`, `group` (`nisar`, `optical`, `terrain`, `soil`, `climate`), `unit`, `scale`, `offset`, `displayRange`, `palette`, `temporal`, `description`, `caveat`, `status`, `provenance` (with `license`) and `steps[]`. |
+| `steps[]` | `date` (ISO; `null` only in static products), `data` (8-bit grey PNG), `stats` (`mean`, `median`, `p10`, `p90`, `min`, `max`, `validFraction`) and the step's `provenance`. |
+| `zoneSeries[]` | Zone series `{id, title, unit, chart: bar\|line, provenance, points[{date, value}]}`. |
+| `unavailable[]` | Planned sources not incorporated, with the verifiable reason. |
+| `suitability` | `title`, `note` and `criteria[{variable, aggregate, direction, weight, rationale}]` (relative index; the interface no longer uses it). |
+| `crops[]` | Crop suitability: `id`, `name`, `scientificName`, `assumptions`, `method`, `source` (provenance with licence), `suitability` (raster 0–1) and `factors[{id, label, variables, requirement, parameters, raster}]`. Each raster is `{data, scale, offset, stats}` with the same encoding as the steps. |
 
-**Decodificación.** Cada píxel del PNG es un código 0–254: valor =
-`offset + scale × código`; 255 es «sin dato» y nunca se rellena. La app
-decodifica el PNG en JavaScript (sin canvas) para que la gestión de color del
-navegador no altere los códigos, y consulta el **dato** de la celda al hacer
-clic, no el color.
+**Decoding.** Each PNG pixel is a code 0–254: value =
+`offset + scale × code`; 255 is "no data" and is never filled. The app
+decodes the PNG in JavaScript (without canvas) so that the browser's colour management
+does not alter the codes, and it reads the **data** of the cell on click,
+not the colour.
 
-**Índice de aptitud (retirado el 2026-11-15).** El campo opcional `suitability`
-(criterios con pesos y rangos percentiles) sigue en el esquema por
-compatibilidad, pero el pipeline ya no lo genera y la interfaz no lo usa: lo
-sustituye la aptitud por cultivo.
+**Suitability index (withdrawn on 2026-11-15).** The optional `suitability` field
+(criteria with weights and percentile ranges) remains in the schema for
+compatibility, but the pipeline no longer generates it and the interface does not use it:
+it is replaced by crop suitability.
 
-**Aptitud por cultivo.** El pipeline calcula, con requisitos de cultivo de
-fuentes verificables (FAO GAEZ v4 y FAO ECOCROP; pH, textura, pendiente y carbono orgánico de las tablas de
-aptitud de la Universidad de Granada basadas en Sys et al., 1993), una puntuación
-0–1 por factor y la global (mínimo de los factores, como en Ecocrop). Cada factor
-puede declarar `classes` (tramos óptimo / aceptable / no apto en lenguaje claro) y
-`reference` (cita y URL cuando la fuente no es la ficha ECOCROP); el cultivo puede
-declarar `otherRequirements` (requisitos citados que no entran en el mapa). La
-interfaz no recalcula nada ni inventa umbrales: muestra los rásteres, los tramos
-publicados, reparte la superficie en tramos y marca en cada celda el factor de
-menor puntuación. Las variables sin requisito publicado se muestran como «Sin valor
-de referencia verificado».
+**Crop suitability.** The pipeline computes, with crop requirements from
+verifiable sources (FAO GAEZ v4 and FAO ECOCROP; pH, texture, slope and organic carbon from the
+suitability tables of the University of Granada based on Sys et al., 1993), a score
+0–1 per factor and the overall one (minimum of the factors, as in Ecocrop). Each factor
+can declare `classes` (optimal / acceptable / unsuitable bands in plain language) and
+`reference` (citation and URL when the source is not the ECOCROP sheet); the crop can
+declare `otherRequirements` (cited requirements that do not enter the map). The
+interface recalculates nothing and invents no thresholds: it shows the rasters, the published
+bands, distributes the surface into bands and marks in each cell the factor with the
+lowest score. Variables without a published requirement are shown as "No verified
+reference value".
 
-**Validación.** `npm run validate:data` comprueba esquema, rutas bajo la zona,
-orden de fechas, coherencia de `stats`, criterios y factores de cultivo que
-apuntan a variables existentes, ids únicos de cultivos y factores, y que cada
-PNG (pasos y rásteres de aptitud) exista, sea gris de 8 bits, tenga el tamaño de
-la rejilla y no supere 2 MB. Los fixtures están en
+**Validation.** `npm run validate:data` checks schema, paths under the zone,
+date order, `stats` coherence, criteria and crop factors that
+point to existing variables, unique crop and factor ids, and that each
+PNG (steps and suitability rasters) exists, is 8-bit grey, has the size of
+the grid and does not exceed 2 MB. The fixtures are in
 `frontend/scripts/fixtures/analysis/{valid,invalid}/`.
 
-## 3. Convenciones geoespaciales y de assets
+## 3. Geospatial and asset conventions
 
 ### 3.1 `bbox` = `[west, south, east, north]`
 
-- Cuatro números en grados decimales, **WGS84 / EPSG:4326**.
-- Orden: `[longitud mínima, latitud mínima, longitud máxima, latitud máxima]`.
-- El esquema comprueba el rango global: longitud ±180°, latitud ±90°. **No**
-  limita las zonas a España; el mapa navegable sí está centrado en España.
-- `west < east` y `south < north` son validación semántica (no del esquema).
-- Leaflet recibe la caja transformada:
-  `[[south, west], [north, east]]`. Los componentes no reordenan el JSON.
-- `zone.bbox` delimita el área de estudio; `layer.bbox` delimita la cobertura
-  real del PNG y puede ser igual o más pequeña. El validador exige que
-  `layer.bbox` quede dentro de `zone.bbox` con tolerancia de **0.01°**.
+- Four numbers in decimal degrees, **WGS84 / EPSG:4326**.
+- Order: `[minimum longitude, minimum latitude, maximum longitude, maximum latitude]`.
+- The schema checks the global range: longitude ±180°, latitude ±90°. It does **not**
+  restrict zones to Spain; the navigable map is centred on Spain.
+- `west < east` and `south < north` are semantic validation (not schema validation).
+- Leaflet receives the transformed box:
+  `[[south, west], [north, east]]`. Components do not reorder the JSON.
+- `zone.bbox` delimits the study area; `layer.bbox` delimits the actual
+  coverage of the PNG and may be equal or smaller. The validator requires that
+  `layer.bbox` stays within `zone.bbox` with a tolerance of **0.01°**.
 
-### 3.2 PNG de overlay
+### 3.2 Overlay PNG
 
-Cada `image` debe ser un PNG:
+Each `image` must be a PNG:
 
-- preparado en **EPSG:3857 (Web Mercator)**;
-- **norte arriba**;
-- con la extensión exacta de `layer.bbox` (el PNG no transporta coordenadas:
-  la posición la da el JSON);
-- con canal alfa: RGBA (`color type 6`), gris+alfa (`4`) o paleta con `tRNS`;
-- con **alpha 0** en los píxeles sin dato. No se representa «sin dato» como
-  humedad 0 ni como un color opaco; los píxeles transparentes deben llevar
-  también RGB a 0 para evitar halos;
-- con tamaño razonable (objetivo orientativo: menos de 1 MB por PNG). Si el
-  raster es enorme, se recorta, se optimiza o se prepara una teselación en una
-  fase posterior; cada capa admite una imagen, o una por paso temporal si usa
+- prepared in **EPSG:3857 (Web Mercator)**;
+- **north up**;
+- with the exact extent of `layer.bbox` (the PNG does not carry coordinates:
+  the position is given by the JSON);
+- with an alpha channel: RGBA (`color type 6`), grey+alpha (`4`) or palette with `tRNS`;
+- with **alpha 0** in the pixels without data. "No data" is not represented as
+  moisture 0 or as an opaque colour; transparent pixels must also carry
+  RGB at 0 to avoid halos;
+- with a reasonable size (indicative target: less than 1 MB per PNG). If the
+  raster is huge, it is cropped, optimised or a tiling is prepared in a
+  later phase; each layer admits one image, or one per time step if it uses
   `timeSteps`.
 
-La reproyección debe documentarse. Para valores discretos o para no inventar
-valores intermedios se usa vecino más próximo; un remuestreo bilineal suaviza y
-puede fabricar valores que no existían en el dato original.
+The reprojection must be documented. For discrete values or to avoid inventing
+intermediate values, nearest neighbour is used; bilinear resampling smooths and
+can fabricate values that did not exist in the original data.
 
-Con `timeSteps`, **cada paso** aporta su propio PNG y su `bbox`; se aplican las
-mismas reglas de CRS, orientación, transparencia y ruta segura. El último PNG
-es el que debe coincidir con `layer.image`.
+With `timeSteps`, **each step** provides its own PNG and its `bbox`; the
+same rules of CRS, orientation, transparency and safe path apply. The last PNG
+is the one that must match `layer.image`.
 
-Un PNG es una **representación visual**: no expone valores científicos
-consultables. La consulta por píxel requeriría un `values`/grid numérico con
-contrato propio (P1, fuera de v1.2.0).
+A PNG is a **visual representation**: it does not expose queryable scientific
+values. Per-pixel query would require a numeric `values`/grid with its own
+contract (P1, outside v1.2.0).
 
 ### 3.3 `imageCrs`
 
-En v1.2.0 el único valor admitido es `"EPSG:3857"`. Un PNG en EPSG:4326 u otro
-CRS se rechaza aunque se vea «casi bien» al superponerlo.
+In v1.2.0 the only admitted value is `"EPSG:3857"`. A PNG in EPSG:4326 or another
+CRS is rejected even if it looks "almost right" when overlaid.
 
-### 3.4 Rutas de imagen
+### 3.4 Image paths
 
-El campo `image`:
+The `image` field:
 
-- es relativo a `frontend/public/`;
-- **no** empieza por `/`;
-- **no** contiene `..`, `:` (URLs absolutas o unidades de disco) ni `\`;
-- en la validación de publicación, debe empezar por `data/sample/` o
-  `data/real/` según `datasetMode`.
+- is relative to `frontend/public/`;
+- **does not** start with `/`;
+- **does not** contain `..`, `:` (absolute URLs or disk drives) or `\`;
+- in publication validation, it must start with `data/sample/` or
+  `data/real/` according to `datasetMode`.
 
-Ejemplos válidos:
+Valid examples:
 
 ```text
 data/sample/zones/jaen-demo/ndvi.png
 data/real/zones/mi-zona/soil-moisture.png
 ```
 
-La aplicación resuelve la URL con la base de Vite:
+The application resolves the URL with the Vite base:
 
 ```ts
 const url = `${import.meta.env.BASE_URL}${layer.image}`
 ```
 
-`BASE_URL` termina en `/` y permite desplegar en la raíz o en una subruta (por
-ejemplo `/olivetwin/`). **El equipo científico no construye URLs**: escribe la
-ruta del contrato y el cargador la resuelve. Los componentes Vue tampoco
-componen rutas; reciben `ActiveOverlay.url` ya resuelta.
+`BASE_URL` ends in `/` and allows deploying at the root or under a subpath (for
+example `/olivetwin/`). **The scientific team does not build URLs**: it writes the contract
+path and the loader resolves it. Vue components do not compose paths either;
+they receive `ActiveOverlay.url` already resolved.
 
-## 4. Modo de datos y estado de capa
+## 4. Data mode and layer status
 
-### 4.1 Coherencia obligatoria
+### 4.1 Mandatory coherence
 
-| `datasetMode` | `status` admitido en todas las capas |
+| `datasetMode` | `status` admitted in all layers |
 |---|---|
 | `sample` | `synthetic` |
 | `real` | `processed_real` |
 
-La regla se aplica dos veces:
+The rule is applied twice:
 
-1. en el **esquema**, mediante `if/then`;
-2. en el **validador semántico** y en el **cargador de runtime**, que producen
-   un error específico y legible (`mode-mismatch` / `status-mismatch`).
+1. in the **schema**, through `if/then`;
+2. in the **semantic validator** and in the **runtime loader**, which produce
+   a specific and readable error (`mode-mismatch` / `status-mismatch`).
 
-No se mezclan capas de ambos modos aunque el `id` de zona o de capa coincida.
+Layers of both modes are not mixed even if the zone or layer `id` matches.
 
-### 4.2 `processed_real` no es una etiqueta cosmética
+### 4.2 `processed_real` is not a cosmetic label
 
-Para declarar `status: "processed_real"` se exige:
+To declare `status: "processed_real"` the following is required:
 
-- `provenance.acquisitionDate`: cadena ISO 8601 no vacía (no `null`);
-- `provenance.sceneId`: cadena no vacía (no `null`);
-- `provenance.referenceUrl`: URL verificable (no `null`);
-- aprobación científica humana registrada fuera del JSON y, preferiblemente,
-  también en `provenance.approvedBy`;
-- que el PNG y el `bbox` correspondan al producto descrito.
+- `provenance.acquisitionDate`: non-empty ISO 8601 string (not `null`);
+- `provenance.sceneId`: non-empty string (not `null`);
+- `provenance.referenceUrl`: verifiable URL (not `null`);
+- human scientific approval recorded outside the JSON and, preferably,
+  also in `provenance.approvedBy`;
+- that the PNG and the `bbox` correspond to the described product.
 
-Cambiar un texto, un nombre de archivo o el `status` no convierte un dato
-sintético en real. Un agente no puede aprobar su propio trabajo científico.
+Changing a text, a file name or the `status` does not turn a synthetic datum
+into a real one. An agent cannot approve its own scientific work.
 
-### 4.3 `zones: []` es un estado válido
+### 4.3 `zones: []` is a valid state
 
-- `real/manifest.json` con `zones: []` es **vacío**, no un error. Hoy el
-  manifiesto publicado declara Jaén y Toledo, pero el estado vacío se sigue
-  soportando (por ejemplo, si se retiran las zonas).
-- La aplicación no recurre a `sample` si no hay datos, si el manifiesto da 404
-  o si el JSON es inválido. Tampoco se reutilizan PNG de una carga anterior.
+- `real/manifest.json` with `zones: []` is **empty**, not an error. Today the
+  published manifest declares Jaén and Toledo, but the empty state is still
+  supported (for example, if the zones are withdrawn).
+- The application does not fall back to `sample` if there is no data, if the manifest returns 404
+  or if the JSON is invalid. Nor are PNGs from a previous load reused.
 
-### 4.4 Estados de carga en runtime
+### 4.4 Runtime load states
 
-| Estado | Significado | Qué hace la UI |
+| State | Meaning | What the UI does |
 |---|---|---|
-| `loading` | Manifest solicitado; se limpian zonas, selección y overlays previos. | Indicador de carga. |
-| `ready` | Manifiesto válido con al menos una zona. | Zonas disponibles; el usuario elige. |
-| `empty` | Manifiesto válido con `zones: []`. | «Todavía no hay zonas con datos científicos reales» en modo real. |
-| `error` | 404, fallo de red, JSON roto, esquema inválido, incoherencia de modo/estado o ruta insegura. | Mensaje de error y opción de reintentar; **sin fallback** a muestra. |
+| `loading` | Manifest requested; zones, selection and previous overlays are cleared. | Loading indicator. |
+| `ready` | Valid manifest with at least one zone. | Zones available; the user chooses. |
+| `empty` | Valid manifest with `zones: []`. | "There are no zones with real scientific data yet" in real mode. |
+| `error` | 404, network failure, broken JSON, invalid schema, mode/status incoherence or unsafe path. | Error message and option to retry; **no fallback** to sample. |
 
-Reglas del cargador y del composable (`loadManifest`, `useOliveTwinData`):
+Loader and composable rules (`loadManifest`, `useOliveTwinData`):
 
-- `loadManifest` descarga `${BASE_URL}data/<mode>/manifest.json` con
+- `loadManifest` downloads `${BASE_URL}data/<mode>/manifest.json` with
   `cache: 'no-cache'`.
-- Antes de Ajv comprueba `datasetMode` y la coherencia de `status` para dar un
-  mensaje específico; después valida el esquema completo.
-- `assertManifestCoherence` vuelve a comprobar modo, estado y rutas seguras.
-- Cada `setDataMode` o `reload` incrementa un contador y aborta la petición
-  anterior (`AbortController`). Una respuesta tardía **no** sobrescribe el modo
-  actual.
-- Al cambiar de modo se vacían `zones`, `selectedZoneId` y `selectedLayerId`.
-- Al seleccionar una zona se elige su primera capa, o `null` si no tiene.
-- Al seleccionar una capa (o una zona con capa), `selectedTimeIndex` apunta al
-  **último** paso si la capa tiene `timeSteps`; si no, es `null`.
-- `selectTimeStep(index)` solo acepta un entero dentro de `0..timeSteps.length-1`;
-  fuera de rango o sin serie temporal se ignora. Cambiar de modo, zona o capa
-  reinicia el índice.
-- `selectZone`/`selectLayer` ignoran ids que no existan en el manifiesto
-  activo.
-- `overlay` es `null` si no hay zona y capa válidas. Si hay selección, la URL se
-  resuelve con `BASE_URL` y se entrega como `ActiveOverlay`; con `timeSteps`, la
-  URL, el `bbox`, `timeIndex` y `timeStep` salen del paso activo.
-- Opacidad inicial `0.7`, recortada siempre a `[0, 1]`; overlay visible por
-  defecto.
-- No hay persistencia del modo ni de la selección entre recargas.
+- Before Ajv it checks `datasetMode` and the `status` coherence in order to give a
+  specific message; afterwards it validates the complete schema.
+- `assertManifestCoherence` checks mode, status and safe paths again.
+- Each `setDataMode` or `reload` increments a counter and aborts the previous
+  request (`AbortController`). A late response does **not** overwrite the current
+  mode.
+- When the mode changes, `zones`, `selectedZoneId` and `selectedLayerId` are cleared.
+- When a zone is selected, its first layer is chosen, or `null` if it has none.
+- When a layer (or a zone with a layer) is selected, `selectedTimeIndex` points to the
+  **last** step if the layer has `timeSteps`; otherwise it is `null`.
+- `selectTimeStep(index)` only accepts an integer within `0..timeSteps.length-1`;
+  out of range or without a time series it is ignored. Changing the mode, zone or layer
+  resets the index.
+- `selectZone`/`selectLayer` ignore ids that do not exist in the active
+  manifest.
+- `overlay` is `null` if there is no valid zone and layer. If there is a selection, the URL is
+  resolved with `BASE_URL` and delivered as `ActiveOverlay`; with `timeSteps`, the
+  URL, the `bbox`, `timeIndex` and `timeStep` come from the active step.
+- Initial opacity `0.7`, always clamped to `[0, 1]`; overlay visible by
+  default.
+- There is no persistence of the mode or of the selection between reloads.
 
-El navegador **no** comprueba la existencia ni el canal alfa del PNG (tendría
-que descargarlo y decodificarlo). Esas comprobaciones se hacen antes de publicar
-con `npm run validate:data --prefix frontend`; si un PNG falta en producción, la
-UI muestra el error de imagen sin romper el mapa base.
+The browser does **not** check the existence or the alpha channel of the PNG (it would have
+to download and decode it). Those checks are done before publishing
+with `npm run validate:data --prefix frontend`; if a PNG is missing in production, the
+UI shows the image error without breaking the base map.
 
-## 5. Validación implementada
+## 5. Implemented validation
 
-La validación se reparte en tres capas. La lógica compartida vive en
+Validation is split into three layers. The shared logic lives in
 [`frontend/scripts/validate-lib.mjs`](../frontend/scripts/validate-lib.mjs).
 
-### 5.1 Esquema JSON
+### 5.1 JSON Schema
 
-Comprueba estructura, tipos, enums, patrones, campos obligatorios, cierre de
-objetos, rango global de `bbox`, tamaño de `range`, forma de `legend`, patrón
-seguro de `image` y coherencia `datasetMode`/`status`.
+It checks structure, types, enums, patterns, mandatory fields, closure of
+objects, global `bbox` range, `range` size, `legend` shape, safe
+`image` pattern and `datasetMode`/`status` coherence.
 
-### 5.2 Reglas semánticas (no expresables en el esquema)
+### 5.2 Semantic rules (not expressible in the schema)
 
-| Regla | Detalle |
+| Rule | Detail |
 |---|---|
-| `schemaVersion` | Debe cumplir `^1\.[0-9]+\.[0-9]+$`. |
-| Modo esperado | El manifiesto publicado debe declarar el modo de su carpeta (`sample` o `real`). |
-| `bbox` de zona y capa | `west < east` y `south < north`. |
-| Capa dentro de zona | `layer.bbox` dentro de `zone.bbox` con tolerancia `0.01°`. |
-| `range` | `min < max` estricto. |
-| `legend` | Orden creciente estricto por `value`. |
-| Ids | Zona única en el manifiesto; capa única dentro de su zona. |
-| `id` de zona | Kebab-case. |
-| Prefijo de `image` | `data/<datasetMode>/` (publicación). |
-| Coherencia de estado | `sample` ⇒ `synthetic`; `real` ⇒ `processed_real`. |
-| `processed_real` | `acquisitionDate`, `sceneId` y `referenceUrl` como cadenas no vacías. |
-| Versión y `timeSteps` | `timeSteps` exige `schemaVersion: "1.2.0"`; sin serie se admiten `"1.1.0"` y `"1.2.0"`. |
-| Fechas de pasos | ISO 8601 reales, en orden estrictamente creciente y sin duplicados. |
-| `bbox` de pasos | Cada paso dentro de `zone.bbox` con tolerancia `0.01°`. |
-| Último paso | `layer.image` y `layer.bbox` idénticos a los del último `timeStep`. |
-| Procedencia de pasos | En `processed_real`, la procedencia efectiva de cada paso incluye `acquisitionDate`, `sceneId` y `referenceUrl`. |
+| `schemaVersion` | Must match `^1\.[0-9]+\.[0-9]+$`. |
+| Expected mode | The published manifest must declare the mode of its folder (`sample` or `real`). |
+| Zone and layer `bbox` | `west < east` and `south < north`. |
+| Layer within zone | `layer.bbox` within `zone.bbox` with `0.01°` tolerance. |
+| `range` | Strictly `min < max`. |
+| `legend` | Strictly increasing order by `value`. |
+| Ids | Unique zone in the manifest; unique layer within its zone. |
+| Zone `id` | Kebab-case. |
+| `image` prefix | `data/<datasetMode>/` (publication). |
+| Status coherence | `sample` ⇒ `synthetic`; `real` ⇒ `processed_real`. |
+| `processed_real` | `acquisitionDate`, `sceneId` and `referenceUrl` as non-empty strings. |
+| Version and `timeSteps` | `timeSteps` requires `schemaVersion: "1.2.0"`; without a series, `"1.1.0"` and `"1.2.0"` are admitted. |
+| Step dates | Real ISO 8601, in strictly increasing order and without duplicates. |
+| Step `bbox` | Each step within `zone.bbox` with `0.01°` tolerance. |
+| Last step | `layer.image` and `layer.bbox` identical to those of the last `timeStep`. |
+| Step provenance | In `processed_real`, the effective provenance of each step includes `acquisitionDate`, `sceneId` and `referenceUrl`. |
 
 ### 5.3 Assets
 
-Para cada `image` de los manifiestos publicados —incluidos **todos** los
-`timeSteps[].image`— se comprueba que:
+For each `image` of the published manifests — including **all**
+`timeSteps[].image` — it is checked that:
 
-- el archivo existe bajo `frontend/public/`;
-- la firma PNG es correcta;
-- el PNG tiene canal alfa (`color type` 4 o 6, o `tRNS`);
-- las dimensiones declaradas son válidas.
+- the file exists under `frontend/public/`;
+- the PNG signature is correct;
+- the PNG has an alpha channel (`color type` 4 or 6, or `tRNS`);
+- the declared dimensions are valid.
 
-El runtime no descarga ni decodifica el PNG para comprobar alfa, pero sí rechaza
-rutas inseguras de capa y de paso antes de pintar.
+The runtime does not download or decode the PNG to check alpha, but it does reject
+unsafe layer and step paths before painting.
 
-Los fixtures contractuales de `frontend/scripts/fixtures/` se validan sin
-comprobar assets, porque no se sirven desde `public/`.
+The contractual fixtures in `frontend/scripts/fixtures/` are validated without
+checking assets, because they are not served from `public/`.
 
-### 5.4 Comando de validación
+### 5.4 Validation command
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```bash
 npm run validate:data --prefix frontend
 ```
 
-El comando:
+The command:
 
-1. compila el esquema con Ajv (draft 2020-12);
-2. valida `public/data/real/manifest.json` contra esquema + semántica + assets,
-   exigiendo que el modo coincida con la carpeta. `sample/manifest.json` es
-   **opcional**: si existe se valida igual y, si no existe, se informa como
-   omitido sin fallar;
-3. exige que todos los fixtures de `fixtures/valid/` pasen;
-4. exige que todos los fixtures de `fixtures/invalid/` fallen.
+1. compiles the schema with Ajv (draft 2020-12);
+2. validates `public/data/real/manifest.json` against schema + semantics + assets,
+   requiring the mode to match the folder. `sample/manifest.json` is
+   **optional**: if it exists it is validated the same way and, if it does not exist, it is reported as
+   skipped without failing;
+3. requires all fixtures in `fixtures/valid/` to pass;
+4. requires all fixtures in `fixtures/invalid/` to fail.
 
-Sale con código 1 si algo falla. En el estado actual de la rama se ejecutan 35
-comprobaciones (manifiestos + fixtures).
+It exits with code 1 if something fails. In the current state of the branch, 35
+checks are run (manifests + fixtures).
 
-### 5.5 Validación en runtime frente a validación de publicación
+### 5.5 Runtime validation versus publication validation
 
-El servicio de runtime repite las comprobaciones críticas para no depender del
-build: coherencia de `datasetMode`, coherencia de `status` y rutas seguras. La
-comprobación del prefijo `data/<mode>/`, la existencia del PNG y el canal alfa se
-ejecutan en `validate:data` antes de publicar. Por eso **la validación local es
-obligatoria**: un manifiesto editado a mano que evite la CLI puede apuntar a un
-asset del otro modo aunque el navegador lo acepte.
+The runtime service repeats the critical checks in order not to depend on the
+build: `datasetMode` coherence, `status` coherence and safe paths. The
+check of the `data/<mode>/` prefix, the existence of the PNG and the alpha channel are
+run in `validate:data` before publishing. That is why **local validation is
+mandatory**: a hand-edited manifest that bypasses the CLI can point to an
+asset of the other mode even if the browser accepts it.
 
-## 6. Validar y actualizar los datos publicados
+## 6. Validating and updating the published data
 
-La demo no incluye generador de datos de muestra. Los PNG y el manifiesto real
-se producen con el pipeline NISAR SME2 y se validan antes de publicar:
+The demo does not include a sample data generator. The PNGs and the real manifest
+are produced with the NISAR SME2 pipeline and validated before publishing:
 
 ```bash
 npm ci --prefix frontend
@@ -560,37 +560,37 @@ npm test --prefix frontend
 npm run build --prefix frontend
 ```
 
-`validate:data` comprueba el manifiesto real, todos los PNG de la serie
-(`timeSteps[].image`), los fixtures contractuales y los assets. `npm test`
-ejecuta Vitest (contrato, servicios, composable y componentes) y `npm run
-build` ejecuta `vue-tsc -b` y genera `frontend/dist/`.
+`validate:data` checks the real manifest, all the PNGs of the series
+(`timeSteps[].image`), the contractual fixtures and the assets. `npm test`
+runs Vitest (contract, services, composable and components) and `npm run
+build` runs `vue-tsc -b` and generates `frontend/dist/`.
 
-### 6.1 Añadir fechas a una zona existente
+### 6.1 Adding dates to an existing zone
 
-El pipeline abre los HDF5 de NISAR SME2 en un *staging* y solo escribe en
-`frontend/public/data/real/` con `--publish`:
+The pipeline opens the NISAR SME2 HDF5 files in a *staging* area and only writes to
+`frontend/public/data/real/` with `--publish`:
 
 ```bash
-# 1) Staging: no toca la aplicación. Revisa report.json y los PNG.
+# 1) Staging: does not touch the application. Review report.json and the PNGs.
 python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
   --aoi WEST SOUTH EAST NORTH \
   --zone-id jaen --zone-name "Jaén" \
   --staging pipelines/nisar/sme2_staging
 
-# 2) Publicación de toda la serie (una o varias fechas) tras la revisión
+# 2) Publication of the whole series (one or several dates) after the review
 python pipelines/nisar/sme2_to_overlay.py nisar_sme2_data/*.h5 \
   --aoi WEST SOUTH EAST NORTH \
   --zone-id jaen --zone-name "Jaén" \
   --publish --approved-by "Nombre del revisor"
 ```
 
-Sin `--date`, `--publish` escribe **todas** las escenas utilizables como
-`timeSteps` ordenados y fija `layer.image`/`layer.bbox` al último paso. Con
-`--date YYYY-MM-DD` publica una sola fecha sin serie temporal. La escala
-(`--auto-scale` o `--vmin/--vmax`) se comparte entre fechas para que el slider
-sea comparable.
+Without `--date`, `--publish` writes **all** usable scenes as ordered
+`timeSteps` and sets `layer.image`/`layer.bbox` to the last step. With
+`--date YYYY-MM-DD` it publishes a single date without a time series. The scale
+(`--auto-scale` or `--vmin/--vmax`) is shared between dates so that the slider
+is comparable.
 
-Para re-renderizar sin volver a abrir los HDF5 (por ejemplo, con otra escala):
+To re-render without reopening the HDF5 files (for example, with another scale):
 
 ```bash
 python pipelines/nisar/sme2_to_overlay.py \
@@ -599,76 +599,76 @@ python pipelines/nisar/sme2_to_overlay.py \
   --auto-scale --publish --approved-by "Nombre del revisor"
 ```
 
-`--from-staging` reconstruye la serie desde `layer.staging.json` y el GeoTIFF
-maestro del staging, y aplica el mismo warp, color, verificación y publicación.
-Después de publicar, ejecuta `npm run validate:data --prefix frontend` y revisa
-la alineación en el navegador antes de desplegar el sitio estático.
+`--from-staging` rebuilds the series from `layer.staging.json` and the master
+GeoTIFF of the staging, and applies the same warp, colour, verification and publication.
+After publishing, run `npm run validate:data --prefix frontend` and review
+the alignment in the browser before deploying the static site.
 
-### 6.2 Añadir una zona nueva
+### 6.2 Adding a new zone
 
-1. Ejecuta el pipeline con un `--zone-id` nuevo y el `bbox` de la zona. Con
-   `--publish --approved-by` crea `zones/<id>/soil-moisture/<fecha>.png` y
-   añade la zona al manifiesto real sin duplicar capas.
-2. Comprueba que el manifiesto sube a `schemaVersion: "1.2.0"` si escribe
-   `timeSteps`, y que la procedencia de cada paso incluye `acquisitionDate`,
-   `sceneId` y `referenceUrl`.
-3. Ejecuta `npm run validate:data --prefix frontend`, revisa el encuadre y la
-   transparencia en el navegador y publica la build estática.
+1. Run the pipeline with a new `--zone-id` and the zone's `bbox`. With
+   `--publish --approved-by` it creates `zones/<id>/soil-moisture/<date>.png` and
+   adds the zone to the real manifest without duplicating layers.
+2. Check that the manifest is raised to `schemaVersion: "1.2.0"` if it writes
+   `timeSteps`, and that the provenance of each step includes `acquisitionDate`,
+   `sceneId` and `referenceUrl`.
+3. Run `npm run validate:data --prefix frontend`, review the framing and
+   transparency in the browser and publish the static build.
 
-No se versionan HDF5, GeoTIFF ni NetCDF: el staging queda fuera de Git y solo se
-publican los PNG y el JSON optimizados.
+HDF5, GeoTIFF and NetCDF are not versioned: the staging stays outside Git and only the
+optimised PNGs and JSON are published.
 
-## 7. Política de cambios del contrato
+## 7. Contract change policy
 
-| Tipo de cambio | Versión | Ejemplos |
+| Type of change | Version | Examples |
 |---|---|---|
-| **Aditivo** | Minor: `1.2.0`, `1.3.0`… | Nueva propiedad **opcional** en el esquema (así se añadió `layer.timeSteps` en v1.2.0), nuevo `$def` reutilizable, nueva documentación o aclaración. |
-| **Incompatible** | Major: `2.0.0` | Campo obligatorio nuevo, cambio de tipo o semántica, eliminación o renombrado, cambio del orden de `bbox`, ampliación de un enum que los consumidores tratan de forma exhaustiva. |
+| **Additive** | Minor: `1.2.0`, `1.3.0`… | New **optional** property in the schema (this is how `layer.timeSteps` was added in v1.2.0), new reusable `$def`, new documentation or clarification. |
+| **Incompatible** | Major: `2.0.0` | New mandatory field, change of type or semantics, removal or renaming, change of the `bbox` order, extension of an enum that consumers treat exhaustively. |
 
-Reglas concretas:
+Concrete rules:
 
-- Cambiar el orden de `bbox` o el significado de `sample`/`real` es **siempre**
+- Changing the `bbox` order or the meaning of `sample`/`real` is **always**
   major.
-- Añadir un `id` de capa nuevo (`ndvi`, `soil-moisture` son un enum cerrado) es
+- Adding a new layer `id` (`ndvi`, `soil-moisture` are a closed enum) is
   **major**.
-- Añadir un campo opcional a `provenance` **no** requiere cambiar el esquema:
-  `provenance` ya admite propiedades adicionales. Basta documentarlo.
-- Añadir una propiedad opcional a manifiesto, zona o capa requiere actualizar el
-  JSON Schema y subir la minor.
-- Todo cambio de contrato se abre como incidencia, se revisa por integración y
-  actualiza `docs/contract-freeze.md` y este documento en el mismo cambio.
-- WP-04 no cambia el contrato unilateralmente; WP-07 no lo reescribe ni edita
-  los tipos.
+- Adding an optional field to `provenance` does **not** require changing the schema:
+  `provenance` already admits additional properties. Documenting it is enough.
+- Adding an optional property to the manifest, zone or layer requires updating the
+  JSON Schema and raising the minor.
+- Every contract change is opened as an issue, reviewed by integration and
+  updates `docs/contract-freeze.md` and this document in the same change.
+- WP-04 does not change the contract unilaterally; WP-07 does not rewrite it or edit
+  the types.
 
-## 8. Diagnóstico rápido
+## 8. Quick troubleshooting
 
-| Síntoma | Causa probable | Solución |
+| Symptom | Probable cause | Solution |
 |---|---|---|
-| `image debe estar bajo "data/real/"` | Ruta de una capa real apunta a `sample/` o a otra carpeta. | Mover el PNG y corregir `image`. |
-| `layer.bbox queda fuera de zone.bbox` | La cobertura del raster excede la zona (más de 0.01°). | Ampliar `zone.bbox` o recortar el raster. |
-| `processed_real exige provenance.sceneId` | Falta la escena, la fecha o la URL, o están a `null`. | Completar la procedencia verificable (también en la procedencia efectiva de cada paso temporal). |
-| `timeSteps debe estar en orden estrictamente creciente` | Dos pasos desordenados o con la misma `date`. | Reordenar y eliminar duplicados; cada paso debe tener una fecha distinta. |
-| `layer.image debe coincidir con el image del último timeStep` | La capa muestra una fecha antigua mientras `timeSteps` termina en otra. | Igualar `layer.image`/`layer.bbox` al último paso. |
-| `layer.timeSteps exige schemaVersion "1.2.0"` | Series temporales declaradas como `1.1.0`. | Cambiar `schemaVersion` a `"1.2.0"`. |
-| `el PNG ... no tiene canal alfa` | El PNG se exportó RGB opaco. | Reexportar RGBA con alpha 0 en no-data. |
-| `must NOT have fewer than 2 items` en `legend` | Leyenda con una sola parada. | Añadir al menos dos clases ordenadas. |
-| `datasetMode="sample" exige status="synthetic"` | Capa real dentro de un manifiesto de fixture `sample`. | Separar los manifiestos; no mezclar modos. Solo afecta a fixtures, no a la demo. |
-| La app muestra «Todavía no hay zonas…» | `real/manifest.json` tiene `zones: []`. | Es el estado válido si se retiran las zonas publicadas. |
-| La app muestra error y no recurre a otro modo | JSON inválido, 404 o incoherencia de modo. | Corregir el manifiesto; no se hace fallback por diseño. |
-| No aparece el selector «Datos de muestra / Datos reales» | Es la decisión de producto: la demo solo usa datos reales. | Esperado; ver [`docs/c0-interfaces.md`](c0-interfaces.md) §7. |
+| `image debe estar bajo "data/real/"` | A real layer's path points to `sample/` or to another folder. | Move the PNG and fix `image`. |
+| `layer.bbox queda fuera de zone.bbox` | The raster coverage exceeds the zone (more than 0.01°). | Extend `zone.bbox` or crop the raster. |
+| `processed_real exige provenance.sceneId` | The scene, the date or the URL is missing, or they are `null`. | Complete the verifiable provenance (also in the effective provenance of each time step). |
+| `timeSteps debe estar en orden estrictamente creciente` | Two steps out of order or with the same `date`. | Reorder and remove duplicates; each step must have a different date. |
+| `layer.image debe coincidir con el image del último timeStep` | The layer shows an old date while `timeSteps` ends in another. | Match `layer.image`/`layer.bbox` to the last step. |
+| `layer.timeSteps exige schemaVersion "1.2.0"` | Time series declared as `1.1.0`. | Change `schemaVersion` to `"1.2.0"`. |
+| `el PNG ... no tiene canal alfa` | The PNG was exported as opaque RGB. | Re-export as RGBA with alpha 0 for no-data. |
+| `must NOT have fewer than 2 items` in `legend` | Legend with a single stop. | Add at least two ordered classes. |
+| `datasetMode="sample" exige status="synthetic"` | Real layer inside a `sample` fixture manifest. | Separate the manifests; do not mix modes. It only affects fixtures, not the demo. |
+| The app shows "There are no zones…" | `real/manifest.json` has `zones: []`. | This is the valid state if the published zones are withdrawn. |
+| The app shows an error and does not fall back to another mode | Invalid JSON, 404 or mode incoherence. | Fix the manifest; there is no fallback by design. |
+| The "Sample data / Real data" selector does not appear | This is the product decision: the demo uses real data only. | Expected; see [`docs/c0-interfaces.md`](c0-interfaces.md) §7. |
 
-## 9. Verificación de esta referencia
+## 9. Verification of this reference
 
-Los comandos de §6 se reejecutaron en la rama `b/intreal` el 2026-11-14, tras
-retirar los datos de muestra y publicar Jaén/Toledo:
+The commands in §6 were re-run on branch `b/intreal` on 2026-11-14, after
+withdrawing the sample data and publishing Jaén/Toledo:
 
-| Comando | Resultado |
+| Command | Result |
 |---|---|
-| `npm ci --prefix frontend` | Instalación correcta (con avisos `EBADENGINE` de dependencias, sin error). |
-| `npm run validate:data --prefix frontend` | `OK — 35 comprobaciones superadas (0 fallos)`; `sample/manifest.json` omitido por ser opcional y `real/manifest.json` validado con sus 6 PNG. |
-| `npm test --prefix frontend` | 18 archivos y 259 tests superados. |
-| `npm run build --prefix frontend` | `vue-tsc -b` + `vite build` correctos; `dist/` generado. |
-| `npm run build --prefix frontend -- --base /olivetwin/` | Build bajo subruta correcta; AT-17 la sirve con `vite preview` y pide manifiesto/PNG bajo `/olivetwin/`. |
+| `npm ci --prefix frontend` | Correct installation (with `EBADENGINE` warnings from dependencies, no error). |
+| `npm run validate:data --prefix frontend` | `OK — 35 comprobaciones superadas (0 fallos)`; `sample/manifest.json` skipped as optional and `real/manifest.json` validated with its 6 PNGs. |
+| `npm test --prefix frontend` | 18 files and 259 tests passed. |
+| `npm run build --prefix frontend` | `vue-tsc -b` + `vite build` correct; `dist/` generated. |
+| `npm run build --prefix frontend -- --base /olivetwin/` | Build under subpath correct; AT-17 serves it with `vite preview` and requests manifest/PNG under `/olivetwin/`. |
 
-La guía para publicar datos reales está en
+The guide to publishing real data is in
 [`docs/handoff-science.md`](handoff-science.md).

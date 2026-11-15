@@ -1,90 +1,90 @@
-# Revisión independiente del baseline Fase A (nodo A05)
+# Independent review of the Phase A baseline (node A05)
 
-Revisor: A05 (independiente; no implementó A01-A04). Rama revisada: `bootstrap/phase-a` @ `91f0b9b` (merge A04), PR #1 de `AlRos14/olivetwin`. Fecha: 2026-11-14.
+Reviewer: A05 (independent; did not implement A01-A04). Reviewed branch: `bootstrap/phase-a` @ `91f0b9b` (A04 merge), PR #1 of `AlRos14/olivetwin`. Date: 2026-11-14.
 
-## Veredicto global: PASS con limitaciones
+## Overall verdict: PASS with limitations
 
-No hay hallazgos bloqueantes. Las limitaciones son: la PR sigue abierta (la integración es acto de GA), `main` no está protegida (limitación conocida y documentada con honestidad) y los owners humanos de WP-04/WP-07 están pendientes de asignar.
+There are no blocking findings. The limitations are: the PR is still open (integration is an act of the GA), `main` is not protected (a known limitation documented honestly) and the human owners of WP-04/WP-07 are still to be assigned.
 
-## Comandos y evidencia
+## Commands and evidence
 
-Worktree limpio (`git worktree add -b phase-a/a05-review ... bootstrap/phase-a`).
+Clean worktree (`git worktree add -b phase-a/a05-review ... bootstrap/phase-a`).
 
-| Comando | Resultado |
+| Command | Result |
 |---|---|
-| `npm ci --prefix frontend` | OK, 0 vulnerabilidades |
-| `npm run validate:data --prefix frontend` | `Resultado: OK — 10 comprobaciones superadas (0 fallos)`: schema compila, 2 manifiestos válidos, 3 fixtures válidos aceptados, 4 inválidos rechazados (`layer-legend-object`, `missing-schema-version`, `unknown-dataset-mode`, `zones-null`) |
-| `npm run build --prefix frontend` | OK (`vue-tsc -b && vite build`), 12 módulos, `dist/` generado |
-| Manifiesto inválido: `sed 's/"real"/"unknown"/'` sobre `frontend/public/data/real/manifest.json` (revertido con `git checkout`, no commiteado) | `✗ frontend/public/data/real/manifest.json no cumple el contrato`, `Resultado: FALLO — 1 de 10`, exit code 1. El paso CI `Validar manifiestos de datos` fallaría. |
-| `gh pr checks 1` | `ci pass 13s` (run 43606418655). PR `OPEN`, `MERGEABLE`, sin reviews ni comentarios |
-| `gh api repos/AlRos14/olivetwin` | `private: true`, default `main`, el usuario autenticado es admin |
+| `npm ci --prefix frontend` | OK, 0 vulnerabilities |
+| `npm run validate:data --prefix frontend` | `Resultado: OK — 10 comprobaciones superadas (0 fallos)`: schema compiles, 2 valid manifests, 3 valid fixtures accepted, 4 invalid ones rejected (`layer-legend-object`, `missing-schema-version`, `unknown-dataset-mode`, `zones-null`) |
+| `npm run build --prefix frontend` | OK (`vue-tsc -b && vite build`), 12 modules, `dist/` generated |
+| Invalid manifest: `sed 's/"real"/"unknown"/'` on `frontend/public/data/real/manifest.json` (reverted with `git checkout`, not committed) | `✗ frontend/public/data/real/manifest.json no cumple el contrato`, `Resultado: FALLO — 1 de 10`, exit code 1. The CI step `Validar manifiestos de datos` would fail. |
+| `gh pr checks 1` | `ci pass 13s` (run 43606418655). PR `OPEN`, `MERGEABLE`, with no reviews or comments |
+| `gh api repos/AlRos14/olivetwin` | `private: true`, default `main`, the authenticated user is admin |
 | `gh api .../branches/main --jq .protected` | `false` |
-| `gh api .../collaborators` | solo `AlRos14` |
+| `gh api .../collaborators` | only `AlRos14` |
 
-## Compatibilidad con el contrato WP-04/WP-07 (§4 del plan)
+## Compatibility with the WP-04/WP-07 contract (§4 of the plan)
 
-- El ejemplo §4.3 del plan extraído del `.md` es byte a byte equivalente (JSON) a `frontend/scripts/fixtures/valid/sample-plan-4.3.json`, y el validador lo acepta. El schema usa draft 2020-12 (`prefixItems`) y el validador usa `ajv@8.20.0` (fijado) con la clase 2020.
-- Manifiestos §4.4 y fase A (`zones: []`) válidos para `sample` y `real`.
-- Campos de §4.3 (`variable`, `range`, `legend` como array de `{value,color,label}`, `provenance` con `acquisitionDate/sceneId/referenceUrl/note` nulables, `imageCrs`, `qualityNote`) soportados. `provenance` abierto (`additionalProperties: true`) y el resto cerrado: WP-04 podrá extender de forma aditiva.
-- `layer.id` enum `ndvi|soil-moisture`, `status` enum `synthetic|processed_real`, `kind` const `image-overlay`, `image` sin `/` inicial, `..`, `:` ni `\`: coherente con §4.2. La coherencia `datasetMode`/`status` y las reglas de `processed_real` quedan, correctamente, para WP-04 (semántica).
-- Nada incompatible con el contrato; ningún bloqueo para WP-04/WP-07.
+- The §4.3 example of the plan extracted from the `.md` is byte-for-byte equivalent (JSON) to `frontend/scripts/fixtures/valid/sample-plan-4.3.json`, and the validator accepts it. The schema uses draft 2020-12 (`prefixItems`) and the validator uses `ajv@8.20.0` (pinned) with the 2020 class.
+- §4.4 and Phase A manifests (`zones: []`) valid for `sample` and `real`.
+- Fields from §4.3 (`variable`, `range`, `legend` as an array of `{value,color,label}`, `provenance` with nullable `acquisitionDate/sceneId/referenceUrl/note`, `imageCrs`, `qualityNote`) supported. `provenance` is open (`additionalProperties: true`) and the rest is closed: WP-04 will be able to extend it additively.
+- `layer.id` enum `ndvi|soil-moisture`, `status` enum `synthetic|processed_real`, `kind` const `image-overlay`, `image` with no leading `/`, `..`, `:` or `\`: consistent with §4.2. The `datasetMode`/`status` coherence and the `processed_real` rules are, correctly, left to WP-04 (semantics).
+- Nothing incompatible with the contract; no blocker for WP-04/WP-07.
 
 ## Scopes
 
-- A01 (`phase-a/a01`): solo `frontend/` (sin `public/data`), `.gitignore`, `.nvmrc`, `.gitkeep`. OK.
-- A02: `contracts/`, `docs/contract-freeze.md`, `frontend/public/data/*/manifest.json`; no toca `frontend/src/`. OK.
+- A01 (`phase-a/a01`): only `frontend/` (without `public/data`), `.gitignore`, `.nvmrc`, `.gitkeep`. OK.
+- A02: `contracts/`, `docs/contract-freeze.md`, `frontend/public/data/*/manifest.json`; does not touch `frontend/src/`. OK.
 - A03: `README.md`, `AGENTS.md`, PR template, `docs/contributing.md`. OK.
-- A04: `ci.yml`, `frontend/scripts/validate-data.mjs`, fixtures; `package.json` solo añade `validate:data` y ajv/ajv-formats (dependencias requeridas por el plan, coordinadas). OK. (Los diffs por rama contra `main` aparecen acumulados porque las ramas se apilan; el contenido propio de cada una respeta su scope.)
-- `frontend/src/` queda con el template mínimo, sin `types/manifest.ts` ni stubs (el contract-freeze lo reserva a WP-04). Sin Leaflet/Router/Pinia.
+- A04: `ci.yml`, `frontend/scripts/validate-data.mjs`, fixtures; `package.json` only adds `validate:data` and ajv/ajv-formats (dependencies required by the plan, coordinated). OK. (Per-branch diffs against `main` appear accumulated because the branches are stacked; the content owned by each one respects its scope.)
+- `frontend/src/` is left with the minimal template, without `types/manifest.ts` or stubs (contract-freeze reserves it for WP-04). No Leaflet/Router/Pinia.
 
-## Documentación
+## Documentation
 
-- URL del repo (`https://github.com/AlRos14/olivetwin`, privado) es la real, verificada con `gh`. Único colaborador verificado `AlRos14`; el resto de identidades y los owners de WP-04/07 figuran como "pendientes de asignar". No hay `CODEOWNERS` ficticio. No hay URLs ni usuarios inventados.
-- README (l.149-156), `docs/contributing.md` (l.134-145) y `AGENTS.md` dicen explícitamente que `main` NO está protegida y que las reglas son por convención. Consistente con `protected: false`. No afirman protección.
-- `docs/contributing.md` / `AGENTS.md` cubren: no merge por agentes, un agente/comentario no cuenta como aprobación humana, límites de credenciales compartidas, ramas `wp04/…` etc., squash, sin HDF5. El template de PR incluye WP/Issue, procedencia de datos, riesgos y checklist de contrato.
-- `.gitignore`: `node_modules/`, `dist/`, `.env*` (excepto `.env.example`), `*.h5 *.hdf5 *.tif *.tiff *.nc`, con sección de excepciones. Mayor fichero versionado: `package-lock.json` (48 KB). Sin binarios grandes.
+- The repo URL (`https://github.com/AlRos14/olivetwin`, private) is the real one, verified with `gh`. The only verified collaborator is `AlRos14`; the rest of the identities and the WP-04/07 owners appear as "to be assigned". There is no fictitious `CODEOWNERS`. There are no invented URLs or users.
+- README (l.149-156), `docs/contributing.md` (l.134-145) and `AGENTS.md` explicitly state that `main` is NOT protected and that the rules are by convention. Consistent with `protected: false`. They do not claim protection.
+- `docs/contributing.md` / `AGENTS.md` cover: no merge by agents, an agent/comment does not count as human approval, limits of shared credentials, `wp04/…` branches etc., squash, no HDF5. The PR template includes WP/Issue, data provenance, risks and a contract checklist.
+- `.gitignore`: `node_modules/`, `dist/`, `.env*` (except `.env.example`), `*.h5 *.hdf5 *.tif *.tiff *.nc`, with an exceptions section. Largest versioned file: `package-lock.json` (48 KB). No large binaries.
 
-## Checklist GA
+## GA checklist
 
-| # | Punto | Veredicto | Evidencia |
+| # | Item | Verdict | Evidence |
 |---|---|---|---|
-| 1 | Repo correcto, permisos y `main` verificables | PASS (limitado) | Repo privado real, default `main`, admin verificado; solo 1 colaborador verificado; los otros 5 no se pueden comprobar con los permisos disponibles y se documentan como pendientes |
-| 2 | PR única de baseline integrada; sin pisar cambios | PENDIENTE | PR #1 abierta y mergeable; la fusión es acto de GA. Historial lineal desde `0751209` sin conflictos |
-| 3 | `frontend` arranca y compila desde instalación limpia | PASS | `npm ci` + `build` OK (`dev` no ejecutado; el script `dev` existe) |
-| 4 | `contracts/` y `contract-freeze.md` documentan v1.1.0, modos, bbox y rutas | PASS | Revisados contra §4.2; schema y docs coherentes |
-| 5 | Manifiestos sample/real vacíos, parseables y validados | PASS | `validate:data` |
-| 6 | CI se ejecuta en PR y falla ante contrato inválido | PASS | `ci` verde en la PR; el trigger es `pull_request`; fallo local demostrado (exit 1). Fallo en el propio CI no ejercitado en GitHub (se probó la misma orden localmente) |
-| 7 | AGENTS.md, CONTRIBUTING y template de PR | PASS | Presentes y alineados con el plan |
-| 8 | Carpetas NISAR/NDVI/históricos sin binarios grandes | PASS | `pipelines/{nisar,vegetation,historical}/.gitkeep`, `data/references`, `scripts` |
-| 9 | Owners WP-04/WP-07 y scopes documentados | PASS parcial | Scopes documentados (`contract-freeze.md` l.104-108, `contributing.md` l.37); owners humanos "pendiente de asignar" (no inventados). Debe aprobarlos el responsable de proyecto antes de lanzar Fase B |
-| 10 | Limitaciones de protección de `main` registradas | PASS | Documentado en README, contributing y AGENTS; `protected=false` confirmado |
+| 1 | Correct repo, permissions and verifiable `main` | PASS (limited) | Real private repo, default `main`, admin verified; only 1 verified collaborator; the other 5 cannot be checked with the available permissions and are documented as pending |
+| 2 | Single baseline PR integrated; no changes overwritten | PENDING | PR #1 open and mergeable; the merge is an act of the GA. Linear history since `0751209` with no conflicts |
+| 3 | `frontend` starts and compiles from a clean install | PASS | `npm ci` + `build` OK (`dev` not run; the `dev` script exists) |
+| 4 | `contracts/` and `contract-freeze.md` document v1.1.0, modes, bbox and paths | PASS | Reviewed against §4.2; schema and docs consistent |
+| 5 | Empty sample/real manifests, parseable and validated | PASS | `validate:data` |
+| 6 | CI runs on PR and fails on an invalid contract | PASS | `ci` green in the PR; the trigger is `pull_request`; local failure demonstrated (exit 1). A failure within CI itself was not exercised on GitHub (the same command was tested locally) |
+| 7 | AGENTS.md, CONTRIBUTING and PR template | PASS | Present and aligned with the plan |
+| 8 | NISAR/NDVI/historical folders without large binaries | PASS | `pipelines/{nisar,vegetation,historical}/.gitkeep`, `data/references`, `scripts` |
+| 9 | WP-04/WP-07 owners and scopes documented | PARTIAL PASS | Scopes documented (`contract-freeze.md` l.104-108, `contributing.md` l.37); human owners "to be assigned" (not invented). The project owner must approve them before launching Phase B |
+| 10 | Limitations of `main` protection recorded | PASS | Documented in README, contributing and AGENTS; `protected=false` confirmed |
 
-## Hallazgos
+## Findings
 
-### Bloqueantes
-Ninguno.
+### Blockers
+None.
 
-### Menores / a vigilar
-1. Los owners humanos de WP-04 y WP-07 siguen sin asignar (`docs/contract-freeze.md:108`, `contracts/README.md:187`). Requisito de GA: el responsable de proyecto debe designarlos o aceptar la excepción expresamente.
-2. `main` sin protección y solo un colaborador verificado: el responsable debe aprobar expresamente esta excepción (plan §7 "Cierre GA"). Activar el check `ci` como requerido cuando el plan de GitHub lo permita.
-3. El plan WP04/07 §4.1 sitúa `validate-data.*` en `scripts/` (raíz) como entregable WP-04, mientras que el validador de A04 está en `frontend/scripts/validate-data.mjs` (`ci.yml` y `package.json` apuntan ahí, conforme al plan de Fase A §6). WP-04 debe decidir si lo reubica o lo extiende, y coordinar con CI.
-4. `image` del schema prohíbe cualquier `..` incluso dentro de un nombre de fichero (`a..b.png`) o `:`; es más estricto que el plan pero seguro. Sin impacto previsible.
-5. `frontend/package.json` solo tiene `engines` `^20.19.0 || >=22.12.0` y `.nvmrc` = `22`; coherente. Sin lockfile de Node exacto (aceptable).
-6. El fallo de CI ante contrato inválido se demostró localmente; no se empujó una rama rota a GitHub (la revisión no hace push).
+### Minor / to watch
+1. The human owners of WP-04 and WP-07 remain unassigned (`docs/contract-freeze.md:108`, `contracts/README.md:187`). GA requirement: the project owner must designate them or expressly accept the exception.
+2. `main` without protection and only one verified collaborator: the owner must expressly approve this exception (plan §7 "GA close"). Enable the `ci` check as required when the GitHub plan allows it.
+3. The WP04/07 plan §4.1 places `validate-data.*` in `scripts/` (root) as a WP-04 deliverable, whereas the A04 validator is in `frontend/scripts/validate-data.mjs` (`ci.yml` and `package.json` point there, per the Phase A plan §6). WP-04 must decide whether to relocate or extend it, and coordinate with CI.
+4. The schema's `image` forbids any `..` even inside a file name (`a..b.png`) or `:`; it is stricter than the plan but safe. No foreseeable impact.
+5. `frontend/package.json` only has `engines` `^20.19.0 || >=22.12.0` and `.nvmrc` = `22`; consistent. No exact Node lockfile (acceptable).
+6. The CI failure on an invalid contract was demonstrated locally; a broken branch was not pushed to GitHub (the review does not push).
 
-## Decisión GA (responsable de proyecto, 2026-11-14)
+## GA decision (project owner, 2026-11-14)
 
-**GA: PASS con excepciones aprobadas.** Se fusiona la PR #1 a `main` (squash) y se autoriza la Fase B (WP-04 ∥ WP-07).
+**GA: PASS with approved exceptions.** PR #1 is merged into `main` (squash) and Phase B (WP-04 ∥ WP-07) is authorised.
 
-Excepciones aprobadas expresamente:
+Expressly approved exceptions:
 
-1. **Owners de WP-04/WP-07:** por tratarse de un hackatón de 48 h, la asignación de personas se coordina fuera del repositorio y no se registra ni se verifica en GitHub. Los scopes de archivos y la revisión independiente siguen siendo obligatorios.
-2. **Protección de `main`:** el repositorio es privado en cuenta gratuita; si GitHub no permite la protección, rige por convención (PR + check `ci` verde + revisión). No se declara protegida.
-3. **Colaboradores:** solo `AlRos14` es colaborador verificado; el acceso del resto del equipo se gestiona aparte.
-4. **Ubicación del validador** (`frontend/scripts/validate-data.mjs` frente a `scripts/` del plan WP-04/07 §4.1): se mantiene en `frontend/scripts/`; WP-04 lo amplía allí.
+1. **WP-04/WP-07 owners:** since this is a 48 h hackathon, the assignment of people is coordinated outside the repository and is neither recorded nor verified on GitHub. File scopes and independent review remain mandatory.
+2. **Protection of `main`:** the repository is private on a free account; if GitHub does not allow protection, convention applies (PR + green `ci` check + review). It is not declared protected.
+3. **Collaborators:** only `AlRos14` is a verified collaborator; the access of the rest of the team is managed separately.
+4. **Validator location** (`frontend/scripts/validate-data.mjs` versus `scripts/` in the WP-04/07 plan §4.1): it stays in `frontend/scripts/`; WP-04 extends it there.
 
-## Actualización 2026-11-14 (post-GA)
+## Update 2026-11-14 (post-GA)
 
-El repositorio pasó a **público** (requisito de la competición) y se añadieron los colaboradores. Ya es posible
-proteger `main`: PR obligatoria + check `ci` requerido, sin force-push ni borrado, 0 aprobaciones requeridas.
-La excepción 2 de la decisión GA queda resuelta.
+The repository became **public** (a competition requirement) and the collaborators were added. It is now possible to
+protect `main`: mandatory PR + required `ci` check, no force-push and no deletion, 0 required approvals.
+Exception 2 of the GA decision is resolved.
