@@ -1,75 +1,75 @@
-# Handoff científico: añadir una zona real sin tocar Vue
+# Scientific handoff: adding a real zone without touching Vue
 
-Esta guía explica cómo el equipo científico incorpora una zona con datos
-**reales** a OliveTwin. El objetivo es que añadir un PNG y metadatos sea
-suficiente: **no se modifican componentes Vue, tipos, servicios ni el cargador**.
+This guide explains how the scientific team incorporates a zone with **real**
+data into OliveTwin. The goal is that adding a PNG and metadata is
+sufficient: **Vue components, types, services and the loader are not modified**.
 
-La aplicación publica **solo datos reales** (decisión de producto del
-2026-11-14): `frontend/public/data/real/manifest.json` declara Jaén y Toledo con
-tres fechas cada una, y no existe selector de modo ni datos de muestra en la
-demo. El contrato conserva `datasetMode: "sample"` para fixtures y pruebas, pero
-la aplicación no lo carga.
+The application publishes **real data only** (product decision of
+2026-11-14): `frontend/public/data/real/manifest.json` declares Jaén and Toledo with
+three dates each, and there is no mode selector or sample data in the
+demo. The contract keeps `datasetMode: "sample"` for fixtures and tests, but
+the application does not load it.
 
-Una capa real aparece en la demo únicamente si cumple el contrato v1.2.0 y ha
-pasado la validación y la revisión científica. Los manifiestos v1.1.0 sin serie
-temporal siguen siendo válidos; para publicar varias fechas se usa `timeSteps` y
-`schemaVersion: "1.2.0"` (§3.1).
+A real layer appears in the demo only if it meets contract v1.2.0 and has
+passed validation and scientific review. v1.1.0 manifests without a time
+series remain valid; to publish several dates, `timeSteps` and
+`schemaVersion: "1.2.0"` are used (§3.1).
 
-## 0. Límites científicos que no se pueden cruzar
+## 0. Scientific limits that cannot be crossed
 
-- **El radar no mide producción directamente.** NISAR aporta observaciones
-  (por ejemplo humedad superficial estimada) que requieren interpretación y
-  validación; no demuestran por sí mismas una causa agronómica ni kg/ha.
-- **NDVI es un índice óptico, no un producto NISAR.** Puede venir de Landsat o
-  Sentinel-2. No se etiqueta como radar ni como NISAR.
-- **La humedad superficial SME2 no es riego.** Estima humedad en la capa
-  superficial del suelo; no equivale a humedad profunda ni a una dosis de riego,
-  y su resolución limita el uso a parcelas suficientemente grandes.
-- **El PNG es una representación visual.** Sus colores no permiten recuperar
-  valores científicos exactos ni hacer consultas por píxel.
-- **Los datos sintéticos no son observaciones de NASA.** No se les asigna una
-  fecha, escena o misión inventadas.
+- **Radar does not measure production directly.** NISAR provides observations
+  (for example estimated surface soil moisture) that require interpretation and
+  validation; they do not by themselves demonstrate an agronomic cause or kg/ha.
+- **NDVI is an optical index, not a NISAR product.** It may come from Landsat or
+  Sentinel-2. It is not labelled as radar or as NISAR.
+- **SME2 surface soil moisture is not irrigation.** It estimates moisture in the surface
+  layer of the soil; it is not equivalent to deep moisture or to an irrigation dose,
+  and its resolution limits its use to sufficiently large plots.
+- **The PNG is a visual representation.** Its colours do not allow exact
+  scientific values to be recovered or per-pixel queries to be made.
+- **Synthetic data are not NASA observations.** They are not assigned an invented
+  date, scene or mission.
 
-## 1. Requisitos del entregable científico
+## 1. Requirements of the scientific deliverable
 
-Antes de tocar el repositorio, el equipo científico debe tener:
+Before touching the repository, the scientific team must have:
 
-1. Una fuente autorizada y verificable (producto, escena, fecha, versión de
-   procesamiento y URL de referencia).
-2. Geometría revisada: CRS, extensión, orientación y píxeles sin dato.
-3. Unidades y escala comprobadas contra la documentación del producto.
-4. Una nota de calidad que explique limitaciones y madurez.
-5. Una persona revisora que apruebe el resultado. **La aprobación es humana**;
-   un agente no puede aprobar su propio trabajo científico.
+1. An authorised and verifiable source (product, scene, date, processing
+   version and reference URL).
+2. Reviewed geometry: CRS, extent, orientation and nodata pixels.
+3. Units and scale checked against the product documentation.
+4. A quality note explaining limitations and maturity.
+5. A reviewing person who approves the result. **Approval is human**;
+   an agent cannot approve its own scientific work.
 
-## 2. Paso 1 — exportar el PNG
+## 2. Step 1 — export the PNG
 
-| Requisito | Detalle |
+| Requirement | Detail |
 |---|---|
-| Formato | PNG con canal alfa: RGBA, gris+alfa o paleta con `tRNS`. |
-| CRS de presentación | **EPSG:3857 (Web Mercator)**. Es el único admitido en v1.2.0. |
-| Orientación | **Norte arriba**: la primera fila de píxeles es el borde norte. |
-| Extensión | Exactamente la de `layer.bbox`. El PNG no guarda coordenadas; la posición la aporta el JSON. |
-| Píxeles sin dato | **Alpha 0**, con RGB a 0. No se pinta «sin dato» como valor 0 opaco. |
-| Reproyección | Documentar el método. Para valores discretos o para no inventar valores, vecino más próximo. |
-| Tamaño | Optimizado; objetivo orientativo < 1 MB por PNG. |
-| Paleta | La leyenda del manifiesto debe reproducir la paleta real del PNG. |
-| Nada de capturas | No se acepta una imagen de pantalla recortada sin georreferencia. |
+| Format | PNG with alpha channel: RGBA, grey+alpha or palette with `tRNS`. |
+| Presentation CRS | **EPSG:3857 (Web Mercator)**. It is the only one admitted in v1.2.0. |
+| Orientation | **North up**: the first pixel row is the northern edge. |
+| Extent | Exactly that of `layer.bbox`. The PNG does not store coordinates; the position is provided by the JSON. |
+| Nodata pixels | **Alpha 0**, with RGB at 0. "No data" is not painted as an opaque value 0. |
+| Reprojection | Document the method. For discrete values or to avoid inventing values, nearest neighbour. |
+| Size | Optimised; indicative target < 1 MB per PNG. |
+| Palette | The manifest legend must reproduce the actual palette of the PNG. |
+| No screenshots | A cropped screenshot without georeferencing is not accepted. |
 
-El `bbox` de la capa se calcula a partir de las **esquinas exactas del raster en
-EPSG:3857**, reproyectadas a WGS84. No se estima «a ojo» mirando el mapa.
+The layer's `bbox` is computed from the **exact corners of the raster in
+EPSG:3857**, reprojected to WGS84. It is not estimated "by eye" by looking at the map.
 
-Orden del `bbox` en el JSON: `[west, south, east, north]`, grados WGS84. Leaflet
-lo recibe como `[[south, west], [north, east]]`, pero **el JSON no se reordena**.
+`bbox` order in the JSON: `[west, south, east, north]`, WGS84 degrees. Leaflet
+receives it as `[[south, west], [north, east]]`, but **the JSON is not reordered**.
 
-Si el PNG cubre menos que el área de estudio, `layer.bbox` puede ser menor que
-`zone.bbox`; debe quedar dentro con una tolerancia máxima de `0.01°`.
+If the PNG covers less than the study area, `layer.bbox` may be smaller than
+`zone.bbox`; it must stay inside it with a maximum tolerance of `0.01°`.
 
-## 3. Paso 2 — completar los metadatos
+## 3. Step 2 — complete the metadata
 
-El manifiesto real completo tiene esta forma. Es una **plantilla**: los valores
-entre `<...>` deben sustituirse por datos verificables. Mientras se dejen los
-marcadores, `validate:data` rechazará el manifiesto, y eso es intencionado.
+The complete real manifest has this shape. It is a **template**: the values
+between `<...>` must be replaced with verifiable data. While the
+placeholders are left, `validate:data` will reject the manifest, and that is intentional.
 
 ```json
 {
@@ -120,50 +120,50 @@ marcadores, `validate:data` rechazará el manifiesto, y eso es intencionado.
 }
 ```
 
-Notas de cumplimentación:
+Completion notes:
 
-- `id` de zona: kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) y único.
-- `id` de capa: solo `"ndvi"` o `"soil-moisture"` en v1.2.0. No se inventan
-  identificadores nuevos.
-- `image`: relativa a `frontend/public/`, bajo `data/real/`, sin `/` inicial,
-  sin `..`, sin `:` ni `\`.
-- `range` y `legend` deben ser coherentes con la escala del PNG. La leyenda se
-  ordena por `value` de forma creciente estricta y tiene al menos dos paradas.
-- `status`: `"processed_real"` únicamente tras la aprobación científica.
-- `provenance.acquisitionDate`, `sceneId` y `referenceUrl` son **obligatorios y
-  no nulos** para `processed_real`.
-- `provider`, `product`, `processingVersion` no pueden ir vacíos.
-- `maturity`, `crid` y `approvedBy` son extensiones admitidas dentro de
-  `provenance`; no se añaden propiedades nuevas fuera de `provenance` sin
-  cambiar el contrato.
-- No se copian fechas, escenas ni URLs de la documentación o de otro producto:
-  cada capa declara su propia procedencia.
+- Zone `id`: kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) and unique.
+- Layer `id`: only `"ndvi"` or `"soil-moisture"` in v1.2.0. No new
+  identifiers are invented.
+- `image`: relative to `frontend/public/`, under `data/real/`, without a leading `/`,
+  without `..`, without `:` or `\`.
+- `range` and `legend` must be consistent with the PNG scale. The legend is
+  sorted by strictly increasing `value` and has at least two stops.
+- `status`: `"processed_real"` only after scientific approval.
+- `provenance.acquisitionDate`, `sceneId` and `referenceUrl` are **mandatory and
+  non-null** for `processed_real`.
+- `provider`, `product`, `processingVersion` cannot be empty.
+- `maturity`, `crid` and `approvedBy` are extensions admitted within
+  `provenance`; no new properties are added outside `provenance` without
+  changing the contract.
+- Dates, scenes or URLs from the documentation or from another product are not copied:
+  each layer declares its own provenance.
 
-El fixture
+The fixture
 [`frontend/scripts/fixtures/valid/real-with-processed-real.json`](../frontend/scripts/fixtures/valid/real-with-processed-real.json)
-es un ejemplo **contractual** que valida el estado `processed_real`, pero no es
-una observación científica y **no se copia a `public/data/real/`**.
+is a **contractual** example that validates the `processed_real` status, but it is not
+a scientific observation and **is not copied to `public/data/real/`**.
 
-### 3.1 Varias fechas: `timeSteps` (v1.2.0)
+### 3.1 Several dates: `timeSteps` (v1.2.0)
 
-Si el producto tiene una serie temporal, declara **todos** los pasos en
-`layer.timeSteps`, en orden de más antiguo a más reciente. La unidad, `range`,
-`legend` y `status` son comunes a todos los pasos: no cambies la escala entre
-fechas o las comparaciones visuales serán engañosas.
+If the product has a time series, declare **all** the steps in
+`layer.timeSteps`, in order from oldest to most recent. Unit, `range`,
+`legend` and `status` are common to all steps: do not change the scale between
+dates or the visual comparisons will be misleading.
 
-Requisitos:
+Requirements:
 
-- `schemaVersion: "1.2.0"` en el manifiesto.
-- Cada paso tiene `date` ISO 8601 real (fecha o fecha-hora con zona), `image`,
-  `bbox` y, opcionalmente, `label` y `provenance` parcial.
-- Fechas **estrictamente crecientes**, sin duplicados.
-- Cada `image` de paso es un PNG RGBA en EPSG:3857 bajo `data/real/` y su
-  `bbox` cae dentro de `zone.bbox`.
-- `layer.image` y `layer.bbox` deben ser los del **último** paso.
-- En `processed_real`, la procedencia efectiva
-  `{ ...layer.provenance, ...step.provenance }` de cada paso debe incluir
-  `acquisitionDate`, `sceneId` y `referenceUrl`. Si un paso no tiene escena o
-  URL verificable, no se publica como `processed_real`.
+- `schemaVersion: "1.2.0"` in the manifest.
+- Each step has a real ISO 8601 `date` (date or date-time with time zone), `image`,
+  `bbox` and, optionally, `label` and partial `provenance`.
+- **Strictly increasing** dates, without duplicates.
+- Each step's `image` is an RGBA PNG in EPSG:3857 under `data/real/` and its
+  `bbox` falls within `zone.bbox`.
+- `layer.image` and `layer.bbox` must be those of the **last** step.
+- In `processed_real`, the effective provenance
+  `{ ...layer.provenance, ...step.provenance }` of each step must include
+  `acquisitionDate`, `sceneId` and `referenceUrl`. If a step has no verifiable scene or
+  URL, it is not published as `processed_real`.
 
 ```json
 {
@@ -241,22 +241,22 @@ Requisitos:
 }
 ```
 
-Los valores entre `<...>` son marcadores: sustitúyelos por procedencia
-verificable. `example.org`/`example.invalid` y las escenas de fixture solo
-sirven para tests, nunca para la demo pública.
+The values between `<...>` are placeholders: replace them with verifiable
+provenance. `example.org`/`example.invalid` and the fixture scenes are only
+useful for tests, never for the public demo.
 
-El fixture
+The fixture
 [`frontend/scripts/fixtures/valid/real-with-timesteps.json`](../frontend/scripts/fixtures/valid/real-with-timesteps.json)
-muestra la forma completa sin ser una observación real.
+shows the complete shape without being a real observation.
 
-### Variante NDVI
+### NDVI variant
 
-Para una capa óptica, usa `"id": "ndvi"`, `"unit": "index"`,
-`"range": [0, 1]` y una procedencia que identifique la fuente óptica real
-(Landsat, Sentinel-2 u otra autorizada). **No la describas como NISAR.** El
-pipeline NISAR de este repositorio no genera NDVI.
+For an optical layer, use `"id": "ndvi"`, `"unit": "index"`,
+`"range": [0, 1]` and a provenance that identifies the real optical source
+(Landsat, Sentinel-2 or another authorised one). **Do not describe it as NISAR.** The
+NISAR pipeline of this repository does not generate NDVI.
 
-## 4. Paso 3 — colocar los archivos
+## 4. Step 3 — place the files
 
 ```text
 frontend/public/data/real/
@@ -269,116 +269,116 @@ frontend/public/data/real/
             └── 20260714T052325.png
 ```
 
-- Añade los PNG en `frontend/public/data/real/zones/<id>/soil-moisture/`.
-- Edita **solo** `frontend/public/data/real/manifest.json` para declarar la zona,
-  la capa y sus `timeSteps`. Si la zona ya existe, sustituye o amplía su capa
-  `soil-moisture` sin duplicarla.
-- No copies nada a `sample/` ni reutilices un manifiesto de muestra: la demo no
-  los carga.
-- No versiones HDF5, GeoTIFF, NetCDF, recortes intermedios ni `.h5`. El
-  `.gitignore` ya los excluye.
-- No hace falta tocar `App.vue`, `main.ts`, componentes, tipos, servicios ni
+- Add the PNGs in `frontend/public/data/real/zones/<id>/soil-moisture/`.
+- Edit **only** `frontend/public/data/real/manifest.json` to declare the zone,
+  the layer and its `timeSteps`. If the zone already exists, replace or extend its
+  `soil-moisture` layer without duplicating it.
+- Do not copy anything to `sample/` or reuse a sample manifest: the demo does not
+  load them.
+- Do not version HDF5, GeoTIFF, NetCDF, intermediate crops or `.h5`. The
+  `.gitignore` already excludes them.
+- There is no need to touch `App.vue`, `main.ts`, components, types, services or
   `package.json`.
 
-## 5. Paso 4 — validar
+## 5. Step 4 — validate
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```bash
 npm ci --prefix frontend
 npm run validate:data --prefix frontend
 ```
 
-La validación comprueba:
+The validation checks:
 
-- que el esquema JSON compila;
-- que los manifiestos publicados cumplen esquema, semántica y assets;
-- que el modo del manifiesto coincide con su carpeta;
-- que cada `image` —también la de cada `timeSteps[].image`— existe en
-  `public/`, es PNG y tiene canal alfa;
-- que `bbox`, `range`, leyenda, ids, coherencia `datasetMode`/`status` y
-  procedencia de `processed_real` son correctos;
-- que `timeSteps`, si existe, tiene fechas ISO reales en orden estricto, sin
-  duplicados, cada `bbox` dentro de la zona y el último paso igual a
+- that the JSON schema compiles;
+- that the published manifests meet schema, semantics and assets;
+- that the manifest mode matches its folder;
+- that each `image` — including each `timeSteps[].image` — exists in
+  `public/`, is a PNG and has an alpha channel;
+- that `bbox`, `range`, legend, ids, `datasetMode`/`status` coherence and
+  `processed_real` provenance are correct;
+- that `timeSteps`, if present, has real ISO dates in strict order, without
+  duplicates, each `bbox` within the zone and the last step equal to
   `layer.image`/`layer.bbox`;
-- que la procedencia efectiva de cada paso de una capa `processed_real` incluye
-  fecha, escena y URL;
-- que `schemaVersion` es `"1.2.0"` cuando hay `timeSteps`;
-- que los fixtures válidos pasan y los inválidos fallan.
+- that the effective provenance of each step of a `processed_real` layer includes
+  date, scene and URL;
+- that `schemaVersion` is `"1.2.0"` when there is `timeSteps`;
+- that valid fixtures pass and invalid ones fail.
 
-Para completar la entrega:
+To complete the delivery:
 
 ```bash
 npm test --prefix frontend
 npm run build --prefix frontend
 ```
 
-`npm run build` debe generar `frontend/dist/` sin errores. Si la validación
-falla, no se publica la capa: corrige el JSON o el PNG y repite.
+`npm run build` must generate `frontend/dist/` without errors. If validation
+fails, the layer is not published: fix the JSON or the PNG and repeat.
 
-## 6. Paso 5 — revisar la alineación en el navegador
+## 6. Step 5 — review the alignment in the browser
 
 ```bash
 npm run dev --prefix frontend
 ```
 
-Abre la URL que imprime Vite (por defecto `http://localhost:5173/`) y:
+Open the URL that Vite prints (by default `http://localhost:5173/`) and:
 
-1. Selecciona la zona nueva en el selector (la primera zona se autoselecciona al
-   cargar).
-2. Activa la capa y súbela al 100 % de opacidad.
-3. Compara con el mapa base PNOA y con OpenStreetMap: los bordes del PNG deben
-   caer sobre la misma área en ambos.
-4. Comprueba que las zonas sin dato son transparentes (se ve el mapa base) y
-   que no hay un rectángulo opaco de relleno.
-5. Verifica que la leyenda, la unidad y la fecha mostradas coinciden con el
-   manifiesto. La interfaz no muestra la procedencia (decisión de producto del
-   2026-11-15): compruébala en el manifiesto y con `validate:data`.
-6. Recorre la línea temporal: cada fecha debe cambiar solo la imagen (sin
-   recrear el mapa ni parpadear) y el slider debe mostrar la fecha del paso
-   activo.
-7. Navega fuera de la zona: no debe aparecer color científico fuera de
+1. Select the new zone in the selector (the first zone is auto-selected on
+   load).
+2. Enable the layer and raise it to 100 % opacity.
+3. Compare with the PNOA base map and with OpenStreetMap: the PNG edges must
+   fall over the same area in both.
+4. Check that nodata areas are transparent (the base map shows through) and
+   that there is no opaque filled rectangle.
+5. Verify that the legend, the unit and the date shown match the
+   manifest. The interface does not show provenance (product decision of
+   2026-11-15): check it in the manifest and with `validate:data`.
+6. Go through the timeline: each date must change only the image (without
+   recreating the map or flickering) and the slider must show the date of the
+   active step.
+7. Navigate outside the zone: no scientific colour must appear outside
    `layer.bbox`.
 
-Para revisar la build de producción:
+To review the production build:
 
 ```bash
 npm run build --prefix frontend
 npm run preview --prefix frontend
 ```
 
-**Nota de integración:** `frontend/src/App.vue` ya compone el mapa, la línea
-temporal y el panel con el manifiesto real. No declares una capa revisada solo
-con tests unitarios: la alineación geográfica se comprueba en el navegador.
+**Integration note:** `frontend/src/App.vue` already composes the map, the
+timeline and the panel with the real manifest. Do not declare a layer reviewed only
+with unit tests: geographic alignment is checked in the browser.
 
-## 7. Paso 6 — aprobación científica y publicación
+## 7. Step 6 — scientific approval and publication
 
-1. La persona revisora comprueba fuente, fecha, escena, unidades, escala,
-   calidad y alineación. La aprobación se registra en la Issue/PR con nombre y
-   fecha; opcionalmente se añade `provenance.approvedBy`.
-2. Solo entonces se mantiene `status: "processed_real"`.
-3. Se abre una PR pequeña con el PNG, el manifiesto y la evidencia de
-   validación. La revisión es independiente del autor; un comentario automático
-   no es una aprobación humana.
-4. El check `ci` debe estar en verde. No se fusiona sin revisión.
-5. Tras el merge se **recompila y publica el sitio estático**. El PNG y el JSON
-   deben formar parte del despliegue; no basta con tenerlos en el repositorio.
-6. En la web publicada, la zona aparece directamente en la demo (solo datos
-   reales) sin cambiar ningún componente Vue.
+1. The reviewing person checks source, date, scene, units, scale,
+   quality and alignment. The approval is recorded in the Issue/PR with name and
+   date; optionally `provenance.approvedBy` is added.
+2. Only then is `status: "processed_real"` kept.
+3. A small PR is opened with the PNG, the manifest and the validation
+   evidence. The review is independent of the author; an automatic comment
+   is not a human approval.
+4. The `ci` check must be green. It is not merged without review.
+5. After the merge the **static site is rebuilt and published**. The PNG and the JSON
+   must be part of the deployment; it is not enough to have them in the repository.
+6. On the published website, the zone appears directly in the demo (real
+   data only) without changing any Vue component.
 
-No se publica una capa real «para probar» con datos ficticios. Para probar la
-carga existe el fixture contractual y los tests; la demo pública no expone
-fixtures como datos reales.
+A real layer is not published "to test" with fictitious data. To test the
+load there is the contractual fixture and the tests; the public demo does not expose
+fixtures as real data.
 
-## 8. NISAR SME2: uso del conversor existente
+## 8. NISAR SME2: using the existing converter
 
-El repositorio incluye
+The repository includes
 [`pipelines/nisar/sme2_to_overlay.py`](../pipelines/nisar/sme2_to_overlay.py),
-que convierte productos **NISAR L3 SME2** (HDF5 descargados de ASF) en una capa
-`soil-moisture` conforme al contrato: PNG RGBA en EPSG:3857, `bbox` WGS84,
-leyenda y procedencia. No genera NDVI.
+which converts **NISAR L3 SME2** products (HDF5 downloaded from ASF) into a
+`soil-moisture` layer compliant with the contract: RGBA PNG in EPSG:3857, WGS84 `bbox`,
+legend and provenance. It does not generate NDVI.
 
-### 8.1 Instalación
+### 8.1 Installation
 
 ```bash
 python3 -m venv .venv
@@ -386,11 +386,11 @@ python3 -m venv .venv
 pip install -r pipelines/nisar/requirements.txt
 ```
 
-Requiere Python con `numpy`, `h5py`, `rasterio`, `pyproj` y `pillow`. La
-instalación se hace en un entorno virtual; no se instalan dependencias
-científicas en el `package.json` del frontend.
+It requires Python with `numpy`, `h5py`, `rasterio`, `pyproj` and `pillow`. The
+installation is done in a virtual environment; scientific dependencies are not installed in the frontend's
+`package.json`.
 
-### 8.2 Staging: no toca la aplicación
+### 8.2 Staging: does not touch the application
 
 ```bash
 python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
@@ -400,50 +400,50 @@ python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
   --staging pipelines/nisar/sme2_staging
 ```
 
-`--aoi` es `west south east north` en WGS84. El comando:
+`--aoi` is `west south east north` in WGS84. The command:
 
-- recorta la capa SME2 al AOI sobre la rejilla EASE-Grid 2.0;
-- enmascara `_FillValue`, valores no finitos y valores fuera del rango físico;
-- guarda un GeoTIFF maestro con los valores reales (no se versiona);
-- reproyecta a EPSG:3857 por vecino más próximo y sobremuestrea para que
-  Leaflet no difumine;
-- pinta el PNG con escala fija y alpha 0 en no-data;
-- calcula el `bbox` desde las esquinas del raster;
-- verifica la georreferencia con 25 píxeles de control;
-- **no escribe** en `frontend/public/data/real/`.
+- crops the SME2 layer to the AOI on the EASE-Grid 2.0 grid;
+- masks `_FillValue`, non-finite values and values outside the physical range;
+- saves a master GeoTIFF with the real values (not versioned);
+- reprojects to EPSG:3857 by nearest neighbour and oversamples so that
+  Leaflet does not blur it;
+- paints the PNG with a fixed scale and alpha 0 for no-data;
+- computes the `bbox` from the raster corners;
+- verifies the georeferencing with 25 control pixels;
+- **does not write** to `frontend/public/data/real/`.
 
-Salidas en `pipelines/nisar/sme2_staging/<zone-id>/`:
+Outputs in `pipelines/nisar/sme2_staging/<zone-id>/`:
 
-| Archivo | Contenido |
+| File | Contents |
 |---|---|
-| `png/soil-moisture_<fecha>_<órbita>.png` | Overlay por fecha. |
-| `layer.staging.json` | Entrada de capa preparada; no se copia a mano. |
-| `report.json` | Cobertura, estadísticas, avisos, escenas descartadas y comprobación de georreferencia. |
-| `timeseries.json` | Borrador de todas las fechas. `--publish` sin `--date` escribe la serie completa como `timeSteps` (ver §8.4). |
-| `geotiff/` | Maestro científico intermedio; **no se versiona**. |
+| `png/soil-moisture_<fecha>_<órbita>.png` | Overlay per date. |
+| `layer.staging.json` | Prepared layer entry; it is not copied by hand. |
+| `report.json` | Coverage, statistics, warnings, discarded scenes and georeferencing check. |
+| `timeseries.json` | Draft of all dates. `--publish` without `--date` writes the whole series as `timeSteps` (see §8.4). |
+| `geotiff/` | Intermediate scientific master; **not versioned**. |
 
-### 8.3 Revisión antes de publicar
+### 8.3 Review before publishing
 
-Revisa `report.json`:
+Review `report.json`:
 
-- `problems` debe estar vacío. Si hay fallos de georreferencia o CRID mezclados,
-  el script no publica.
-- `warnings`: cobertura del AOI menor del 90 %, píxeles que saturan por encima
-  de `--vmax`, escenas descartadas…
-- `skipped`: escenas fuera del AOI, con pocos píxeles válidos o con unidades
-  inesperadas.
-- `georefCheck.ok`: la comprobación de alineación debe pasar.
-- La fecha elegida es la más reciente por defecto. Si se descartó alguna escena,
-  hay que indicar `--date YYYY-MM-DD` explícitamente para no publicar en
-  silencio una fecha antigua.
+- `problems` must be empty. If there are georeferencing failures or mixed CRIDs,
+  the script does not publish.
+- `warnings`: AOI coverage below 90 %, pixels that saturate above
+  `--vmax`, discarded scenes…
+- `skipped`: scenes outside the AOI, with few valid pixels or with unexpected
+  units.
+- `georefCheck.ok`: the alignment check must pass.
+- The chosen date is the most recent by default. If any scene was discarded,
+  `--date YYYY-MM-DD` must be given explicitly so as not to silently publish
+  an old date.
 
-Comprueba también que la escala (`--vmin`/`--vmax`) es la adecuada, que las
-unidades son `m³/m³` y que la madurez (`--maturity`, por defecto `PROVISIONAL`)
-describe el producto.
+Also check that the scale (`--vmin`/`--vmax`) is appropriate, that the
+units are `m³/m³` and that the maturity (`--maturity`, `PROVISIONAL` by default)
+describes the product.
 
-### 8.4 Publicación tras la aprobación
+### 8.4 Publication after approval
 
-Solo después de la revisión científica:
+Only after the scientific review:
 
 ```bash
 python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
@@ -455,106 +455,106 @@ python pipelines/nisar/sme2_to_overlay.py ruta/a/NISAR_L3_*.h5 \
 npm run validate:data --prefix frontend
 ```
 
-`--publish` exige `--approved-by`; sin él, el script termina con error. Sin
-`--date`, escribe **todas** las fechas como
-`frontend/public/data/real/zones/<zone-id>/soil-moisture/<fecha>.png` y
-actualiza el manifiesto real de forma atómica:
+`--publish` requires `--approved-by`; without it, the script ends with an error. Without
+`--date`, it writes **all** the dates as
+`frontend/public/data/real/zones/<zone-id>/soil-moisture/<fecha>.png` and
+updates the real manifest atomically:
 
-- añade `layer.timeSteps` ordenados, con la procedencia de cada escena;
-- fija `layer.image`/`layer.bbox` al último paso;
-- sube `schemaVersion` a `"1.2.0"` si era `1.1.0`;
-- si la zona ya existe, sustituye su capa `soil-moisture` sin duplicarla;
-- si el `bbox` de la zona no contiene el de la capa, lo amplía con un aviso;
-- añade `approvedBy` a la procedencia.
+- adds the ordered `layer.timeSteps`, with the provenance of each scene;
+- sets `layer.image`/`layer.bbox` to the last step;
+- raises `schemaVersion` to `"1.2.0"` if it was `1.1.0`;
+- if the zone already exists, replaces its `soil-moisture` layer without duplicating it;
+- if the zone's `bbox` does not contain the layer's, it extends it with a warning;
+- adds `approvedBy` to the provenance.
 
-Con `--date YYYY-MM-DD` publica una sola imagen y no escribe `timeSteps`.
-Para re-renderizar sin volver a abrir los HDF5, usa
-`--from-staging pipelines/nisar/sme2_staging/<zone-id>` con los mismos
-`--zone-id`/`--zone-name` y `--publish --approved-by`; el resultado mantiene el
-`bbox` y la serie del staging. La guía completa del conversor está en
+With `--date YYYY-MM-DD` it publishes a single image and does not write `timeSteps`.
+To re-render without reopening the HDF5, use
+`--from-staging pipelines/nisar/sme2_staging/<zone-id>` with the same
+`--zone-id`/`--zone-name` and `--publish --approved-by`; the result keeps the
+`bbox` and the series from the staging. The complete guide to the converter is in
 [`pipelines/nisar/README.md`](../pipelines/nisar/README.md).
 
-Códigos de salida:
+Exit codes:
 
-| Código | Significado |
+| Code | Meaning |
 |---|---|
-| 0 | Correcto (puede haber avisos en stderr). |
-| 1 | Error de entrada, ninguna escena utilizable o publicación bloqueada. |
-| 2 | Staging con problemas: georreferencia fallida o CRID mezclados. |
+| 0 | Correct (there may be warnings on stderr). |
+| 1 | Input error, no usable scene or publication blocked. |
+| 2 | Staging with problems: failed georeferencing or mixed CRIDs. |
 
-### 8.5 Pruebas del conversor
+### 8.5 Converter tests
 
 ```bash
 python -m pytest -q pipelines/nisar/tests
 ```
 
-Los tests usan HDF5 **sintéticos** con la estructura del producto. Sirven para
-probar el conversor, no para declarar una observación real. Antes de publicar
-conviene comparar una escena real con la documentación de ASF y con el notebook
-de referencia del equipo.
+The tests use **synthetic** HDF5 with the product structure. They serve to
+test the converter, not to declare a real observation. Before publishing
+it is advisable to compare a real scene with the ASF documentation and with the team's
+reference notebook.
 
-### 8.6 Qué no hace el pipeline
+### 8.6 What the pipeline does not do
 
-- No descarga datos por ti: los HDF5 se obtienen de ASF con la herramienta del
-  equipo y deben tener procedencia y licencia claras.
-- No convierte NDVI: el NDVI es óptico y requiere otro procesamiento.
-- No decide si una parcela necesita riego.
-- No sustituye la revisión científica ni la aprobación humana.
+- It does not download data for you: the HDF5 files are obtained from ASF with the team's
+  tool and must have clear provenance and licence.
+- It does not convert NDVI: NDVI is optical and requires other processing.
+- It does not decide whether a plot needs irrigation.
+- It does not replace scientific review or human approval.
 
-## 9. Checklist final
+## 9. Final checklist
 
-- [ ] Fuente autorizada, con producto, escena, fecha, versión y URL verificables.
-- [ ] PNG RGBA en EPSG:3857, norte arriba y extensión exacta de `layer.bbox`.
-- [ ] Píxeles sin dato con alpha 0; sin rectángulos opacos de relleno.
-- [ ] `bbox` en orden `[west, south, east, north]`; `layer.bbox` dentro de
-      `zone.bbox` (tolerancia 0.01°).
-- [ ] `image` bajo `data/real/zones/<id>/` y sin rutas inseguras.
-- [ ] `status: "processed_real"` solo tras aprobación humana.
-- [ ] `provenance` completa: proveedor, producto, versión, fecha, escena y URL.
-- [ ] Si hay `timeSteps`: `schemaVersion: "1.2.0"`, fechas ISO ordenadas y
-      únicas, cada PNG/`bbox` válido y el último paso igual a
-      `layer.image`/`layer.bbox`. En `processed_real`, cada paso tiene
-      procedencia efectiva completa.
-- [ ] `legend` de al menos dos paradas, ordenada y coherente con la paleta.
-- [ ] `qualityNote` explica madurez y limitaciones; no promete riego ni kg/ha.
-- [ ] `npm run validate:data --prefix frontend` pasa.
-- [ ] `npm test --prefix frontend` y `npm run build --prefix frontend` pasan.
-- [ ] Revisión visual de alineación con PNOA y OSM y de la línea temporal.
-- [ ] No se han modificado componentes Vue ni se han versionado binarios
-      científicos grandes.
-- [ ] Aprobación registrada en la PR; check `ci` en verde; sin auto-merge.
+- [ ] Authorised source, with verifiable product, scene, date, version and URL.
+- [ ] RGBA PNG in EPSG:3857, north up and exact extent of `layer.bbox`.
+- [ ] Nodata pixels with alpha 0; no opaque filled rectangles.
+- [ ] `bbox` in `[west, south, east, north]` order; `layer.bbox` within
+      `zone.bbox` (0.01° tolerance).
+- [ ] `image` under `data/real/zones/<id>/` and without unsafe paths.
+- [ ] `status: "processed_real"` only after human approval.
+- [ ] Complete `provenance`: provider, product, version, date, scene and URL.
+- [ ] If there is `timeSteps`: `schemaVersion: "1.2.0"`, ISO dates in order and
+      unique, each PNG/`bbox` valid and the last step equal to
+      `layer.image`/`layer.bbox`. In `processed_real`, each step has
+      complete effective provenance.
+- [ ] `legend` with at least two stops, sorted and consistent with the palette.
+- [ ] `qualityNote` explains maturity and limitations; it does not promise irrigation or kg/ha.
+- [ ] `npm run validate:data --prefix frontend` passes.
+- [ ] `npm test --prefix frontend` and `npm run build --prefix frontend` pass.
+- [ ] Visual review of alignment with PNOA and OSM and of the timeline.
+- [ ] No Vue components have been modified and no large scientific binaries have been
+      versioned.
+- [ ] Approval recorded in the PR; `ci` check green; no auto-merge.
 
-## 10. Qué NO se exige al equipo científico
+## 10. What the scientific team is NOT required to do
 
-- Escribir Vue, TypeScript, CSS o Leaflet.
-- Construir rutas de assets o conocer `import.meta.env.BASE_URL`.
-- Generar teselas nacionales o un mosaico global.
-- Calcular índices en el navegador.
-- Montar una API, base de datos, autenticación o backend.
-- Desplegar la web (lo hace integración).
-- Inventar valores donde no hay dato o rellenar huecos de cobertura.
-- Entregar HDF5/GeoTIFF versionados en Git.
-- Hacer consultas por píxel: v1.2.0 solo pinta imágenes georreferenciadas (una por fecha como máximo).
+- Write Vue, TypeScript, CSS or Leaflet.
+- Build asset paths or know `import.meta.env.BASE_URL`.
+- Generate national tiles or a global mosaic.
+- Compute indices in the browser.
+- Set up an API, database, authentication or backend.
+- Deploy the website (integration does that).
+- Invent values where there is no data or fill coverage gaps.
+- Deliver HDF5/GeoTIFF versioned in Git.
+- Perform per-pixel queries: v1.2.0 only paints georeferenced images (one per date at most).
 
-## 11. Advertencia sobre los datos publicados y el concurso
+## 11. Warning about the published data and the competition
 
-La demo publica **humedad superficial NISAR L3 SME2** de Jaén y Toledo
-(producto **PROVISIONAL**, no totalmente calibrado). No son datos sintéticos ni
-una conclusión agronómica: son observaciones georreferenciadas del producto,
-con su procedencia y sus limitaciones declaradas en el manifiesto, en los
-cubos de análisis y en esta documentación. Desde el 2026-11-15 la interfaz solo
-indica «datos PROVISIONAL» en el subtítulo, sin avisos ni panel de procedencia.
+The demo publishes **NISAR L3 SME2 surface soil moisture** for Jaén and Toledo
+(**PROVISIONAL** product, not fully calibrated). They are not synthetic data or
+an agronomic conclusion: they are georeferenced observations of the product,
+with their provenance and limitations declared in the manifest, in the
+analysis cubes and in this documentation. Since 2026-11-15 the interface only
+shows "PROVISIONAL NISAR data" in the subtitle, without notices or a provenance panel.
 
-La humedad superficial **no equivale a una necesidad de riego**. Publicar una
-capa tampoco demuestra por sí mismo una
-conclusión sobre producción o kg/ha. Los requisitos del NASA Space Apps
-Challenge o de posibles premios globales dependen de lo que establezca el
-reglamento vigente y de la revisión científica del producto.
+Surface soil moisture **is not equivalent to an irrigation need**. Publishing a
+layer does not by itself demonstrate a
+conclusion about production or kg/ha. The requirements of the NASA Space Apps
+Challenge or of possible global awards depend on what the
+current rules establish and on the scientific review of the product.
 
-## 12. Referencias
+## 12. References
 
-- Contrato práctico y validación: [`docs/data-contract.md`](data-contract.md).
-- Congelación y regla de cambios: [`docs/contract-freeze.md`](contract-freeze.md).
-- Esquema: [`contracts/manifest.schema.json`](../contracts/manifest.schema.json).
-- Conversor NISAR SME2: [`pipelines/nisar/README.md`](../pipelines/nisar/README.md).
-- Documentación de ASF sobre SME2: <https://nisar-docs.asf.alaska.edu/sme2>.
+- Practical contract and validation: [`docs/data-contract.md`](data-contract.md).
+- Freeze and change rule: [`docs/contract-freeze.md`](contract-freeze.md).
+- Schema: [`contracts/manifest.schema.json`](../contracts/manifest.schema.json).
+- NISAR SME2 converter: [`pipelines/nisar/README.md`](../pipelines/nisar/README.md).
+- ASF documentation on SME2: <https://nisar-docs.asf.alaska.edu/sme2>.

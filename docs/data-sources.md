@@ -1,105 +1,105 @@
-# Fuentes de datos, software y licencias
+# Data sources, software and licences
 
-Auditoría de licencias de OliveTwin (2026-11-15). Objetivo: comprobar que todo lo
-que usa el proyecto es **open source o se puede usar para investigación**, como
-exige el reto ([`challenge.md`](challenge.md#otros-recursos-política-de-licencias)).
-Las atribuciones obligatorias están recogidas en [`NOTICE`](../NOTICE).
+Licence audit of OliveTwin (2026-11-15). Goal: to check that everything the
+project uses is **open source or can be used for research**, as
+the challenge requires ([`challenge.md`](challenge.md#other-resources-licence-policy)).
+The mandatory attributions are recorded in [`NOTICE`](../NOTICE).
 
-## Resultado
+## Result
 
-| Categoría | Veredicto |
+| Category | Verdict |
 |---|---|
-| Datos publicados en `frontend/public/data/` | ✅ Todos abiertos o de uso libre con atribución. |
-| Requisitos de cultivo y modelos de referencia | ✅ Uso en investigación permitido. ⚠️ FAO ECOCROP y FAO GAEZ: **solo usos no comerciales**. ⚠️ Tablas de la UGR: sin licencia explícita. |
-| Servicios de mapas en tiempo de ejecución | ✅ Uso permitido con atribución (visible en el mapa). |
-| Dependencias de software (npm y Python) | ✅ Todas con licencias de código abierto (OSI). |
-| Modelo de IA opcional (Gemma vía Ollama) | ⚠️ No es una licencia OSI, pero permite investigación; no se distribuye con el proyecto. |
+| Data published in `frontend/public/data/` | ✅ All open or free to use with attribution. |
+| Crop requirements and reference models | ✅ Use in research allowed. ⚠️ FAO ECOCROP and FAO GAEZ: **non-commercial uses only**. ⚠️ UGR tables: no explicit licence. |
+| Map services at runtime | ✅ Use allowed with attribution (visible on the map). |
+| Software dependencies (npm and Python) | ✅ All with open source licences (OSI). |
+| Optional AI model (Gemma via Ollama) | ⚠️ Not an OSI licence, but it allows research; it is not distributed with the project. |
 
-**Conclusión:** OliveTwin cumple la política del reto para **investigación y uso
-no comercial**. No debe usarse con fines comerciales sin sustituir FAO ECOCROP y
-FAO GAEZ (o pedir permiso a FAO). El código propio es Apache-2.0
-([`LICENSE`](../LICENSE)); las licencias de los datos siguen siendo las de cada
-fuente.
+**Conclusion:** OliveTwin complies with the challenge policy for **research and non-commercial
+use**. It must not be used for commercial purposes without replacing FAO ECOCROP and
+FAO GAEZ (or asking FAO for permission). The project's own code is Apache-2.0
+([`LICENSE`](../LICENSE)); the data licences remain those of each
+source.
 
-## 1. Datos publicados en la aplicación
+## 1. Data published in the application
 
-Están en `frontend/public/data/real/` (manifiesto y cubos de análisis de Jaén y
-Toledo). Cada variable lleva su procedencia y licencia en el propio JSON
+They are in `frontend/public/data/real/` (manifest and analysis cubes for Jaén and
+Toledo). Each variable carries its provenance and licence in the JSON itself
 (`provenance.license`).
 
-| Datos (id en el cubo) | Fuente | Proveedor | Licencia / condiciones | Atribución obligatoria |
+| Data (id in the cube) | Source | Provider | Licence / conditions | Mandatory attribution |
 |---|---|---|---|---|
-| Humedad del suelo NISAR (`soil-moisture`, `soil-moisture-all`) y capa del manifiesto | NISAR L3 SME2 (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | Datos abiertos de NASA ESDIS, sin restricciones ([Data Use Guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance)) | Reconocer a NASA y citar el producto (doi:10.5067/NIL3SME2-P1) |
-| Radar HH, HV y HV/HH (`radar-hh`, `radar-hv`, `radar-hv-hh`) | NISAR L2 GCOV (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | Datos abiertos de NASA ESDIS | Citar doi:10.5067/NIL2GCOV-P1 |
-| Coherencia radar (`insar-coherence`) | NISAR L2 GUNW (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | Datos abiertos de NASA ESDIS | Citar doi:10.5067/NIL2GUNW-P1 |
-| Humedad SMAP (serie `smap-soil-moisture`) | SMAP SPL3SMP_E v006 | NASA, NSIDC DAAC | Libre, abierto y sin restricciones citando el producto | Cita recomendada de NSIDC |
-| NDVI y NDMI (`ndvi`, `ndmi`) | Sentinel-2 L2A | ESA Copernicus, vía Microsoft Planetary Computer | Acceso libre, completo y abierto (Reglamento Delegado (UE) 1159/2013) | «Contains modified Copernicus Sentinel data 2026» |
-| Altitud y pendiente (`elevation`, `slope`) | Copernicus DEM GLO-30 | ESA/UE (DLR, Airbus), vía Planetary Computer | Licencia gratuita mundial de Copernicus DEM | Texto de WorldDEM-30 © DLR y © Airbus (ver NOTICE) |
-| Arcilla, arena, carbono orgánico y pH (`soil-*`) | SoilGrids 2.0 | ISRIC – World Soil Information | **CC BY 4.0** | ISRIC; Poggio et al. (2021) |
-| Clima diario y climatología 1991–2020 (series y `climate-*`) | Open-Meteo Historical Weather API (ERA5/ERA5-Land) | Open-Meteo; Copernicus C3S/ECMWF | **CC BY 4.0** | «Weather data by Open-Meteo.com»; Copernicus C3S |
-| Superficie agrícola y olivar (`landcover-agri`, `landcover-olive`) | CORINE Land Cover 2018 | EEA, Copernicus Land Monitoring Service | Acceso libre, completo y abierto con atribución | «© European Union, Copernicus Land Monitoring Service 2018, EEA» |
-| Mapas de aptitud por cultivo (`crops`) | Cálculo propio de OliveTwin | — | Apache-2.0 (código); hereda las condiciones de sus entradas (abajo) | Las de las fuentes de la sección 2 |
+| NISAR soil moisture (`soil-moisture`, `soil-moisture-all`) and manifest layer | NISAR L3 SME2 (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | NASA ESDIS open data, no restrictions ([Data Use Guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance)) | Acknowledge NASA and cite the product (doi:10.5067/NIL3SME2-P1) |
+| HH, HV and HV/HH radar (`radar-hh`, `radar-hv`, `radar-hv-hh`) | NISAR L2 GCOV (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | NASA ESDIS open data | Cite doi:10.5067/NIL2GCOV-P1 |
+| Radar coherence (`insar-coherence`) | NISAR L2 GUNW (PROVISIONAL) | NASA/JPL–ISRO, ASF DAAC | NASA ESDIS open data | Cite doi:10.5067/NIL2GUNW-P1 |
+| SMAP moisture (`smap-soil-moisture` series) | SMAP SPL3SMP_E v006 | NASA, NSIDC DAAC | Free, open and unrestricted when citing the product | Recommended NSIDC citation |
+| NDVI and NDMI (`ndvi`, `ndmi`) | Sentinel-2 L2A | ESA Copernicus, via Microsoft Planetary Computer | Free, full and open access (Commission Delegated Regulation (EU) 1159/2013) | "Contains modified Copernicus Sentinel data 2026" |
+| Elevation and slope (`elevation`, `slope`) | Copernicus DEM GLO-30 | ESA/EU (DLR, Airbus), via Planetary Computer | Free worldwide Copernicus DEM licence | WorldDEM-30 text © DLR and © Airbus (see NOTICE) |
+| Clay, sand, organic carbon and pH (`soil-*`) | SoilGrids 2.0 | ISRIC – World Soil Information | **CC BY 4.0** | ISRIC; Poggio et al. (2021) |
+| Daily weather and 1991–2020 climatology (series and `climate-*`) | Open-Meteo Historical Weather API (ERA5/ERA5-Land) | Open-Meteo; Copernicus C3S/ECMWF | **CC BY 4.0** | "Weather data by Open-Meteo.com"; Copernicus C3S |
+| Agricultural surface and olive grove (`landcover-agri`, `landcover-olive`) | CORINE Land Cover 2018 | EEA, Copernicus Land Monitoring Service | Free, full and open access with attribution | "© European Union, Copernicus Land Monitoring Service 2018, EEA" |
+| Crop suitability maps (`crops`) | OliveTwin's own computation | — | Apache-2.0 (code); inherits the conditions of its inputs (below) | Those of the sources in section 2 |
 
-## 2. Requisitos de cultivo y modelos de referencia
+## 2. Crop requirements and reference models
 
-Se usan para calcular la aptitud; sus valores aparecen en los mapas y en la
-interfaz (tramos óptimo, aceptable y no apto).
+They are used to compute suitability; their values appear on the maps and in the
+interface (optimal, acceptable and unsuitable bands).
 
-| Qué se usa | Fuente | Licencia / condiciones | Notas |
+| What is used | Source | Licence / conditions | Notes |
 |---|---|---|---|
-| Requisitos de cultivo (temperatura, heladas, lluvia, altitud; olivo, almendro, trigo) | FAO ECOCROP | Términos de uso de FAO: estudio, **investigación** y fines **no comerciales**, citando a FAO | ⚠️ No comercial. Aceptado por el owner. |
-| Factor climático del olivo y del trigo | FAO e IIASA, GAEZ v4 (tema 3, secano, insumos bajos) | Términos de uso de FAO; las bases de datos de FAO son CC BY 4.0 salvo indicación contraria | ⚠️ GAEZ no declara una licencia propia en sus metadatos: se aplican los términos de FAO (permiten investigación). |
-| Clases de pH, textura, pendiente y carbono orgánico | Universidad de Granada, «CambioUso» (Dorronsoro et al.), basado en Sys et al. (1993) y FAO (1976) | Recurso docente público, **sin licencia explícita** | ⚠️ Se cita con atribución completa. Recomendable pedir confirmación a los autores antes de un uso fuera de la investigación. |
-| Tramos de clase S1/S2/S3/N (85/60/40) | LUSET (Yen et al., 2006), reproducido en Selmy et al. (2024), *Agronomy* 14(11):2601 | **CC BY 4.0** | — |
-| Clases texturales USDA | USDA Soil Survey Manual (Handbook 18, 2017) | Obra del Gobierno de EE. UU., dominio público | — |
-| Contraste del modelo Ecocrop | Tabla `ecocrop.rds` del paquete R Recocrop 0.4-2 | GPL ≥ 3 | Solo se descarga a la caché local del pipeline para comparar; no se redistribuye. |
+| Crop requirements (temperature, frost, rainfall, altitude; olive, almond, wheat) | FAO ECOCROP | FAO terms of use: study, **research** and **non-commercial** purposes, citing FAO | ⚠️ Non-commercial. Accepted by the owner. |
+| Climate factor for olive and wheat | FAO and IIASA, GAEZ v4 (theme 3, rainfed, low inputs) | FAO terms of use; FAO databases are CC BY 4.0 unless otherwise indicated | ⚠️ GAEZ does not declare its own licence in its metadata: FAO terms apply (they allow research). |
+| pH, texture, slope and organic carbon classes | University of Granada, "CambioUso" (Dorronsoro et al.), based on Sys et al. (1993) and FAO (1976) | Public teaching resource, **without an explicit licence** | ⚠️ Cited with full attribution. It is advisable to ask the authors for confirmation before use outside research. |
+| S1/S2/S3/N class bands (85/60/40) | LUSET (Yen et al., 2006), reproduced in Selmy et al. (2024), *Agronomy* 14(11):2601 | **CC BY 4.0** | — |
+| USDA texture classes | USDA Soil Survey Manual (Handbook 18, 2017) | Work of the U.S. Government, public domain | — |
+| Ecocrop model contrast | `ecocrop.rds` table of the R package Recocrop 0.4-2 | GPL ≥ 3 | It is only downloaded to the pipeline's local cache for comparison; it is not redistributed. |
 
-## 3. Servicios externos que carga el navegador
+## 3. External services loaded by the browser
 
-No se descargan ni se guardan: el mapa los pide al vuelo y muestra su atribución.
+They are not downloaded or stored: the map requests them live and shows their attribution.
 
-| Servicio | Proveedor | Condiciones | Cumplimiento |
+| Service | Provider | Conditions | Compliance |
 |---|---|---|---|
-| Vista Satelital y Vista Parcelas (ortofoto PNOA) | IGN/CNIG | **CC BY 4.0** (declarado en el servicio: «CC BY 4.0 scne.es») | Atribución «PNOA cedido por © IGN» en el mapa |
-| Recintos SIGPAC (Vista Parcelas) | Fondo Español de Garantía Agraria (FEGA) | El servicio WMS declara `AccessConstraints: none` y `Fees: none` | Atribución a FEGA en el mapa |
-| Vista General | OpenStreetMap | Datos ODbL; [política de uso de teselas](https://operations.osmfoundation.org/policies/tiles/): atribución visible, sin descargas masivas | Atribución «© OpenStreetMap contributors»; sin precarga de teselas |
-| Interpretación con IA (opcional) | El endpoint que configure el usuario (por defecto, Ollama local) | El del modelo elegido | Ver sección 5 |
+| Satellite view and Parcels view (PNOA orthophoto) | IGN/CNIG | **CC BY 4.0** (declared in the service: "CC BY 4.0 scne.es") | Attribution "PNOA cedido por © IGN" on the map |
+| SIGPAC parcels (Parcels view) | Fondo Español de Garantía Agraria (FEGA) | The WMS service declares `AccessConstraints: none` and `Fees: none` | Attribution to FEGA on the map |
+| General view | OpenStreetMap | ODbL data; [tile usage policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, no bulk downloads | Attribution "© OpenStreetMap contributors"; no tile preloading |
+| AI interpretation (optional) | The endpoint configured by the user (by default, local Ollama) | That of the chosen model | See section 5 |
 
 ## 4. Software
 
-| Componente | Licencias | Notas |
+| Component | Licences | Notes |
 |---|---|---|
-| Frontend, dependencias directas | Vue 3 (MIT), Leaflet (BSD-2-Clause), Ajv y ajv-formats (MIT), Vite, Vitest, vue-tsc, jsdom, pngjs (MIT), TypeScript (Apache-2.0) | Ajv está en `devDependencies` pero se incluye en el bundle para validar los datos. |
-| Frontend, todas las dependencias instaladas (≈ 140) | MIT, ISC, BSD-2/3-Clause, Apache-2.0, BlueOak-1.0.0, MIT-0, CC0-1.0, MPL-2.0 | MPL-2.0 solo en `lightningcss`, herramienta de compilación que no se distribuye. |
-| Pipeline de análisis (Python, directas) | numpy, rasterio, affine, h5py, shapely (BSD-3-Clause); pyproj, earthaccess, jsonschema, pytest, rdata, rfc3339-validator (MIT); pillow (MIT-CMU); requests y harmony-py (Apache-2.0) | `harmony-py` es software de la NASA bajo Apache-2.0. |
-| Pipeline, dependencias transitivas | MIT, BSD, Apache-2.0, PSF-2.0, MPL-2.0 (`certifi`, `tqdm`) | Todas de código abierto. |
-| Navegadores de las pruebas E2E | Playwright (Apache-2.0) | Fuera del repositorio (harness externo). |
+| Frontend, direct dependencies | Vue 3 (MIT), Leaflet (BSD-2-Clause), Ajv and ajv-formats (MIT), Vite, Vitest, vue-tsc, jsdom, pngjs (MIT), TypeScript (Apache-2.0) | Ajv is in `devDependencies` but is included in the bundle to validate the data. |
+| Frontend, all installed dependencies (≈ 140) | MIT, ISC, BSD-2/3-Clause, Apache-2.0, BlueOak-1.0.0, MIT-0, CC0-1.0, MPL-2.0 | MPL-2.0 only in `lightningcss`, a build tool that is not distributed. |
+| Analysis pipeline (Python, direct) | numpy, rasterio, affine, h5py, shapely (BSD-3-Clause); pyproj, earthaccess, jsonschema, pytest, rdata, rfc3339-validator (MIT); pillow (MIT-CMU); requests and harmony-py (Apache-2.0) | `harmony-py` is NASA software under Apache-2.0. |
+| Pipeline, transitive dependencies | MIT, BSD, Apache-2.0, PSF-2.0, MPL-2.0 (`certifi`, `tqdm`) | All open source. |
+| E2E test browsers | Playwright (Apache-2.0) | Outside the repository (external harness). |
 
-## 5. Modelo de lenguaje (opcional)
+## 5. Language model (optional)
 
-La interpretación con IA es opcional y el modelo **no forma parte del
-repositorio**: lo instala y ejecuta cada usuario. Con la configuración por
-defecto se usa Ollama (MIT) con `gemma3:4b`, sujeto a los Términos de uso de
-Gemma de Google. No es una licencia de código abierto OSI, pero permite el uso
-en investigación con su política de usos prohibidos. Se puede usar cualquier
-otro modelo compatible con la API de OpenAI.
+AI interpretation is optional and the model is **not part of the
+repository**: each user installs and runs it. The default configuration
+uses Ollama (MIT) with `gemma3:4b`, subject to Google's Gemma Terms of Use.
+It is not an OSI open source licence, but it allows use
+in research under its prohibited use policy. Any
+other model compatible with the OpenAI API can be used.
 
-## 6. Fuentes descartadas
+## 6. Discarded sources
 
-| Fuente | Motivo |
+| Source | Reason |
 |---|---|
-| Rendimientos provinciales del Anuario del MAPA | Licencia válida (Ley 37/2007), pero el owner decidió no usarlos (2026-11-15): describen la provincia, no el recuadro comparado. |
-| Tablas climáticas de Sys et al. (1993) | Sin copia en acceso abierto que se pueda citar. |
-| Agua útil del suelo (SoilGrids) | SoilGrids 2.0 no publica mapas de retención de agua; no hay umbrales citables para el olivo. |
-| Desplazamiento NISAR GUNW | No publicado: requiere referencia y correcciones validadas (ver `unavailable` en el cubo). |
+| Provincial yields from the MAPA Yearbook | Valid licence (Ley 37/2007), but the owner decided not to use them (2026-11-15): they describe the province, not the compared box. |
+| Climate tables of Sys et al. (1993) | No openly accessible copy that can be cited. |
+| Available soil water (SoilGrids) | SoilGrids 2.0 does not publish water retention maps; there are no citable thresholds for the olive tree. |
+| NISAR GUNW displacement | Not published: it requires validated reference and corrections (see `unavailable` in the cube). |
 
-## 7. Recomendaciones
+## 7. Recommendations
 
-1. **Antes de cualquier uso comercial**, sustituir FAO ECOCROP y FAO GAEZ o
-   pedir permiso a FAO.
-2. **Confirmar con los autores** de las tablas de la Universidad de Granada el
-   uso de sus clases en una aplicación pública.
-3. **Mantener las atribuciones** visibles en el mapa y en [`NOTICE`](../NOTICE).
-   Si se añade una fuente, añadirla aquí y en NOTICE en el mismo cambio.
-4. **NISAR SME2, GCOV y GUNW son productos PROVISIONALES**: su licencia es
-   abierta, pero deben presentarse como tales.
+1. **Before any commercial use**, replace FAO ECOCROP and FAO GAEZ or
+   ask FAO for permission.
+2. **Confirm with the authors** of the University of Granada tables the
+   use of their classes in a public application.
+3. **Keep the attributions** visible on the map and in [`NOTICE`](../NOTICE).
+   If a source is added, add it here and in NOTICE in the same change.
+4. **NISAR SME2, GCOV and GUNW are PROVISIONAL products**: their licence is
+   open, but they must be presented as such.

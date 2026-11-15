@@ -1,41 +1,41 @@
-# G2 — Aceptación de la demo OliveTwin
+# G2 — OliveTwin demo acceptance
 
-**Fecha:** 2026-11-14 · **Veredicto:** **PASS con limitaciones** (limitaciones científicas y de entorno, no funcionales).
-**Revisión independiente:** agente revisor distinto de los implementadores (PASS, 0 bloqueantes; 4 menores de documentación corregidos en esta misma PR).
-**Aprobación humana:** responsable de proyecto (`AlRos14`): decisiones de alcance (solo datos reales, línea temporal) y aprobación científica de los datos publicados.
+**Date:** 2026-11-14 · **Verdict:** **PASS with limitations** (scientific and environment limitations, not functional).
+**Independent review:** a reviewing agent other than the implementers (PASS, 0 blockers; 4 minor documentation findings fixed in this same PR).
+**Human approval:** project owner (`AlRos14`): scope decisions (real data only, timeline) and scientific approval of the published data.
 
-## Qué funciona (verificado en Chromium real y en CI)
+## What works (verified in real Chromium and in CI)
 
-- App estática Vue 3 + Vite + TS + Leaflet, sin backend; build normal y bajo subruta `/olivetwin/`.
-- Mapa de España con PNOA (por defecto) u OSM, atribuciones visibles y controles España/Canarias.
-- Datos **reales** NISAR L3 SME2 (humedad superficial, PROVISIONAL, CRID P05023) en **Jaén** y **Toledo**, 3 fechas cada
-  una (2026-06-20, 2026-07-02, 2026-07-14), escala común 0,05–0,40 m³/m³, georreferencia verificada (25/25 píxeles por escena
-  en el pipeline; alineación del overlay con su bbox en el navegador, AT-19).
-- Línea temporal: slider con anterior/siguiente/reproducir, sin parpadeo; procedencia por fecha (escena, CRID, hora UTC).
-- Opacidad, visibilidad, leyenda, procedencia, aviso PROVISIONAL persistente, error explícito ante manifiesto roto o PNG 404.
-- Contrato v1.2.0 con validación de schema, semántica y runtime; pipeline `pipelines/nisar/sme2_to_overlay.py` para añadir
-  zonas/fechas sin tocar Vue (`docs/handoff-science.md`).
+- Static Vue 3 + Vite + TS + Leaflet app, no backend; normal build and under the `/olivetwin/` subpath.
+- Map of Spain with PNOA (default) or OSM, visible attributions and Spain/Canary Islands controls.
+- **Real** NISAR L3 SME2 data (surface soil moisture, PROVISIONAL, CRID P05023) in **Jaén** and **Toledo**, 3 dates each
+  (2026-06-20, 2026-07-02, 2026-07-14), common scale 0.05–0.40 m³/m³, verified georeferencing (25/25 pixels per scene
+  in the pipeline; overlay aligned with its bbox in the browser, AT-19).
+- Timeline: slider with previous/next/play, no flicker; provenance per date (scene, CRID, UTC time).
+- Opacity, visibility, legend, provenance, persistent PROVISIONAL notice, explicit error on a broken manifest or a 404 PNG.
+- Contract v1.2.0 with schema, semantics and runtime validation; pipeline `pipelines/nisar/sme2_to_overlay.py` to add
+  zones/dates without touching Vue (`docs/handoff-science.md`).
 
-## Evidencia
+## Evidence
 
-| Comprobación | Resultado |
+| Check | Result |
 |---|---|
-| CI (`ci`: validate:data, vitest, build, pytest) | verde en la PR |
+| CI (`ci`: validate:data, vitest, build, pytest) | green in the PR |
 | Vitest | 259 tests |
-| `validate:data` | 35 comprobaciones |
-| Pytest pipeline NISAR | 19 tests |
-| E2E Playwright | `docs/qa-results.md`, capturas `docs/qa/real-*.jpg` |
+| `validate:data` | 35 checks |
+| NISAR pipeline pytest | 19 tests |
+| Playwright E2E | `docs/qa-results.md`, screenshots `docs/qa/real-*.jpg` |
 
-## Limitaciones (explícitas)
+## Limitations (explicit)
 
-- **Científicas:** SME2 PROVISIONAL, no totalmente calibrado; humedad superficial (~5 cm) ≠ necesidad de riego; Jaén
-  (ascendente, ~05:23 UTC) y Toledo (descendente, ~19:09 UTC) se observan a distinta hora; la escena del 2026-07-14 tiene
-  otra marca de producción (`F_F_J`) y su bajada puede deberse en parte al procesado. Sin banderas de calidad SME2 aplicadas.
-- **Fuera de alcance:** NDVI real, SIGPAC, comparador A/B, kg/ha, predicción, consulta por píxel.
-- **Entorno:** PNOA y OSM son servicios externos; los E2E usan un harness Playwright externo y no corren en CI.
-- **Despliegue:** no se ha publicado en GitHub Pages; la demo se ejecuta con `npm run dev` o `npm run build && npm run preview`.
+- **Scientific:** SME2 PROVISIONAL, not fully calibrated; surface soil moisture (~5 cm) ≠ irrigation need; Jaén
+  (ascending, ~05:23 UTC) and Toledo (descending, ~19:09 UTC) are observed at different times of day; the 2026-07-14 scene
+  has a different production tag (`F_F_J`) and its decrease may be partly due to processing. No SME2 quality flags applied.
+- **Out of scope:** real NDVI, SIGPAC, A/B comparator, kg/ha, prediction, per-pixel query.
+- **Environment:** PNOA and OSM are external services; the E2E use an external Playwright harness and do not run in CI.
+- **Deployment:** not published to GitHub Pages yet; the demo runs with `npm run dev` or `npm run build && npm run preview`.
 
-## Cómo reproducir
+## How to reproduce
 
 ```bash
 cd frontend && npm ci && npm run validate:data && npm test && npm run build && npm run preview
