@@ -56,8 +56,18 @@ export declare const TIMESTEPS_SCHEMA_VERSIONS: readonly string[]
 export declare const ANALYSIS_SCHEMA_VERSION: string
 export declare const ANALYSIS_MAX_PNG_BYTES: number
 export declare const SUPPORTED_IMAGE_CRS: readonly string[]
+export declare const SI_UNITS: readonly string[]
 export declare const BBOX_TOLERANCE_DEG: number
 export declare const IMAGE_PATH_ROOT: string
+
+export interface UnitValue {
+  path: string
+  unit: string
+}
+
+export declare function collectUnitValues(document: unknown): UnitValue[]
+
+export declare function siUnitErrors(document: unknown): ValidationError[]
 
 export declare function formatAjvErrors(
   errors: readonly unknown[] | null | undefined,

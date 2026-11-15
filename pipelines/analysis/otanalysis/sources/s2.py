@@ -259,7 +259,7 @@ def run(ctx: Ctx) -> SourceResult:
     for vid in ("ndvi", "ndmi"):
         t = TEXT[vid]
         meta = {
-            "id": vid, "title": t["title"], "group": "optical", "unit": "adimensional",
+            "id": vid, "title": t["title"], "group": "optical", "unit": "1",
             "scale": t["scale"], "offset": t["offset"], "decimals": 3,
             "displayRange": t["displayRange"], "palette": "vegetation", "temporal": True,
             "description": t["description"], "caveat": t["caveat"],

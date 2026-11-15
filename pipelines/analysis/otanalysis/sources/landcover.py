@@ -107,7 +107,7 @@ def run(ctx: Ctx) -> SourceResult:
     for vid, values in (("landcover-agri", agri), ("landcover-olive", olive)):
         meta = VARIABLES[vid]
         res.variables.append(VariableData(meta={
-            "id": vid, "title": meta["title"], "group": "landcover", "unit": "fracción",
+            "id": vid, "title": meta["title"], "group": "landcover", "unit": "1",
             "scale": 1 / 250, "offset": 0.0, "decimals": 2, "displayRange": [0.0, 1.0],
             "palette": "vegetation", "temporal": False,
             "description": meta["description"], "caveat": CAVEAT,

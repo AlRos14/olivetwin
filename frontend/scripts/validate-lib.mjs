@@ -36,6 +36,12 @@ export const TIMESTEPS_SCHEMA_VERSIONS = Object.freeze(['1.2.0', '1.3.0'])
 export const ANALYSIS_SCHEMA_VERSION = '1.3.0'
 /** Único CRS de presentación admitido en esta versión. */
 export const SUPPORTED_IMAGE_CRS = Object.freeze(['EPSG:3857'])
+/**
+ * Unidades admitidas en los datos publicados: SI o aceptadas para uso con el SI
+ * (BIPM). `1` representa magnitudes adimensionales (índices, fracciones,
+ * coherencia); la interfaz muestra «dimensionless»/«adimensional».
+ */
+export const SI_UNITS = Object.freeze(['1', 'm', 'mm', 'km', 'm³/m³', 'g/kg', '°C', '°', '%', 'dB', 'd', 'ha', 'pH'])
 /** Tolerancia en grados al comprobar que layer.bbox cae dentro de zone.bbox. */
 export const BBOX_TOLERANCE_DEG = 0.01
 /** Prefijo de toda ruta `image`, relativa a `frontend/public/`. */
@@ -849,6 +855,59 @@ export async function assetErrors(manifest, { publicDir = null, readAsset } = {}
     }
   }
 
+  return errors
+}
+
+/**
+ * Recoge todos los valores de las propiedades `unit` de un documento JSON.
+ *
+ * @param {unknown} document
+ * @returns {{ path: string, unit: string }[]}
+ */
+export function collectUnitValues(document) {
+  /** @type {{ path: string, unit: string }[]} */
+  const found = []
+  /** @param {unknown} node @param {string} at */
+  const walk = (node, at) => {
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => walk(item, `${at}/${index}`))
+      return
+    }
+    if (!isPlainObject(node)) {
+      return
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'unit' && typeof value === 'string') {
+        found.push({ path: `${at}/unit`, unit: value })
+      } else {
+        walk(value, `${at}/${key}`)
+      }
+    }
+  }
+  walk(document, '')
+  return found
+}
+
+/**
+ * Comprueba que todas las `unit` de un documento están en el SI (o son
+ * aceptadas para uso con el SI). No valida estructura: solo unidades.
+ *
+ * @param {unknown} document
+ * @returns {{ path: string, message: string }[]}
+ */
+export function siUnitErrors(document) {
+  /** @type {{ path: string, message: string }[]} */
+  const errors = []
+  for (const { path: at, unit } of collectUnitValues(document)) {
+    if (SI_UNITS.includes(unit)) {
+      continue
+    }
+    pushError(
+      errors,
+      at,
+      `unidad fuera del SI: ${JSON.stringify(unit)}; use ${SI_UNITS.map((allowed) => JSON.stringify(allowed)).join(', ')}`,
+    )
+  }
   return errors
 }
 
