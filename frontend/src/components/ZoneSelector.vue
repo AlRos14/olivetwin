@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import type { StudyZone } from '../types/manifest'
+import { t } from '../i18n'
+import { dataText } from '../i18n/dataText'
 import '../styles/ui.css'
 
 /**
@@ -24,7 +26,7 @@ const hintId = `ot-zone-hint-${uid}`
 const isEmpty = computed(() => props.zones.length === 0)
 const isDisabled = computed(() => props.disabled === true || isEmpty.value)
 const placeholder = computed(() =>
-  isEmpty.value ? 'No hay zonas disponibles' : 'Selecciona una zona',
+  isEmpty.value ? t('zoneSelector.emptyPlaceholder') : t('zoneSelector.selectPlaceholder'),
 )
 
 function onChange(event: Event): void {
@@ -35,7 +37,7 @@ function onChange(event: Event): void {
 
 <template>
   <section class="ot-card ot-zone-selector">
-    <label class="ot-label" :for="selectId">Zona de estudio</label>
+    <label class="ot-label" :for="selectId">{{ t('zoneSelector.label') }}</label>
     <select
       :id="selectId"
       class="ot-select"
@@ -46,11 +48,11 @@ function onChange(event: Event): void {
     >
       <option value="">{{ placeholder }}</option>
       <option v-for="zone in zones" :key="zone.id" :value="zone.id">
-        {{ zone.name }}
+        {{ dataText(zone.name) }}
       </option>
     </select>
     <p v-if="isEmpty" :id="hintId" class="ot-hint">
-      No hay zonas disponibles en este modo de datos.
+      {{ t('zoneSelector.emptyHint') }}
     </p>
   </section>
 </template>

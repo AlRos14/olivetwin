@@ -3,6 +3,7 @@ import { computed, useId } from 'vue'
 import type { BaseMap, LayerId, StudyLayer, StudyZone } from '../types/manifest'
 import type { ExtraVariableOption } from './layerOptions'
 import { layerLabel } from './variableLabels'
+import { t, type MessageKey } from '../i18n'
 import '../styles/ui.css'
 
 /**
@@ -47,10 +48,10 @@ const opacityId = `ot-opacity-${uid}`
 const visibleId = `ot-visible-${uid}`
 
 
-const basemaps: ReadonlyArray<{ value: BaseMap; label: string }> = [
-  { value: 'pnoa', label: 'Vista Satelital' },
-  { value: 'pnoa-sigpac', label: 'Vista Parcelas' },
-  { value: 'osm', label: 'Vista General' },
+const basemaps: ReadonlyArray<{ value: BaseMap; labelKey: MessageKey }> = [
+  { value: 'pnoa', labelKey: 'layers.panel.satelliteView' },
+  { value: 'pnoa-sigpac', labelKey: 'layers.panel.parcelsView' },
+  { value: 'osm', labelKey: 'layers.panel.generalView' },
 ]
 
 const layers = computed<StudyLayer[]>(() => (props.showLayers ? (props.zone?.layers ?? []) : []))
@@ -122,9 +123,9 @@ function onVisibleChange(event: Event): void {
 </script>
 
 <template>
-  <section class="ot-card ot-layer-panel" aria-label="Mapa y capa">
+  <section class="ot-card ot-layer-panel" :aria-label="t('layers.panel.label')">
     <fieldset class="ot-fieldset">
-      <legend class="ot-label">Mapa base</legend>
+      <legend class="ot-label">{{ t('layers.panel.baseMap') }}</legend>
       <div class="ot-options">
         <label
           v-for="basemap in basemaps"
@@ -140,7 +141,7 @@ function onVisibleChange(event: Event): void {
             @change="onBaseMapChange"
           />
           <span class="ot-option__body">
-            <span class="ot-option__label">{{ basemap.label }}</span>
+            <span class="ot-option__label">{{ t(basemap.labelKey) }}</span>
           </span>
         </label>
       </div>
@@ -148,9 +149,9 @@ function onVisibleChange(event: Event): void {
 
     <template v-if="zone">
       <div class="ot-field">
-        <label class="ot-label" :for="variableId">Variable</label>
+        <label class="ot-label" :for="variableId">{{ t('layers.panel.variable') }}</label>
         <select v-if="hasOptions" :id="variableId" class="ot-select" :value="selectedValue" @change="onVariableChange">
-          <option value="" disabled>Elige una variable…</option>
+          <option value="" disabled>{{ t('layers.panel.chooseVariable') }}</option>
           <option v-for="layer in layers" :key="layer.id" :value="`layer:${layer.id}`">
             {{ layerLabel(layer) }}
           </option>
@@ -161,13 +162,13 @@ function onVisibleChange(event: Event): void {
           </optgroup>
         </select>
         <p v-else class="ot-hint">
-          Esta zona no tiene capas científicas disponibles.
+          {{ t('layers.panel.noLayers') }}
         </p>
       </div>
 
       <template v-if="hasSelection">
         <div class="ot-field">
-          <span class="ot-label">Visibilidad</span>
+          <span class="ot-label">{{ t('layers.panel.visibility') }}</span>
           <label class="ot-check" :for="visibleId">
             <input
               :id="visibleId"
@@ -175,12 +176,12 @@ function onVisibleChange(event: Event): void {
               :checked="visible"
               @change="onVisibleChange"
             />
-            Mostrar capa en el mapa
+            {{ t('layers.panel.showLayer') }}
           </label>
         </div>
 
         <div class="ot-field">
-          <label class="ot-label" :for="opacityId">Opacidad</label>
+          <label class="ot-label" :for="opacityId">{{ t('layers.panel.opacity') }}</label>
           <div class="ot-range-row">
             <input
               :id="opacityId"
@@ -198,10 +199,10 @@ function onVisibleChange(event: Event): void {
         </div>
       </template>
       <p v-else-if="hasOptions" class="ot-hint">
-        Selecciona una variable para ajustar la visibilidad y la opacidad.
+        {{ t('layers.panel.selectVariableHint') }}
       </p>
     </template>
 
-    <p v-else class="ot-hint">Selecciona una zona de estudio</p>
+    <p v-else class="ot-hint">{{ t('layers.panel.selectZone') }}</p>
   </section>
 </template>

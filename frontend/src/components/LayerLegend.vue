@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LegendSource } from './layerOptions'
+import { displayUnit } from './layerOptions'
 import { NO_DATA_CSS } from '../services/palettes'
+import { t } from '../i18n'
+import { dataText } from '../i18n/dataText'
+import { numberFormatter } from '../i18n/format'
 import '../styles/ui.css'
 
 /**
@@ -12,9 +16,6 @@ import '../styles/ui.css'
 const props = defineProps<{
   layer: LegendSource | null
 }>()
-
-const numberFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 })
-const formatNumber = (value: number): string => numberFormat.format(value)
 
 const sortedStops = computed(() =>
   [...(props.layer?.legend ?? [])].sort((a, b) => a.value - b.value),
@@ -53,28 +54,34 @@ const gradient = computed(() => {
 })
 
 const rangeLabel = computed(() => {
-  if (!props.layer?.range) return 'No declarado'
-  return `${formatNumber(extent.value[0])} – ${formatNumber(extent.value[1])}`
+  if (!props.layer?.range) return t('layers.legend.undeclared')
+  const format = numberFormatter({ maximumFractionDigits: 2 })
+  return `${format.format(extent.value[0])} – ${format.format(extent.value[1])}`
 })
+
+/** Título y etiquetas vienen de los datos publicados (en español). */
+const title = computed(() => dataText(props.layer?.title))
+
+const unit = computed(() => displayUnit(props.layer?.unit))
 </script>
 
 <template>
-  <section class="ot-card ot-legend" aria-label="Leyenda">
-    <h2 class="ot-section-title">Leyenda</h2>
+  <section class="ot-card ot-legend" :aria-label="t('layers.legend.label')">
+    <h2 class="ot-section-title">{{ t('layers.legend.title') }}</h2>
 
     <template v-if="layer">
       <p class="ot-hint">
-        {{ layer.variable ?? layer.title }}
+        {{ title }}
       </p>
       <div
         class="ot-legend__scale"
         :style="{ background: gradient }"
         role="img"
-        :aria-label="`Escala de color de ${layer.title}`"
+        :aria-label="t('layers.legend.scaleAria', { title })"
       ></div>
       <p class="ot-legend__meta">
-        <span><strong>Unidad:</strong> {{ layer.unit }}</span>
-        <span><strong>Rango:</strong> {{ rangeLabel }}</span>
+        <span><strong>{{ t('layers.legend.unit') }}:</strong> {{ unit }}</span>
+        <span><strong>{{ t('layers.legend.range') }}:</strong> {{ rangeLabel }}</span>
       </p>
       <ul class="ot-legend__stops">
         <li v-for="stop in sortedStops" :key="`${stop.value}-${stop.color}`" class="ot-legend__stop">
@@ -83,20 +90,20 @@ const rangeLabel = computed(() => {
             :style="{ backgroundColor: stop.color }"
             aria-hidden="true"
           ></span>
-          <span class="ot-legend__stop-label">{{ stop.label }}</span>
+          <span class="ot-legend__stop-label">{{ dataText(stop.label) }}</span>
         </li>
         <li v-if="layer.noData" class="ot-legend__stop">
           <span class="ot-legend__swatch" :style="{ background: NO_DATA_CSS }" aria-hidden="true"></span>
-          <span class="ot-legend__stop-label">Sin dato</span>
+          <span class="ot-legend__stop-label">{{ t('layers.legend.noData') }}</span>
         </li>
       </ul>
       <p v-if="layer.status === 'synthetic'" class="ot-legend__note">
-        Escala ilustrativa: los colores no representan medidas reales
+        {{ t('layers.legend.syntheticNote') }}
       </p>
     </template>
 
     <p v-else class="ot-hint">
-      Selecciona una zona y una variable para ver la leyenda.
+      {{ t('layers.legend.empty') }}
     </p>
   </section>
 </template>
