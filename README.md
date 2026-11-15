@@ -2,24 +2,34 @@
 
 **Radar NISAR, vegetación, suelo y clima para saber qué zonas son mejores para el olivo, el almendro y el trigo.**
 
+[![Demo en vivo](https://img.shields.io/badge/demo-alros14.github.io%2Folivetwin-2E7D32)](https://alros14.github.io/olivetwin/)
 [![NASA Space Apps Challenge 2026](https://img.shields.io/badge/NASA%20Space%20Apps%202026-Dancing%20with%20the%20SARs-0B3D91)](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)
+[![CI](https://github.com/AlRos14/olivetwin/actions/workflows/ci.yml/badge.svg)](https://github.com/AlRos14/olivetwin/actions/workflows/ci.yml)
 [![Licencia: Apache-2.0](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
+
+### ▶ [Abrir la demo: alros14.github.io/olivetwin](https://alros14.github.io/olivetwin/)
+
+Funciona en el navegador, sin instalar nada ni registrarse.
 
 ![OliveTwin mostrando la humedad del suelo NISAR sobre Jaén](docs/qa/real-01-jaen.jpg)
 
 ## El reto
 
-OliveTwin es nuestra respuesta al reto **«[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)»**
-del **NASA Space Apps Challenge 2026**: crear una aplicación interactiva que use
-datos radar de la misión **NISAR** (NASA-ISRO Synthetic Aperture Radar) para
-seguir y visualizar cambios en la superficie terrestre.
+OliveTwin es nuestro proyecto para el **[NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/)**,
+el hackatón internacional de la NASA, dentro del reto
+**«[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)»**.
+El reto pide una aplicación interactiva que use datos radar de la misión
+**[NISAR](https://nisar.jpl.nasa.gov/)** (NASA-ISRO Synthetic Aperture Radar)
+para seguir y visualizar cambios en la superficie terrestre.
 
-Nuestro cambio es la **humedad del suelo en zonas agrícolas**: cómo se seca y se
-recarga el suelo durante el verano de 2026 en dos zonas olivareras de España
-(Jaén y Toledo), puesta en contexto con vegetación, relieve, suelo y clima para
-estimar qué zonas son más aptas para cada cultivo. El enunciado completo, los
-recursos oficiales y la política de licencias están en
-[`docs/challenge.md`](docs/challenge.md).
+El cambio que seguimos es la **humedad del suelo en zonas agrícolas**: cómo se
+seca y se recarga el suelo durante el verano de 2026 en dos zonas olivareras de
+España, Jaén y Toledo. La ponemos en contexto con vegetación, relieve, suelo y
+clima para estimar qué zonas son más aptas para cada cultivo.
+
+El radar es útil para esto porque mide de día y de noche, también con nubes, y
+la señal es sensible al agua del suelo. El enunciado completo, los recursos
+oficiales y la política de licencias están en [`docs/challenge.md`](docs/challenge.md).
 
 ## Qué puedes hacer
 
@@ -30,89 +40,26 @@ recursos oficiales y la política de licencias están en
 | **Comparar** | Elegir **zona A**, **zona B** y un cultivo para saber cuál es mejor y por qué. |
 | **Historia** | El reto, por qué usamos radar e hipótesis que la app permite explorar. |
 
+| Análisis | Aptitud por cultivo | Comparar |
+|---|---|---|
+| ![Pestaña Análisis](docs/qa/real-10-analisis.jpg) | ![Aptitud por cultivo](docs/qa/real-11-aptitud.jpg) | ![Pestaña Comparar](docs/qa/real-12-comparar.jpg) |
+
 En Análisis y Comparar, **Interpretar con IA** pide a un modelo de lenguaje que
-explique los resultados (opcional, ver más abajo).
+explique los resultados (opcional, ver [más abajo](#interpretación-con-ia-opcional)).
 
 > ⚠️ **Datos provisionales.** La humedad NISAR SME2 todavía no está totalmente
 > calibrada, mide solo los ~5 cm superficiales del suelo y **no equivale a una
 > necesidad de riego**. La aptitud por cultivo es un modelo físico, no una
 > predicción de cosecha.
 
-## Ponerlo en marcha
-
-### Requisitos
-
-- **Node.js 22** (la versión está en [`.nvmrc`](.nvmrc)) y npm.
-- **Git** para clonar el repositorio.
-- **Conexión a Internet**, para cargar los mapas base.
-- *(Opcional)* **[Ollama](https://ollama.com)** para la interpretación con IA.
-
-No hace falta servidor ni base de datos: es una web estática y los datos ya
-vienen preparados en el repositorio.
-
-### Paso a paso
-
-```bash
-# 1. Descarga el proyecto
-git clone https://github.com/AlRos14/olivetwin.git
-cd olivetwin
-
-# 2. Instala las dependencias de la web
-cd frontend
-npm ci
-
-# 3. Arráncala
-npm run dev
-```
-
-Abre **<http://localhost:5173/>**. La zona de Jaén se selecciona sola; cambia
-de zona arriba a la derecha y prueba las pestañas.
-
-### Interpretación con IA (opcional)
-
-La app funciona sin IA. Para activarla con un modelo local y gratuito:
-
-```bash
-# Instala Ollama (https://ollama.com) y, en otra terminal:
-OLLAMA_ORIGINS="http://127.0.0.1:*,http://localhost:*" ollama serve
-ollama pull gemma3:4b
-```
-
-Después, en la app, pulsa **Interpretar con IA**. En «Modelo de IA» puedes
-cambiar a cualquier otro servicio compatible con la API de OpenAI (por ejemplo,
-uno en la nube con tu clave). La clave solo se guarda durante la sesión del
-navegador. En un ordenador sin GPU, cada interpretación tarda unos minutos.
-
-### Problemas frecuentes
-
-| Problema | Solución |
-|---|---|
-| `npm ci` falla | Comprueba que usas Node.js 22 (`node --version`; con nvm, `nvm use`). |
-| El mapa base sale gris | No hay conexión o el servicio del mapa no responde: cambia de mapa base en Capas. |
-| «Interpretar con IA» da error de conexión | Comprueba que `ollama serve` está en marcha con `OLLAMA_ORIGINS` y que descargaste el modelo. Usa «Probar conexión» en «Modelo de IA». |
-| La IA tarda mucho | Es normal en CPU con un modelo de 4B; usa un modelo más pequeño o un servicio en la nube. |
-
-### Versión de producción
-
-```bash
-cd frontend
-npm run build      # genera frontend/dist/
-npm run preview    # la sirve en http://localhost:4173/
-```
-
-Para publicarla en una subruta (por ejemplo, GitHub Pages):
-`npm run build -- --base /olivetwin/`.
-
 ## Los datos
 
-Todo procede de fuentes abiertas o de uso libre para investigación. La lista
-completa de datos, fuentes, licencias y atribuciones está en
-**[`docs/data-sources.md`](docs/data-sources.md)** (las atribuciones obligatorias,
-en [`NOTICE`](NOTICE)).
+Todo procede de fuentes abiertas o de uso libre para investigación.
 
 | Grupo | Variables | Fuente |
 |---|---|---|
-| Radar NISAR | Humedad del suelo (SME2), radar HH, HV y HV/HH (GCOV), coherencia (GUNW) | NASA/JPL–ISRO, ASF |
+| Radar NISAR | Humedad del suelo (SME2), radar HH, HV y HV/HH (GCOV), coherencia (GUNW) | NASA/JPL–ISRO, vía ASF DAAC |
+| Humedad de referencia | Humedad del suelo SMAP | NASA, vía NSIDC DAAC |
 | Vegetación | NDVI y NDMI | Copernicus Sentinel-2 |
 | Relieve | Altitud y pendiente | Copernicus DEM |
 | Suelo | Arcilla, arena, carbono orgánico y pH | ISRIC SoilGrids 2.0 |
@@ -121,7 +68,10 @@ en [`NOTICE`](NOTICE)).
 | Aptitud por cultivo | Olivo, almendro y trigo de secano | Cálculo propio con FAO GAEZ v4, FAO ECOCROP y tablas de la Universidad de Granada |
 
 Las zonas son dos recuadros de unos 35 × 30 km (Jaén) y 60 × 48 km (Toledo),
-con una rejilla de ~200 m y datos de junio a octubre de 2026.
+con una rejilla de ~200 m y datos de junio a octubre de 2026. La lista completa
+de fuentes, licencias y atribuciones está en
+[`docs/data-sources.md`](docs/data-sources.md); las atribuciones obligatorias,
+en [`NOTICE`](NOTICE).
 
 ### Cómo se calcula la aptitud
 
@@ -148,76 +98,83 @@ decisiones están en [`pipelines/analysis/README.md`](pipelines/analysis/README.
 - **Depende de la red** para los mapas base. Las parcelas SIGPAC solo se ven al
   acercarse (zoom 15 o más).
 
-## Regenerar los datos
+## Ejecutarlo en tu ordenador
 
-Solo hace falta si quieres actualizar o ampliar los datos. Necesitas Python 3.12
-y una cuenta gratuita de [NASA Earthdata](https://urs.earthdata.nasa.gov/) en
-`~/.netrc` (nunca en el repositorio).
+La [demo](https://alros14.github.io/olivetwin/) no necesita instalación. Para
+ejecutarla en local hace falta **Node.js 22** (versión en [`.nvmrc`](.nvmrc)),
+npm y conexión a Internet para los mapas base. Es una web estática: no hay
+servidor ni base de datos, y los datos ya vienen en el repositorio.
 
 ```bash
-python3 -m venv pipelines/analysis/.venv
-pipelines/analysis/.venv/bin/pip install -r pipelines/analysis/requirements.txt
-pipelines/analysis/.venv/bin/python pipelines/analysis/build_analysis.py \
-  --zone all --approved-by "Nombre del revisor"
-npm run validate:data --prefix frontend
+git clone https://github.com/AlRos14/olivetwin.git
+cd olivetwin/frontend
+npm ci
+npm run dev
 ```
 
-Las descargas se guardan en una caché fuera de git. La capa de humedad del
-manifiesto se genera con [`pipelines/nisar/`](pipelines/nisar/README.md); el
-paso a paso para publicar una zona está en
-[`docs/handoff-science.md`](docs/handoff-science.md).
+Abre **<http://localhost:5173/>**. La zona de Jaén se selecciona sola; cambia
+de zona arriba a la derecha y prueba las pestañas.
 
-## Para desarrolladores
+| Problema | Solución |
+|---|---|
+| `npm ci` falla | Comprueba que usas Node.js 22 (`node --version`; con nvm, `nvm use`). |
+| El mapa base sale gris | No hay conexión o el servicio del mapa no responde: cambia de mapa base en Capas. |
 
-### Estructura
+### Interpretación con IA (opcional)
 
-```text
-olivetwin/
-├── frontend/            Web: Vue 3 + Vite + TypeScript + Leaflet
-│   ├── src/             componentes, servicios, composables y tipos
-│   ├── public/data/     datos publicados (manifiesto y cubos de análisis)
-│   └── scripts/         validación de datos
-├── pipelines/analysis/  descarga y procesado del cubo de análisis (Python)
-├── pipelines/nisar/     conversor NISAR SME2 (HDF5) → PNG
-├── contracts/           JSON Schema de los datos (contrato v1.3.0)
-└── docs/                reto, fuentes y licencias, contrato, QA
+La app funciona sin IA. Para activarla con un modelo local y gratuito, instala
+[Ollama](https://ollama.com) y, en otra terminal:
+
+```bash
+OLLAMA_ORIGINS="http://127.0.0.1:*,http://localhost:*,https://alros14.github.io" ollama serve
+ollama pull gemma3:4b
 ```
 
-### Comprobaciones
+Después pulsa **Interpretar con IA** en la app (local o la demo publicada; el
+navegador puede pedir permiso para acceder a la red local). En «Modelo de IA»
+puedes cambiar a cualquier otro servicio compatible con la API de OpenAI, por
+ejemplo uno en la nube con tu clave; la clave solo se guarda durante la sesión
+del navegador. Sin GPU, cada interpretación tarda unos minutos. Si da error de
+conexión, usa «Probar conexión» en «Modelo de IA» y comprueba que `ollama serve`
+está en marcha con `OLLAMA_ORIGINS` y que descargaste el modelo.
 
-Desde `frontend/`:
+## Desarrollo
 
-| Comando | Qué hace |
-|---|---|
-| `npm test` | Pruebas unitarias (Vitest). |
-| `npm run validate:data` | Valida los datos publicados contra el contrato. |
-| `npm run typecheck` | Comprueba los tipos. |
-| `npm run build` | Compila la web en `frontend/dist/`. |
+| Parte | Tecnología | Documentación |
+|---|---|---|
+| Web (`frontend/`) | Vue 3, Vite, TypeScript y Leaflet; web estática | [`frontend/README.md`](frontend/README.md) |
+| Cubo de análisis (`pipelines/analysis/`) | Python 3.12: descarga y procesado de todas las variables | [`pipelines/analysis/README.md`](pipelines/analysis/README.md) |
+| Conversor NISAR (`pipelines/nisar/`) | Python 3.12: SME2 (HDF5) a PNG georreferenciado | [`pipelines/nisar/README.md`](pipelines/nisar/README.md) |
+| Contrato de datos (`contracts/`) | JSON Schema que valida los datos publicados | [`docs/data-contract.md`](docs/data-contract.md) |
 
-Pipelines: `pytest pipelines/analysis/tests` y `pytest pipelines/nisar/tests`
-(sin red). Las pruebas E2E usan Playwright con un harness externo
-([`frontend/tests/e2e/README.md`](frontend/tests/e2e/README.md)). Antes de
-abrir una pull request, ejecuta `npm ci`, `npm run validate:data`, `npm test` y
-`npm run build`. El check de CI se llama `ci`.
+Cada pull request pasa el check `ci`, que valida los datos, ejecuta las pruebas
+de la web y de los dos pipelines y compila la web. Cada merge a `main` publica
+la demo en GitHub Pages. Para regenerar los datos se necesita una cuenta
+gratuita de [NASA Earthdata](https://urs.earthdata.nasa.gov/): los comandos
+están en [`pipelines/analysis/README.md`](pipelines/analysis/README.md) y la
+publicación de una zona nueva, en [`docs/handoff-science.md`](docs/handoff-science.md). Cómo colaborar:
+[`docs/contributing.md`](docs/contributing.md).
 
-### Colaborar
+## Créditos y agradecimientos
 
-- Ramas, pull requests y revisión: [`docs/contributing.md`](docs/contributing.md).
-- Reglas para agentes automáticos: [`AGENTS.md`](AGENTS.md).
-- `main` está protegida: todo entra por pull request con el check `ci` en
-  verde y revisión humana independiente.
+- **[NASA Space Apps Challenge](https://www.spaceappschallenge.org/)**, el
+  hackatón internacional organizado por la NASA, y su reto
+  **[Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/)**,
+  que dio origen a este proyecto.
+- **Misión [NISAR](https://nisar.jpl.nasa.gov/)**, de la NASA y la ISRO (Indian
+  Space Research Organisation), con productos distribuidos por el
+  **[ASF DAAC](https://asf.alaska.edu/)** (Alaska Satellite Facility).
+- **NASA Earthdata** y el **NSIDC DAAC** (humedad del suelo SMAP).
+- **Copernicus** (Unión Europea y ESA): Sentinel-2, Copernicus DEM y CORINE
+  Land Cover; **ISRIC** (SoilGrids), **Open-Meteo** (ERA5), **FAO** (GAEZ y
+  ECOCROP), **Universidad de Granada**, **IGN** (PNOA), **FEGA** (SIGPAC) y
+  **OpenStreetMap**.
 
-## Documentación
+El equipo está en los [contribuidores del repositorio](https://github.com/AlRos14/olivetwin/graphs/contributors).
 
-| Documento | Contenido |
-|---|---|
-| [`docs/challenge.md`](docs/challenge.md) | El reto de la NASA, recursos y política de licencias. |
-| [`docs/data-sources.md`](docs/data-sources.md) | Datos, fuentes y licencias (auditoría). |
-| [`pipelines/analysis/README.md`](pipelines/analysis/README.md) | Cómo se calcula cada variable y la aptitud por cultivo. |
-| [`docs/data-contract.md`](docs/data-contract.md) | Formato de los datos y validación. |
-| [`docs/handoff-science.md`](docs/handoff-science.md) | Cómo publicar una zona nueva. |
-| [`docs/c0-interfaces.md`](docs/c0-interfaces.md) | Interfaces entre datos e interfaz. |
-| [`docs/qa-results.md`](docs/qa-results.md) | Resultados de pruebas y capturas. |
+> La NASA no avala este proyecto. OliveTwin es un trabajo independiente del
+> equipo para el NASA Space Apps Challenge, y el uso de datos de la NASA no
+> implica su respaldo.
 
 ## Licencia y cita
 
