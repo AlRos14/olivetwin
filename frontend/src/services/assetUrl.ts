@@ -9,13 +9,14 @@
  * aplicación funcione igual en la raíz del dominio o bajo una subruta (por
  * ejemplo `/olivetwin/`).
  */
+import { t } from '../i18n'
 
 /** Error lanzado cuando una ruta de asset no cumple el contrato de seguridad. */
 export class AssetUrlError extends Error {
   readonly path: string
 
   constructor(path: string, reason: string) {
-    super(`Ruta de asset no permitida: «${path}» (${reason}).`)
+    super(t('errors.assetPath', { path, reason }))
     this.name = 'AssetUrlError'
     this.path = path
   }
@@ -58,10 +59,7 @@ export function isSafeAssetPath(path: string): boolean {
 /** Lanza `AssetUrlError` si la ruta no es segura; no devuelve nada si lo es. */
 export function assertSafeAssetPath(path: string): void {
   if (!isSafeAssetPath(path)) {
-    throw new AssetUrlError(
-      path,
-      'debe ser una ruta relativa a public/, sin "/" inicial, "%", "..", ":" ni "\\"',
-    )
+    throw new AssetUrlError(path, t('errors.assetPathReason'))
   }
 }
 

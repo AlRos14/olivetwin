@@ -22,6 +22,7 @@ import StudyZoneMarkers from './StudyZoneMarkers.vue'
 import ScientificOverlay from './ScientificOverlay.vue'
 import AnalysisOverlay from './AnalysisOverlay.vue'
 import type { AnalysisOverlay as AnalysisOverlayData } from '../composables/useZoneAnalysis'
+import { locale, t } from '../i18n'
 
 /**
  * Mapa principal OliveTwin (WP07-01).
@@ -65,15 +66,20 @@ let parcelLayer: L.TileLayer.WMS | null = null
 let activeBase: BaseMap | null = null
 let baseErrorHandler: ((event: L.TileErrorEvent) => void) | null = null
 let tileTracker = createTileErrorTracker()
+let navControl: SpainNavControl | null = null
 
 /**
  * Control propio con dos encuadres. Se usa `L.Control` en lugar de botones Vue
  * superpuestos para que respete el posicionamiento, el teclado y los estilos
- * de Leaflet, y para que se elimine junto con el mapa.
+ * de Leaflet, y para que se elimine junto con el mapa. `refreshLabels()`
+ * actualiza el texto al cambiar de idioma sin recrear el control.
  */
 class SpainNavControl extends L.Control {
   private readonly goSpain: () => void
   private readonly goCanarias: () => void
+  private navContainer: HTMLElement | null = null
+  private spainButton: HTMLButtonElement | null = null
+  private canariasButton: HTMLButtonElement | null = null
 
   constructor(goSpain: () => void, goCanarias: () => void) {
     super({ position: 'topright' })
@@ -84,19 +90,12 @@ class SpainNavControl extends L.Control {
   onAdd(): HTMLElement {
     const container = L.DomUtil.create('div', 'leaflet-bar olive-map-nav')
     container.setAttribute('role', 'group')
-    container.setAttribute('aria-label', 'Vistas de España')
+    this.navContainer = container
 
-    const spainButton = this.createButton(
-      'España',
-      'Encuadrar la Península y Baleares',
-      this.goSpain,
-    )
-    const canariasButton = this.createButton(
-      'Canarias',
-      'Encuadrar el archipiélago canario',
-      this.goCanarias,
-    )
-    container.append(spainButton, canariasButton)
+    this.spainButton = this.createButton(this.goSpain)
+    this.canariasButton = this.createButton(this.goCanarias)
+    container.append(this.spainButton, this.canariasButton)
+    this.refreshLabels()
 
     // El clic en el control no debe propagarse al mapa (evita pan/zoom accidental).
     L.DomEvent.disableClickPropagation(container)
@@ -104,13 +103,32 @@ class SpainNavControl extends L.Control {
     return container
   }
 
-  private createButton(label: string, title: string, action: () => void): HTMLButtonElement {
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'olive-map-nav__button'
+  /** Reaplica los textos visibles y accesibles en el idioma actual. */
+  refreshLabels(): void {
+    this.navContainer?.setAttribute('aria-label', t('layers.map.navLabel'))
+    this.setButtonLabels(this.spainButton, t('layers.map.spain'), t('layers.map.spainTitle'))
+    this.setButtonLabels(
+      this.canariasButton,
+      t('layers.map.canaries'),
+      t('layers.map.canariesTitle'),
+    )
+  }
+
+  private setButtonLabels(
+    button: HTMLButtonElement | null,
+    label: string,
+    title: string,
+  ): void {
+    if (!button) return
     button.textContent = label
     button.title = title
     button.setAttribute('aria-label', title)
+  }
+
+  private createButton(action: () => void): HTMLButtonElement {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'olive-map-nav__button'
     L.DomEvent.on(button, 'click', (event) => {
       L.DomEvent.stop(event)
       action()
@@ -249,7 +267,8 @@ onMounted(() => {
   const parcelPane = instance.createPane(PARCEL_PANE)
   parcelPane.style.zIndex = '450'
   parcelPane.style.pointerEvents = 'none'
-  instance.addControl(new SpainNavControl(viewSpain, viewCanarias))
+  navControl = new SpainNavControl(viewSpain, viewCanarias)
+  instance.addControl(navControl)
 
   setBaseLayer(props.baseMap)
   applyZoneView(props.selectedZoneId)
@@ -265,6 +284,9 @@ watch(
   (next) => applyZoneView(next),
 )
 
+/** Los botones de encuadre se rotulan en el idioma activo. */
+watch(locale, () => navControl?.refreshLabels())
+
 onBeforeUnmount(() => {
   const instance = map.value
   if (!instance) return
@@ -275,6 +297,7 @@ onBeforeUnmount(() => {
   baseLayer = null
   baseErrorHandler = null
   activeBase = null
+  navControl = null
   instance.remove()
   map.value = null
 })
@@ -289,7 +312,7 @@ defineExpose({ map })
       ref="containerRef"
       class="olive-map"
       role="application"
-      aria-label="Mapa de España con zonas de estudio y capas científicas"
+      :aria-label="t('layers.map.label')"
     />
     <StudyZoneMarkers
       v-if="map"

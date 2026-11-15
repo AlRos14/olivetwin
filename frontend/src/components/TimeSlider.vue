@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import type { TimeStep } from '../types/manifest'
 import '../styles/ui.css'
 import { formatDate, formatDateTime } from '../services/dateFormat'
+import { t } from '../i18n'
 
 /**
  * Línea temporal de la capa activa (WP-07, contrato v1.2.0).
@@ -13,8 +14,7 @@ import { formatDate, formatDateTime } from '../services/dateFormat'
  *   pulsar «Reproducir» estando en el último vuelve a empezar por el primero.
  * - Cualquier interacción manual (slider o botones) o un cambio de `steps`
  *   cancela la reproducción. Al desmontar se limpia el temporizador.
- * - Fechas en formato numérico estadounidense (MM/DD/YYYY), en UTC para no
- *   desplazar el día.
+ * - Fechas en ISO 8601 (UTC) en todos los idiomas; nunca MM/DD/YYYY.
  */
 const props = defineProps<{
   steps: TimeStep[]
@@ -42,7 +42,11 @@ const currentIndex = computed(() => {
 const activeStep = computed<TimeStep | null>(() => props.steps[currentIndex.value] ?? null)
 
 const activeDateLabel = computed(() =>
-  activeStep.value ? formatLongDate(activeStep.value) : 'Fecha no disponible',
+  activeStep.value ? formatLongDate(activeStep.value) : t('layers.timeSlider.noDate'),
+)
+
+const stepLabel = computed(() =>
+  t('layers.timeSlider.step', { current: currentIndex.value + 1, total: props.steps.length }),
 )
 
 const isPlaying = ref(false)
@@ -50,14 +54,14 @@ let timer: ReturnType<typeof setInterval> | null = null
 /** Posición interna de la reproducción; no depende del refresco de props. */
 let cursor = 0
 
-/** Etiqueta de las marcas: la fecha en MM/DD/YYYY; `label` solo si la fecha no es válida. */
+/** Etiqueta de las marcas: la fecha en ISO 8601; `label` solo si la fecha no es válida. */
 function markLabel(step: TimeStep): string {
-  return formatDate(step.date, step.label?.trim() || 'Fecha no disponible')
+  return formatDate(step.date, step.label?.trim() || t('layers.timeSlider.noDate'))
 }
 
 /** Fecha completa para el estado visible y `aria-valuetext`. */
 function formatLongDate(step: TimeStep): string {
-  return formatDateTime(step.date, 'Fecha no disponible')
+  return formatDateTime(step.date, t('layers.timeSlider.noDate'))
 }
 
 function emitIndex(index: number): void {
@@ -117,11 +121,11 @@ onBeforeUnmount(stopPlayback)
 </script>
 
 <template>
-  <section v-if="steps.length >= 2" class="ot-time-slider" aria-label="Línea temporal de la capa">
+  <section v-if="steps.length >= 2" class="ot-time-slider" :aria-label="t('layers.timeSlider.label')">
     <div class="ot-time-slider__header">
-      <label :for="sliderId" class="ot-time-slider__label">Fecha de adquisición</label>
+      <label :for="sliderId" class="ot-time-slider__label">{{ t('layers.timeSlider.acquisitionDate') }}</label>
       <p class="ot-time-slider__status" aria-live="polite">
-        Paso {{ currentIndex + 1 }} de {{ steps.length }} · {{ activeDateLabel }}
+        {{ stepLabel }} · {{ activeDateLabel }}
       </p>
     </div>
 
@@ -155,7 +159,7 @@ onBeforeUnmount(stopPlayback)
         :disabled="currentIndex <= 0"
         @click="stepBy(-1)"
       >
-        Anterior
+        {{ t('layers.timeSlider.previous') }}
       </button>
       <button
         type="button"
@@ -163,7 +167,7 @@ onBeforeUnmount(stopPlayback)
         :aria-pressed="isPlaying ? 'true' : 'false'"
         @click="togglePlayback"
       >
-        {{ isPlaying ? 'Pausar' : 'Reproducir' }}
+        {{ isPlaying ? t('layers.timeSlider.pause') : t('layers.timeSlider.play') }}
       </button>
       <button
         type="button"
@@ -171,7 +175,7 @@ onBeforeUnmount(stopPlayback)
         :disabled="currentIndex >= lastIndex"
         @click="stepBy(1)"
       >
-        Siguiente
+        {{ t('layers.timeSlider.next') }}
       </button>
     </div>
   </section>

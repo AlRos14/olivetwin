@@ -23,6 +23,7 @@ import type {
   TimeStep,
 } from '../types/manifest'
 import { resolveAssetUrl } from '../services/assetUrl'
+import { t } from '../i18n'
 import {
   isAbortError,
   loadManifest,
@@ -57,7 +58,7 @@ function errorMessageFor(error: unknown, mode: DataMode): string {
   if (error instanceof ManifestLoadError) {
     return error.message
   }
-  return `No se pudieron cargar los datos «${mode}». Vuelve a intentarlo.`
+  return t('errors.dataLoadFailed', { mode })
 }
 
 export function useOliveTwinData(

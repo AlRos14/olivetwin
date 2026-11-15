@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LayerLegend from './LayerLegend.vue'
 import type { StudyLayer } from '../types/manifest'
+import { setLocale } from '../i18n'
+import { setDataCatalog } from '../i18n/dataText'
 
 const layer: StudyLayer = {
   id: 'ndvi',
@@ -81,5 +83,53 @@ describe('LayerLegend', () => {
     const wrapper = mount(LayerLegend, { props: { layer: null } })
     expect(wrapper.text()).toContain('Selecciona una zona y una variable')
     expect(wrapper.find('.ot-legend__scale').exists()).toBe(false)
+  })
+})
+
+describe('LayerLegend — English', () => {
+  afterEach(() => {
+    setDataCatalog({})
+    setLocale('es', { persist: false })
+  })
+
+  it('traduce los textos de datos por el catálogo y muestra «dimensionless»', () => {
+    setLocale('en', { persist: false })
+    setDataCatalog({ 'Vegetación (NDVI)': 'Vegetation (NDVI)', Bajo: 'Low' })
+
+    const wrapper = mount(LayerLegend, {
+      props: { layer: { ...layer, unit: '1' } },
+    })
+    const text = wrapper.text()
+
+    expect(text).toContain('Vegetation (NDVI)')
+    expect(text).toContain('Low')
+    expect(text).toContain('Unit:')
+    expect(text).toContain('dimensionless')
+    expect(text).not.toContain('Unidad')
+    expect(text).not.toContain('adimensional')
+    expect(wrapper.findAll('.ot-legend__stop-label')[0]!.text()).toBe('Low')
+    expect(wrapper.get('.ot-legend__scale').attributes('aria-label')).toBe(
+      'Colour scale for Vegetation (NDVI)',
+    )
+  })
+
+  it.each(['1', 'adimensional', 'adimensional (0–1)', 'fracción'])(
+    'trata la unidad %j como adimensional mientras los datos no migren',
+    (unit) => {
+      setLocale('en', { persist: false })
+      const wrapper = mount(LayerLegend, { props: { layer: { ...layer, unit } } })
+      expect(wrapper.text()).toContain('dimensionless')
+    },
+  )
+
+  it('mantiene las unidades SI tal cual y sin texto en español', () => {
+    setLocale('en', { persist: false })
+    const wrapper = mount(LayerLegend, {
+      props: { layer: { ...layer, unit: 'm³/m³', noData: true } },
+    })
+    const text = wrapper.text()
+    expect(text).toContain('m³/m³')
+    expect(text).not.toContain('Sin dato')
+    expect(text).toContain('No data')
   })
 })

@@ -12,8 +12,9 @@
  *   - devuelve `{ manifest, status: 'ready' | 'empty' }` sin recurrir nunca al
  *     otro modo (un modo real vacío es `empty`, no un error).
  *
- * Los errores son `ManifestLoadError` con mensaje en español y un `code`
- * estable para que la UI pueda decidir qué mostrar.
+ * Los errores son `ManifestLoadError` con mensaje ya traducido al idioma activo
+ * (catálogo `errors.*`) y un `code` estable para que la UI pueda decidir qué
+ * mostrar.
  */
 import Ajv2020 from 'ajv/dist/2020.js'
 import type { ErrorObject } from 'ajv'
@@ -21,6 +22,7 @@ import addFormats from 'ajv-formats'
 
 import manifestSchema from '../../../contracts/manifest.schema.json'
 import type { DataMode, OliveTwinManifest } from '../types/manifest'
+import { t } from '../i18n'
 import { isSafeAssetPath, resolveAssetUrl } from './assetUrl'
 import { manifestSemanticErrors } from './manifestSemantics'
 
@@ -86,14 +88,19 @@ export function isAbortError(error: unknown): boolean {
 function formatFirstSchemaError(errors: ErrorObject[] | null | undefined): string {
   const first = errors?.[0]
   if (!first) {
-    return 'sin detalle del validador'
+    return t('errors.validatorDetail')
   }
-  const location = first.instancePath === '' ? '(raíz)' : first.instancePath
-  return `${location}: ${first.message ?? 'valor no válido'}`
+  const location = first.instancePath === '' ? t('errors.rootPath') : first.instancePath
+  return `${location}: ${first.message ?? t('errors.invalidValue')}`
 }
 
 function expectedStatusFor(mode: DataMode): 'synthetic' | 'processed_real' {
   return mode === 'sample' ? 'synthetic' : 'processed_real'
+}
+
+/** Nombre del modo tal y como se muestra en los mensajes. */
+function modeName(mode: DataMode): string {
+  return mode === 'sample' ? t('errors.modeSample') : t('errors.modeReal')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -121,7 +128,7 @@ function assertModeAndStatusCoherence(raw: unknown, mode: DataMode): void {
   ) {
     throw new ManifestLoadError(
       'mode-mismatch',
-      `El manifiesto de datos «${mode}» declara el modo «${datasetMode}»; se esperaba «${mode}».`,
+      t('errors.modeMismatch', { mode, declared: datasetMode }),
     )
   }
 
@@ -148,7 +155,14 @@ function assertModeAndStatusCoherence(raw: unknown, mode: DataMode): void {
       }
       throw new ManifestLoadError(
         'status-mismatch',
-        `El manifiesto «${mode}» contiene la capa «${String(layer.id)}» de la zona «${String(zone.id)}» con estado «${status}»; en modo ${mode === 'sample' ? 'muestra' : 'real'} todas las capas deben ser «${expectedStatus}».`,
+        t('errors.statusMismatch', {
+          mode,
+          modeName: modeName(mode),
+          layerId: String(layer.id),
+          zoneId: String(zone.id),
+          status,
+          expected: expectedStatus,
+        }),
       )
     }
   }
@@ -163,7 +177,7 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
   if (manifest.datasetMode !== mode) {
     throw new ManifestLoadError(
       'mode-mismatch',
-      `El manifiesto de datos «${mode}» declara el modo «${manifest.datasetMode}»; se esperaba «${mode}».`,
+      t('errors.modeMismatch', { mode, declared: manifest.datasetMode }),
     )
   }
 
@@ -173,13 +187,25 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
       if (layer.status !== expectedStatus) {
         throw new ManifestLoadError(
           'status-mismatch',
-          `El manifiesto «${mode}» contiene la capa «${layer.id}» de la zona «${zone.id}» con estado «${layer.status}»; en modo ${mode === 'sample' ? 'muestra' : 'real'} todas las capas deben ser «${expectedStatus}».`,
+          t('errors.statusMismatch', {
+            mode,
+            modeName: modeName(mode),
+            layerId: layer.id,
+            zoneId: zone.id,
+            status: layer.status,
+            expected: expectedStatus,
+          }),
         )
       }
       if (!isSafeAssetPath(layer.image)) {
         throw new ManifestLoadError(
           'unsafe-path',
-          `El manifiesto «${mode}» contiene una ruta de imagen no permitida en la capa «${layer.id}» de la zona «${zone.id}»: «${layer.image}».`,
+          t('errors.unsafeImage', {
+            mode,
+            layerId: layer.id,
+            zoneId: zone.id,
+            image: layer.image,
+          }),
         )
       }
       if (Array.isArray(layer.timeSteps)) {
@@ -187,7 +213,13 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
           if (!isSafeAssetPath(step.image)) {
             throw new ManifestLoadError(
               'unsafe-path',
-              `El manifiesto «${mode}» contiene una ruta de imagen no permitida en el paso temporal ${stepIndex} de la capa «${layer.id}» de la zona «${zone.id}»: «${step.image}».`,
+              t('errors.unsafeTimeStepImage', {
+                mode,
+                step: stepIndex,
+                layerId: layer.id,
+                zoneId: zone.id,
+                image: step.image,
+              }),
             )
           }
         })
@@ -202,7 +234,7 @@ function assertManifestCoherence(manifest: OliveTwinManifest, mode: DataMode): v
   if (semanticIssues.length > 0) {
     throw new ManifestLoadError(
       'semantic',
-      `El manifiesto de datos «${mode}» no es coherente: ${semanticIssues[0]}.`,
+      t('errors.semantic', { mode, issue: semanticIssues[0] }),
     )
   }
 }
@@ -231,7 +263,7 @@ export async function loadManifest(
     }
     throw new ManifestLoadError(
       'network',
-      `No se pudo descargar el manifiesto de datos «${mode}». Comprueba la conexión y vuelve a intentarlo.`,
+      t('errors.network', { mode }),
       { cause: error },
     )
   }
@@ -239,8 +271,8 @@ export async function loadManifest(
   if (!response.ok) {
     const message =
       response.status === 404
-        ? `No se encontró el manifiesto de datos «${mode}» (HTTP 404).`
-        : `El servidor respondió con HTTP ${response.status} al cargar el manifiesto de datos «${mode}».`
+        ? t('errors.httpNotFound', { mode })
+        : t('errors.httpStatus', { mode, status: response.status })
     throw new ManifestLoadError('http', message, { httpStatus: response.status })
   }
 
@@ -254,7 +286,7 @@ export async function loadManifest(
     }
     throw new ManifestLoadError(
       'invalid-json',
-      `El manifiesto de datos «${mode}» no es un JSON válido.`,
+      t('errors.invalidJson', { mode }),
       { cause: error },
     )
   }
@@ -267,7 +299,7 @@ export async function loadManifest(
   if (!validateManifest(raw)) {
     throw new ManifestLoadError(
       'schema',
-      `El manifiesto de datos «${mode}» no cumple el contrato: ${formatFirstSchemaError(validateManifest.errors)}.`,
+      t('errors.contract', { mode, detail: formatFirstSchemaError(validateManifest.errors) }),
     )
   }
 

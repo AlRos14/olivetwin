@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { variableRelevance } from './variableRelevance'
+import { t } from '../i18n'
 import '../styles/ui.css'
 
 /** Recuadro «Relevancia» de Capas: qué es la capa visible y para qué sirve en el cultivo. */
@@ -13,10 +14,10 @@ const info = computed(() => variableRelevance(props.variableId))
 </script>
 
 <template>
-  <section v-if="info" class="ot-card ot-relevance" aria-label="Relevancia">
-    <h2 class="ot-section-title">Relevancia</h2>
-    <p class="ot-relevance__text"><strong>Qué es.</strong> {{ info.what }}</p>
-    <p class="ot-relevance__text"><strong>Para el cultivo.</strong> {{ info.crop }}</p>
+  <section v-if="info" class="ot-card ot-relevance" :aria-label="t('layers.relevance.label')">
+    <h2 class="ot-section-title">{{ t('layers.relevance.title') }}</h2>
+    <p class="ot-relevance__text"><strong>{{ t('layers.relevance.what') }}</strong> {{ info.what }}</p>
+    <p class="ot-relevance__text"><strong>{{ t('layers.relevance.crop') }}</strong> {{ info.crop }}</p>
   </section>
 </template>
 

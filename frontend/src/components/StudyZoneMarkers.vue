@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch, watchEffect } from 'vue'
 import * as L from 'leaflet'
 import type { StudyZone } from '../types/manifest'
 import { bboxToLatLngBounds, isUsableBBox } from './map/geo'
+import { dataText } from '../i18n/dataText'
 
 /**
  * Contornos de las zonas de estudio (WP07-02).
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 interface ZoneRectangle {
   id: string
   rectangle: L.Rectangle
+  /** Nombre de la zona ya renderizado en el tooltip; se actualiza al cambiar de idioma. */
+  label: HTMLElement
 }
 
 let entries: ZoneRectangle[] = []
@@ -83,13 +86,13 @@ function syncZones(): void {
     // El nombre llega del manifiesto: se inserta como texto, nunca como HTML.
     const label = document.createElement('span')
     label.className = 'olive-zone-tooltip'
-    label.textContent = zone.name
+    label.textContent = dataText(zone.name)
     rectangle.bindTooltip(label, { sticky: true, direction: 'top' })
     rectangle.on('click', () => emit('select-zone', zone.id))
     rectangle.addTo(props.map)
     if (selected) rectangle.bringToFront()
 
-    entries.push({ id: zone.id, rectangle })
+    entries.push({ id: zone.id, rectangle, label })
   }
 }
 
@@ -105,6 +108,14 @@ onMounted(syncZones)
 // `deep` cubre tanto una lista nueva (cambio de modo) como ediciones internas.
 watch(() => props.zones, syncZones, { deep: true })
 watch(() => props.selectedZoneId, applySelection)
+
+/** El nombre de la zona es un texto de datos: se recalcula al cambiar de idioma o catálogo. */
+watchEffect(() => {
+  for (const entry of entries) {
+    const zone = props.zones.find((candidate) => candidate.id === entry.id)
+    if (zone) entry.label.textContent = dataText(zone.name)
+  }
+})
 
 watch(
   () => props.map,
