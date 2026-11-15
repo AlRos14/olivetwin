@@ -1,0 +1,63 @@
+name: Deploy Pages
+
+# Publica la web en GitHub Pages en cada push a main (tras el merge de una PR,
+# que ya pasó el check `ci`). URL: https://alros14.github.io/olivetwin/
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo despliegue a la vez; no se cancela uno en curso.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configurar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci --prefix frontend
+
+      - name: Validar datos
+        run: npm run validate:data --prefix frontend
+
+      - name: Compilar en la subruta /olivetwin/
+        run: npm run build --prefix frontend -- --base /olivetwin/
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v6
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar
+        id: deployment
+        uses: actions/deploy-pages@v5
