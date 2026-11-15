@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
+import { setLocale } from '../i18n'
 
 import type { StudyZone } from '../types/manifest'
 import { DEFAULT_LLM_SETTINGS, type LlmSettings } from '../services/llmClient'
@@ -70,7 +71,7 @@ describe('useZoneComparison', () => {
     expect(comparison.viewB.value!.summary.suitableShare).toBeCloseTo(1)
     expect(comparison.viewA.value!.summary.basis).toBe('zone')
     expect(result.reasons.map((reason) => reason.id)).toEqual(['pendiente'])
-    expect(comparison.viewB.value!.summary.factors[0].observed[0]).toContain('Pendiente')
+    expect(comparison.viewB.value!.summary.factors[0].observed[0].title).toContain('Pendiente')
   })
 
   it('sin comparación si se elige la misma zona en A y B', async () => {
@@ -93,6 +94,24 @@ describe('useZoneComparison', () => {
     // El informe no nombra las provincias de los recuadros.
     expect(content).not.toMatch(/Jaén|Toledo/)
     expect(content).toContain('sin cambiar el veredicto calculado')
+  })
+
+  it('en inglés muestra el veredicto y los motivos en inglés', async () => {
+    setLocale('en', { persist: false })
+    const { comparison, settings } = await setup()
+    const workspace = mount(CompareWorkspace, { props: { comparison } })
+    await nextTick()
+    const text = workspace.text()
+    expect(text).toContain('Compare zones')
+    expect(text).toContain('Area B is better for olivo')
+    expect(text).toContain('Pendiente: favours Area B')
+    expect(workspace.find('[aria-label="Verdict"]').exists()).toBe(true)
+    expect(text).not.toContain('La zona B es mejor')
+
+    const controls = mount(CompareControls, { props: { comparison, settings } })
+    expect(controls.text()).toContain('Area A')
+    expect(controls.text()).toContain('Area B')
+    expect(controls.text()).toContain('Crop')
   })
 
   it('los componentes muestran el veredicto, los motivos y los controles', async () => {

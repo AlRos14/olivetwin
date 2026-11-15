@@ -115,7 +115,7 @@ describe('useAnalysisWorkspace — variables de una sola imagen', () => {
     const spatial = workspace.spatial.value!
     expect(spatial.histogram).toHaveLength(10)
     expect(spatial.histogram.reduce((sum, bin) => sum + bin.fraction, 0)).toBeCloseTo(1)
-    expect(spatial.byArea.some((area) => area.label.startsWith('cuadrante'))).toBe(true)
+    expect(spatial.byArea.some((area) => area.id.startsWith('quadrant'))).toBe(true)
   })
 
   it('la IA recibe el reparto espacial, sin intervalo ni tendencia', async () => {
@@ -139,7 +139,7 @@ describe('useAnalysisWorkspace — variables de una sola imagen', () => {
     await settle()
     const view = workspace.requirementView.value!
     expect(view.requirement).toMatchObject({ kind: 'factor', id: 'pendiente' })
-    expect(view.source).toBe('Referencia de prueba')
+    expect(view.source).toEqual({ citation: 'Referencia de prueba', product: null })
     expect(view.shares).not.toBeNull()
     expect(view.shares!.optimal + view.shares!.acceptable + view.shares!.unsuitable).toBeCloseTo(1)
     await workspace.runVariableReport()
@@ -185,7 +185,7 @@ describe('useAnalysisWorkspace — aptitud por cultivo', () => {
     expect(view.limiting[0].fraction).toBeCloseTo(2 / 3)
     expect(view.unlimited).toBeCloseTo(1 / 3)
     expect(view.bins[3].fraction).toBeCloseTo(1 / 3)
-    expect(view.byArea.some((area) => area.label.startsWith('cuadrante'))).toBe(true)
+    expect(view.byArea.some((area) => area.id.startsWith('quadrant'))).toBe(true)
     await workspace.runCropReport()
     expect(workspace.cropReport.status).toBe('done')
     expect(llmBodies[0].messages[1].content).toContain('Pendiente: media')

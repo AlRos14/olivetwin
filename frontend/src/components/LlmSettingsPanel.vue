@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue'
 import { DEFAULT_LLM_SETTINGS, listModels, LlmError, type LlmSettings } from '../services/llmClient'
+import { t } from '../i18n'
 import '../styles/analysis.css'
 
 /**
@@ -42,11 +43,17 @@ async function testConnection(): Promise<void> {
     result.value = {
       ok: available,
       message: available
-        ? `Conectado. El modelo «${props.settings.model}» está disponible.`
-        : `Conectado, pero «${props.settings.model}» no aparece. Disponibles: ${models.join(', ') || 'ninguno'}.`,
+        ? t('analysis.llm.connected', { model: props.settings.model })
+        : t('analysis.llm.connectedMissing', {
+            model: props.settings.model,
+            list: models.join(', ') || t('analysis.llm.none'),
+          }),
     }
   } catch (error) {
-    result.value = { ok: false, message: error instanceof LlmError ? error.message : 'No se pudo comprobar la conexión.' }
+    result.value = {
+      ok: false,
+      message: error instanceof LlmError ? error.message : t('analysis.llm.testFailed'),
+    }
   } finally {
     testing.value = false
   }
@@ -55,36 +62,36 @@ async function testConnection(): Promise<void> {
 
 <template>
   <details class="ot-llm-settings">
-    <summary>Modelo de IA: {{ settings.model }}</summary>
+    <summary>{{ t('analysis.llm.settingsSummary', { model: settings.model }) }}</summary>
     <div class="ot-field">
-      <label class="ot-label" :for="`${uid}-url`">URL del endpoint (compatible con OpenAI)</label>
+      <label class="ot-label" :for="`${uid}-url`">{{ t('analysis.llm.endpoint') }}</label>
       <input :id="`${uid}-url`" class="ot-input" type="url" :value="settings.baseUrl" @change="onText('baseUrl', $event)" />
     </div>
     <div class="ot-field">
-      <label class="ot-label" :for="`${uid}-model`">Modelo</label>
+      <label class="ot-label" :for="`${uid}-model`">{{ t('analysis.llm.model') }}</label>
       <input :id="`${uid}-model`" class="ot-input" type="text" :value="settings.model" @change="onText('model', $event)" />
     </div>
     <div class="ot-field">
-      <label class="ot-label" :for="`${uid}-key`">Clave de API (opcional)</label>
+      <label class="ot-label" :for="`${uid}-key`">{{ t('analysis.llm.apiKey') }}</label>
       <input
         :id="`${uid}-key`"
         class="ot-input"
         type="password"
         autocomplete="off"
         :value="settings.apiKey"
-        placeholder="Solo para proveedores en la nube"
+        :placeholder="t('analysis.llm.apiKeyPlaceholder')"
         @change="onText('apiKey', $event)"
       />
     </div>
     <label class="ot-check">
       <input type="checkbox" :checked="settings.vision" @change="onVision" />
-      Enviar también las imágenes (modelos con visión)
+      {{ t('analysis.llm.vision') }}
     </label>
     <div class="ot-llm-settings__actions">
       <button type="button" class="ot-button" :disabled="testing" @click="testConnection">
-        {{ testing ? 'Comprobando…' : 'Probar conexión' }}
+        {{ testing ? t('analysis.llm.testing') : t('analysis.llm.test') }}
       </button>
-      <button type="button" class="ot-button ot-button--quiet" @click="restoreDefaults">Valores por defecto</button>
+      <button type="button" class="ot-button ot-button--quiet" @click="restoreDefaults">{{ t('analysis.llm.defaults') }}</button>
     </div>
     <p v-if="result" :class="result.ok ? 'ot-hint' : 'ot-analysis__error'" role="status">{{ result.message }}</p>
   </details>

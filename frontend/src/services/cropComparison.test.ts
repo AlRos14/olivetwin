@@ -4,7 +4,7 @@ import { compareZones, suitableShare, type ZoneCropSummary, type ZoneFactorSumma
 const shares = { optimal: 0, acceptable: 1, unsuitable: 0, valid: 1 }
 
 function factor(id: string, mean: number | null, limiting = 0): ZoneFactorSummary {
-  return { id, label: id, mean, shares, limiting, observed: [`${id} observado`], classes: null }
+  return { id, label: id, mean, shares, limiting, observed: [], classes: null }
 }
 
 function zone(name: string, mean: number | null, factors: ZoneFactorSummary[], suitable = 0.5): ZoneCropSummary {
@@ -17,10 +17,10 @@ function zone(name: string, mean: number | null, factors: ZoneFactorSummary[], s
     p10: null,
     p90: null,
     bins: [
-      { label: 'N', min: 0, max: 0.4, fraction: 0.2 },
-      { label: 'S3', min: 0.4, max: 0.6, fraction: 0.3 },
-      { label: 'S2', min: 0.6, max: 0.85, fraction: 0.4 },
-      { label: 'S1', min: 0.85, max: 1, fraction: 0.1 },
+      { id: 'N', min: 0, max: 0.4, fraction: 0.2 },
+      { id: 'S3', min: 0.4, max: 0.6, fraction: 0.3 },
+      { id: 'S2', min: 0.6, max: 0.85, fraction: 0.4 },
+      { id: 'S1', min: 0.85, max: 1, fraction: 0.1 },
     ],
     suitableShare: suitable,
     factors,

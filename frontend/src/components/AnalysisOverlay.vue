@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, watch } from 'vue'
 import * as L from 'leaflet'
 import type { AnalysisOverlay } from '../composables/useZoneAnalysis'
 import { bboxToLatLngBounds, isUsableBBox } from './map/geo'
+import { t } from '../i18n'
 
 /**
  * Capa calculada del cubo de análisis (valor, cambio o índice).
@@ -46,7 +47,7 @@ function apply(): void {
       interactive: false,
       className: 'olive-scientific-overlay olive-analysis-overlay',
       pane: 'overlayPane',
-      alt: 'Capa de análisis calculada de la zona seleccionada',
+      alt: t('analysis.results.overlayAlt'),
     })
     layerKey = keyOf(next)
   } else {
