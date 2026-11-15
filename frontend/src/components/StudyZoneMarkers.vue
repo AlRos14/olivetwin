@@ -111,6 +111,9 @@ watch(() => props.selectedZoneId, applySelection)
 
 /** El nombre de la zona es un texto de datos: se recalcula al cambiar de idioma o catálogo. */
 watchEffect(() => {
+  // Leer idioma y catálogo (aunque no haya rectángulos todavía) mantiene el
+  // efecto suscrito a ambos: los tooltips se actualizan sin recrear el mapa.
+  void dataText('')
   for (const entry of entries) {
     const zone = props.zones.find((candidate) => candidate.id === entry.id)
     if (zone) entry.label.textContent = dataText(zone.name)
